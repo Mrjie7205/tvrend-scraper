@@ -1,0 +1,60 @@
+name: Weekly Catalog Scrape
+
+# 每周一抓各渠道在售目录全量 → catalog/<platform>_<country>_<date>.csv。
+on:
+  # ↓↓↓ 仓库转 public 后，取消下面 schedule 注释即可启用每周定时。
+  #     private 期间定时抓取会消耗免费 Actions 分钟，故先只保留手动触发(workflow_dispatch)。
+  # schedule:
+  #   - cron: "15 4 * * 1"
+  workflow_dispatch:
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: python -m playwright install chromium --with-deps
+
+      - name: Scrape catalog (all registered channels)
+        working-directory: scripts
+        env:
+          HEADLESS_MODE: "true"
+        run: python -m catalog_scrape.run_weekly
+
+      - name: Commit catalog（rebase 重试，防并发）
+        run: |
+          set -e
+          git config user.name "tvrend-scraper bot"
+          git config user.email "actions@github.com"
+          git add -- catalog/
+          if git diff --cached --quiet; then
+            echo "无新目录，跳过提交。"
+            exit 0
+          fi
+          git commit -m "chore: weekly catalog ${{ github.run_id }} [skip ci]"
+          BR="${{ github.ref_name }}"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase -X theirs origin "$BR" && git push origin "HEAD:$BR"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 3))
+          done
+          echo "::error::推送失败。"
+          exit 1

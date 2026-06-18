@@ -1,0 +1,3 @@
+# Channel price / catalog scraper — runtime deps
+# 纯抓取只依赖 Playwright(monitor_prices / catalog_scrape 不用 pandas)
+playwright>=1.40
