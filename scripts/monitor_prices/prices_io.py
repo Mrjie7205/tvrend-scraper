@@ -1,20 +1,23 @@
 """价格 CSV 读写 + 历史价格查表。
 
-输入清单的来源(优先级):
-  1) mapping/channel_links.csv  (匹配器自动维护,active=true 才跑)
-  2) raw/products_seed_from_old_repo.csv  (冷启动种子,只在 channel_links 不存在时用)
+输入清单:mapping/channel_links.csv(6 列:brand,model,country,platform,url,active;
+由上游私库匹配后推入,active=true 才抓)。
 
-输出:
-  raw/prices.csv 列对齐 TV_Price_Monitor 原格式,方便后续如果要并行验证两个仓库
+输出:raw/prices.csv;每次抓完按 Date 只保留最近 N 天(滚动窗口,N 由环境变量
+PRICES_KEEP_DAYS 控制,默认 30)——完整历史由私库 enrich 留存,public 只当近窗。
 """
 from __future__ import annotations
 
 import csv
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Iterable
 
-# 列结构保持跟 TV_Price_Monitor 一致,便于 4 个月历史数据无缝拼接
+# 价格滚动窗口:public 只保留最近这么多天(完整历史在私库)。可用 PRICES_KEEP_DAYS 覆盖。
+DEFAULT_KEEP_DAYS = 30
+
+# 列结构保持跟 TV_Price_Monitor 一致,便于历史数据无缝拼接
 PRICES_COLUMNS = (
     "Date",
     "Time",
@@ -27,19 +30,6 @@ PRICES_COLUMNS = (
     "Page Title",
     "Status",
     "Price_Trend",
-)
-
-# channel_links.csv schema(匹配器产物)
-CHANNEL_LINKS_COLUMNS = (
-    "brand",
-    "model",
-    "country",
-    "platform",
-    "url",
-    "raw_product_name",
-    "confidence",
-    "match_method",
-    "active",
 )
 
 
@@ -56,58 +46,35 @@ def prices_csv_path() -> Path:
     return _root() / "raw" / "prices.csv"
 
 
-def seed_products_path() -> Path:
-    return _root() / "raw" / "products_seed_from_old_repo.csv"
-
-
 def load_active_skus() -> list[dict]:
-    """读 channel_links.csv 里 active=true 的 SKU;不存在则回落到种子产品表。
+    """读 channel_links.csv 里 active=true 的 SKU。channel_links 不存在则返回空 list。
 
     Returns:
         list of dicts with keys: brand, product_name, country, platform, url
     """
     out: list[dict] = []
     src = channel_links_path()
-    if src.exists():
-        with src.open("r", encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if str(row.get("active", "true")).strip().lower() not in ("true", "1", "yes"):
-                    continue
-                url = (row.get("url") or "").strip()
-                if not url:
-                    continue
-                out.append({
-                    "brand": (row.get("brand") or "").strip(),
-                    # product_name 用于渠道展示名:优先渠道衍生码 sku(如 Boulanger 的 98C79K),
-                    # 回落基础码 model。修 bug:原来只取 model → 链接显示成基础型号而非渠道叫法。
-                    "product_name": ((row.get("sku") or "").strip() or (row.get("model") or "").strip()),
-                    "country": (row.get("country") or "FR").strip().upper(),
-                    "platform": (row.get("platform") or "").strip(),
-                    "url": url,
-                })
-        print(f"[load] channel_links.csv → {len(out)} active SKU")
-        return out
-
-    # Fallback to seed (TV_Price_Monitor 的原 products.csv,字段大写)
-    src = seed_products_path()
     if not src.exists():
-        print("[load] 无 channel_links.csv,也无种子产品表,跳过本次抓取")
+        print("[load] 无 channel_links.csv,跳过本次抓取(上游私库尚未推入清单)")
         return out
     with src.open("r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            url = (row.get("Link") or "").strip()
+            if str(row.get("active", "true")).strip().lower() not in ("true", "1", "yes"):
+                continue
+            url = (row.get("url") or "").strip()
             if not url:
                 continue
             out.append({
-                "brand": (row.get("Brand") or "").strip(),
-                "product_name": (row.get("Product Name") or "").strip(),
-                "country": (row.get("Country") or "FR").strip().upper(),
-                "platform": (row.get("Platform") or "").strip(),
+                "brand": (row.get("brand") or "").strip(),
+                # 展示名用 model(匹配器已解析好的基础型号);不用渠道 sku 码——
+                # re-resolve 渠道码会丢 Pro 等变体信息,落到错 base(如 65E79Q → 非 Pro)。
+                "product_name": (row.get("model") or "").strip(),
+                "country": (row.get("country") or "FR").strip().upper(),
+                "platform": (row.get("platform") or "").strip(),
                 "url": url,
             })
-    print(f"[load] seed products.csv → {len(out)} SKU (fallback: channel_links 还没生成)")
+    print(f"[load] channel_links.csv → {len(out)} active SKU")
     return out
 
 
@@ -185,3 +152,50 @@ def append_prices(rows: Iterable[dict]) -> None:
         for r in rows:
             writer.writerow({c: r.get(c, "") for c in PRICES_COLUMNS})
     print(f"[write] 追加 {len(rows)} 行 → {path.relative_to(_root().parent)}")
+
+
+def trim_prices_window(keep_days: int | None = None) -> None:
+    """把 raw/prices.csv 只保留最近 keep_days 天(按 Date 列 YYYY-MM-DD)。
+
+    public 仓只当"近窗",完整历史由私库 enrich 每天并入留存——private 同步频率(每天)
+    远高于本窗口(默认 30 天),且 merge 是整行去重幂等,所以裁剪不会丢数据。
+    keep_days 默认读环境变量 PRICES_KEEP_DAYS,否则 30。别设太短(<14):price_trend
+    需要每个 SKU 有近期价做基线。Date 解析不出的行保守保留(不误删)。
+    """
+    if keep_days is None:
+        try:
+            keep_days = int(os.environ.get("PRICES_KEEP_DAYS", DEFAULT_KEEP_DAYS))
+        except (TypeError, ValueError):
+            keep_days = DEFAULT_KEEP_DAYS
+
+    path = prices_csv_path()
+    if not path.exists():
+        return
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+        fieldnames = reader.fieldnames or list(PRICES_COLUMNS)
+    if not rows:
+        return
+
+    def _date(r):
+        try:
+            return datetime.strptime((r.get("Date") or "").strip(), "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    parsed = [(_date(r), r) for r in rows]
+    dates = [d for d, _ in parsed if d is not None]
+    if not dates:
+        return  # 全部 Date 解析不出 → 不动,避免误删
+    cutoff = max(dates) - timedelta(days=keep_days)
+    kept = [r for d, r in parsed if d is None or d >= cutoff]  # 解析不出的保守保留
+    n_drop = len(rows) - len(kept)
+    if n_drop <= 0:
+        return
+
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(kept)
+    print(f"[trim] prices.csv 只留最近 {keep_days} 天(≥{cutoff}):删 {n_drop} 行,留 {len(kept)} 行")

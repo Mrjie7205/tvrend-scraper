@@ -42,6 +42,7 @@ from monitor_prices.prices_io import (  # noqa: E402
     compute_price_trend,
     load_active_skus,
     load_latest_historical_prices,
+    trim_prices_window,
 )
 from monitor_prices.adapters import get_adapter, supported_platforms  # noqa: E402
 
@@ -221,6 +222,8 @@ async def run() -> int:
         r["Date"] = date_str
         r["Time"] = time_str
     append_prices(results)
+    # public 只留近窗(默认 30 天,PRICES_KEEP_DAYS 可调);完整历史由私库 enrich 留存
+    trim_prices_window()
 
     n_ok = sum(1 for r in results if r["Status"] == "Success")
     n_fail = len(results) - n_ok
