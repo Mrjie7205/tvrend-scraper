@@ -160,6 +160,22 @@ def clean_price(text: str | None) -> tuple[float, str] | None:
 # ============================================================
 # Schema.org / Meta 通用价格抓取(多数渠道头一招就解决)
 # ============================================================
+def _num_from_schema(amount, currency: str):
+    """解析 schema.org/Meta 的 price 字段。规范 price 应是机读小数(点小数、无千分位)。
+    先直试 float(原串);非规范则借 clean_price 的【币种感知】千分位逻辑——避免 '1,499'
+    这类千分位逗号被裸 .replace(',','.') 成 1.499 的静默缩 1000 倍错价。无法解析返回 None
+    (交回 extract_price 的 DOM 兜底)。
+    """
+    s = str(amount).strip()
+    try:
+        return float(s)
+    except (TypeError, ValueError):
+        pass
+    sym = {"GBP": "£", "USD": "$"}.get(str(currency).upper(), "")
+    r = clean_price(sym + s)
+    return r[0] if r else None
+
+
 async def get_price_from_schema(page) -> tuple[float, str] | None:
     """从 Meta 标签或 JSON-LD 提取价格。
 
@@ -183,7 +199,9 @@ async def get_price_from_schema(page) -> tuple[float, str] | None:
             )
             if currency == amount:
                 currency = "EUR"
-            return float(amount.replace(",", ".")), currency
+            val = _num_from_schema(amount, currency)
+            if val is not None:
+                return val, currency
     except Exception:
         pass
 
@@ -213,7 +231,10 @@ async def get_price_from_schema(page) -> tuple[float, str] | None:
                         if isinstance(offer, dict):
                             p = offer.get("price")
                             if p:
-                                return float(str(p).replace(",", ".")), offer.get("priceCurrency", "EUR")
+                                cur = offer.get("priceCurrency", "EUR")
+                                val = _num_from_schema(p, cur)
+                                if val is not None:
+                                    return val, cur
             except json.JSONDecodeError:
                 continue
     except Exception:
