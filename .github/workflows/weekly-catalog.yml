@@ -31,10 +31,11 @@ jobs:
       - name: Install Playwright Chromium
         run: python -m playwright install chromium --with-deps
 
-      - name: Scrape catalog (all registered channels)
+      - name: Scrape catalog (Boulanger/Currys;Amazon 走私库本地手动工具)
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
+          CHANNELS: "Boulanger,Currys"   # 排除 Amazon catalog(GitHub 美国 IP 抓不到德国价)
         run: python -m catalog_scrape.run_weekly
 
       - name: Commit catalog（rebase 重试，防并发）

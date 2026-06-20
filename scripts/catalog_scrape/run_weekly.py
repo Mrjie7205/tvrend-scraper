@@ -117,9 +117,16 @@ async def run_one_adapter(browser, adapter) -> Path | None:
 
 
 async def run(only: str | None = None) -> int:
-    targets = REGISTRY.values() if not only else [a for k, a in REGISTRY.items() if k == only.lower()]
+    selected = REGISTRY.items() if not only else [(k, a) for k, a in REGISTRY.items() if k == only.lower()]
+    # CHANNELS 白名单(逗号分隔):自动 Action 用它排除 Amazon。--only 优先,再叠加 CHANNELS(交集)。
+    _chs = os.environ.get("CHANNELS", "").strip()
+    if _chs:
+        allow = {c.strip().lower() for c in _chs.split(",") if c.strip()}
+        selected = [(k, a) for k, a in selected if k in allow]
+        print(f"[catalog] CHANNELS={_chs} → 跑 {[a.platform_name for k, a in selected]}")
+    targets = [a for k, a in selected]
     if not targets:
-        print(f"[catalog] no adapter for {only!r}. Supported: {supported_catalogs()}")
+        print(f"[catalog] no adapter for only={only!r} CHANNELS={_chs!r}. Supported: {supported_catalogs()}")
         return 1
 
     print(f"[catalog] supported: {supported_catalogs()} · headless={HEADLESS}")

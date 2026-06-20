@@ -194,6 +194,14 @@ async def run() -> int:
         print("[monitor] 无 active SKU,退出")
         return 0
 
+    # CHANNELS 白名单(逗号分隔,大小写不敏感)。自动 Action 用它排除 Amazon(GitHub 美国 IP 抓不到德国价)。
+    _only = os.environ.get("CHANNELS", "").strip()
+    if _only:
+        allow = {c.strip().lower() for c in _only.split(",") if c.strip()}
+        before = len(skus)
+        skus = [s for s in skus if (s["platform"] or "").strip().lower() in allow]
+        print(f"[monitor] CHANNELS={_only} → 保留 {len(skus)}/{before} SKU")
+
     # 过滤掉无 adapter 的渠道(避免开浏览器后再 skip)
     runnable = [s for s in skus if get_adapter(s["platform"]) is not None]
     skipped = len(skus) - len(runnable)
