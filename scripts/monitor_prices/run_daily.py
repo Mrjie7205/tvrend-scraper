@@ -109,6 +109,11 @@ async def process_sku(sem, browser, sku: dict, hist: dict) -> dict:
                 timezone_id=tz,
             )
             await ctx.add_init_script(STEALTH_JS)
+            if getattr(adapter, "context_cookies", ()):   # 渠道预置 cookie(如 Amazon 设德语内容)
+                try:
+                    await ctx.add_cookies(list(adapter.context_cookies))
+                except Exception as e:
+                    print(f"  [{name}] 注入 context_cookies 失败: {str(e)[:80]}")
             page = await ctx.new_page()
 
             # 导航(2 次重试 + 反爬等待)

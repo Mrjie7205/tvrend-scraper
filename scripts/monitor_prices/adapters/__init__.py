@@ -14,10 +14,12 @@ from __future__ import annotations
 from .base import BaseAdapter
 from .boulanger import BoulangerAdapter
 from .currys import CurrysAdapter
+from .amazon import AmazonAdapter
 
 REGISTRY: dict[str, BaseAdapter] = {
     BoulangerAdapter.platform_name.lower(): BoulangerAdapter(),
     CurrysAdapter.platform_name.lower(): CurrysAdapter(),
+    AmazonAdapter.platform_name.lower(): AmazonAdapter(),
 }
 
 

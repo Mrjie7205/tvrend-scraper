@@ -17,6 +17,9 @@ class BaseAdapter:
     cookie_accept_selectors: tuple[str, ...] = (
         "#onetrust-accept-btn-handler",  # OneTrust(Boulanger 等用)
     )
+    # goto 前注入的 cookie(Playwright add_cookies 格式 dict 列表)。空=不注入。
+    # 用于需要预置会话偏好的渠道:如 Amazon 设 lc-acbde=de_DE(德语内容)。
+    context_cookies: tuple[dict, ...] = ()
 
     async def extract_price(self, page) -> tuple[float, str] | None:
         """返回 (price, currency) 或 None。子类必须实现。"""

@@ -12,11 +12,13 @@ from __future__ import annotations
 
 from .adapters.boulanger import BoulangerCatalogAdapter
 from .adapters.currys import CurrysCatalogAdapter
+from .adapters.amazon import AmazonCatalogAdapter
 
 # 注册表
 REGISTRY = {
     BoulangerCatalogAdapter.platform_name.lower(): BoulangerCatalogAdapter(),
     CurrysCatalogAdapter.platform_name.lower(): CurrysCatalogAdapter(),
+    AmazonCatalogAdapter.platform_name.lower(): AmazonCatalogAdapter(),
 }
 
 
