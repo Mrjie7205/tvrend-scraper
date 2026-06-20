@@ -221,8 +221,10 @@ async def run() -> int:
     for r in results:
         r["Date"] = date_str
         r["Time"] = time_str
-    append_prices(results)
-    # public 只留近窗(默认 30 天,PRICES_KEEP_DAYS 可调);完整历史由私库 enrich 留存
+    # 只把成功行写进 prices.csv:失败行有 stdout 日志 + debug 截图可查,后端也只读 Success;
+    # 失败空价行进库会污染近窗,并可能在 trim 把唯一 Success 滚出窗口后误判"新上线"。
+    append_prices([r for r in results if r["Status"] == "Success"])
+    # public 只留近窗(默认 45 天,PRICES_KEEP_DAYS 可调);完整历史由私库 enrich 留存
     trim_prices_window()
 
     n_ok = sum(1 for r in results if r["Status"] == "Success")

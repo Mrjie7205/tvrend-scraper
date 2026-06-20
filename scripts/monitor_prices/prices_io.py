@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import Iterable
 
 # 价格滚动窗口:public 只保留最近这么多天(完整历史在私库)。可用 PRICES_KEEP_DAYS 覆盖。
-DEFAULT_KEEP_DAYS = 30
+# 45(非 30):给私库 enrich 连续失败留更宽容错垫,降低"超窗永久丢史"风险。
+DEFAULT_KEEP_DAYS = 45
 
 # 列结构保持跟 TV_Price_Monitor 一致,便于历史数据无缝拼接
 PRICES_COLUMNS = (

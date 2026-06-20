@@ -167,13 +167,17 @@ def _num_from_schema(amount, currency: str):
     (交回 extract_price 的 DOM 兜底)。
     """
     s = str(amount).strip()
+    val = None
     try:
-        return float(s)
+        val = float(s)
     except (TypeError, ValueError):
-        pass
-    sym = {"GBP": "£", "USD": "$"}.get(str(currency).upper(), "")
-    r = clean_price(sym + s)
-    return r[0] if r else None
+        sym = {"GBP": "£", "USD": "$"}.get(str(currency).upper(), "")
+        r = clean_price(sym + s)
+        val = r[0] if r else None
+    # 电视价不可能 < 10(欧元 '1,499' 因逗号=小数歧义可能漏解析成 1.499)→ 判可疑,回退 DOM 兜底
+    if val is not None and val < 10:
+        return None
+    return val
 
 
 async def get_price_from_schema(page) -> tuple[float, str] | None:
