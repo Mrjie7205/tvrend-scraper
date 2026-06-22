@@ -4,8 +4,8 @@ name: Weekly Catalog Scrape
 on:
   # ↓↓↓ 仓库转 public 后，取消下面 schedule 注释即可启用每周定时。
   #     private 期间定时抓取会消耗免费 Actions 分钟，故先只保留手动触发(workflow_dispatch)。
-  # schedule:
-  #   - cron: "15 4 * * 1"
+  schedule:
+    - cron: "15 4 * * 1"
   workflow_dispatch:
 
 jobs:

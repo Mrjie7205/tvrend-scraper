@@ -5,8 +5,8 @@ on:
   # ↓↓↓ 仓库转 public 后，取消下面 schedule 注释即可启用每日定时。
   #     private 期间定时抓取会消耗免费 Actions 分钟，故先只保留手动触发(workflow_dispatch)。
   #     注:GitHub 定时任务实际会迟到 2-6 小时，cron 仅为大致时间。
-  # schedule:
-  #   - cron: "15 5 * * *"
+  schedule:
+    - cron: "15 5 * * *"
   workflow_dispatch:
 
 jobs:
