@@ -827,3 +827,805 @@
 2026-06-19,06:23:29,Hisense,100E7S,GB,Currys,3599.0,GBP,"Buy HISENSE E7S PRO 100"" QLED 4K HDR Smart TV with Freely - 100E7STUK PRO | Currys",Success,新上线
 2026-06-19,06:23:29,Samsung,43LS03H,GB,Currys,999.0,GBP,"Buy SAMSUNG The Frame (2026) 43"" QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE43LS03H | Currys",Success,新上线
 2026-06-19,06:23:29,LG,48C3,GB,Currys,949.0,GBP,"LG C5 48"" OLED evo AI 4K HDR Smart TV 2025 - OLED48C54LA | Currys",Success,新上线
+2026-06-22,09:37:07,Samsung,65S95F,FR,Boulanger,1999.0,EUR,"TV OLED SAMSUNG TQ65S95F (2025) 65"" (163 cm) 4K - 100Hz, sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65QN70F,FR,Boulanger,749.0,EUR,"TV Mini LED SAMSUNG TQ65QN77F (2025) 65"" (163 cm) 4K - 100Hz, NeoQLED (contrastes intenses) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,77S95H,FR,Boulanger,4699.0,EUR,"TV OLED SAMSUNG TQ77S95H (2026) 77"" (195 cm) 4K - Smart TV avec IA, sans reflet, boîtier déporté (câble invisible) | Boulanger",Success,持平
+2026-06-22,09:37:07,Hisense,65E7QPRO,FR,Boulanger,549.0,EUR,"TV QLED HISENSE 65E79Q PRO (2025) 65"" (164 cm) 4K Ultra HD - 144Hz, Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,Hisense,75E7QPRO,FR,Boulanger,749.0,EUR,TV QLED HISENSE 75E79Q PRO 2025 164cm | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,65U8Q,FR,Boulanger,899.0,EUR,TV Mini LED HISENSE 65U8Q 2025 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,55U7QPRO,FR,Boulanger,549.0,EUR,TV Mini LED HISENSE 55U7Q PRO 2025 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,100U7Q,FR,Boulanger,1999.0,EUR,TV Mini LED HISENSE 100U7Q 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,50Q8F,FR,Boulanger,429.0,EUR,"TV QLED SAMSUNG TQ50Q8FA (2025) 50"" (125 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55S90F,FR,Boulanger,1099.0,EUR,"TV OLED SAMSUNG TQ55S90F (2025) 55"" (138 cm) 4K - 100Hz, Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55QN70F,FR,Boulanger,599.0,EUR,"TV Mini LED SAMSUNG TQ55QN77F (2025) 55"" (138 cm) 4K - Smart TV avec IA, NeoQLED (contrastes intenses) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,48S90F,FR,Boulanger,939.0,EUR,"TV OLED SAMSUNG TQ48S90F (2025) 48"" (120 cm) 4K - 100Hz, Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,75QN70F,FR,Boulanger,999.0,EUR,"TV Mini LED SAMSUNG TQ75QN77F (2025) 75"" (189 cm) 4K - 100Hz, NeoQLED (contrastes intenses) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55Q7F,FR,Boulanger,479.0,EUR,TV QLED SAMSUNG TQ55Q7F5 4K AI SmartTV 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,43Q7F,FR,Boulanger,399.0,EUR,"TV QLED SAMSUNG TQ43Q7F3 (2025) 43"" (108 cm) 4K - 50Hz, Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55LS03FA,FR,Boulanger,849.0,EUR,"TV QLED SAMSUNG The Frame TQ55LS03FA (2025) 55"" (138 cm) 4K Ultra HD - Mode art (effet tableau), sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65S90F,FR,Boulanger,1499.0,EUR,TV OLED SAMSUNG TQ65S90F 4K AI Smart TV 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,85QN70F,FR,Boulanger,1499.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ85QN70F 4K AI 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,50U8005F,FR,Boulanger,369.0,EUR,TV LED SAMSUNG TU50U8005F 4K AI Smart TV 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65LS03FW,FR,Boulanger,1699.0,EUR,TV QLED SAMSUNG The Frame Pro 65LS03FW 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,32H5005FK,FR,Boulanger,259.0,EUR,TV LED SAMSUNG TU32H5005FK 2025-32 pouces (80cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,77S90F,FR,Boulanger,1799.0,EUR,TV OLED SAMSUNG TQ77S90F 4K AI Smart TV 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55S95F,FR,Boulanger,1699.0,EUR,TV OLED SAMSUNG TQ55S95F sans reflet 4K AI 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,32Q5FA,FR,Boulanger,379.0,EUR,"TV QLED SAMSUNG TQ32Q5FA (2026) 32"" (80 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,43QN90F,FR,Boulanger,849.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ43QN90F 4K AI 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,85U8005F,FR,Boulanger,812.99,EUR,TV LED SAMSUNG TU85U8005F 4K AI SmartTV 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65Q7F,FR,Boulanger,799.0,EUR,TV QLED SAMSUNG TQ65Q7F5 4K AI SmartTV 2025 | Boulanger,Success,涨价
+2026-06-22,09:37:07,Samsung,100QN80F,FR,Boulanger,2590.0,EUR,TV Mini LED SAMSUNG TQ100QN80F 2025-100 pouces (252cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,50LS03FA,FR,Boulanger,889.0,EUR,TV QLED SAMSUNG The Frame 50LS03FA 2025-50 pouces 125cm | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,43LS03FA,FR,Boulanger,749.0,EUR,TV QLED SAMSUNG The Frame 43LS03FA 2025-43 pouces 108cm | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,24F6000,FR,Boulanger,219.0,EUR,TV LED SAMSUNG TU24F6005 2025-24 pouces (60cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,75M80H,FR,Boulanger,1399.0,EUR,"TV Mini LED SAMSUNG TU75M80H (2026) 75"" (189 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,75Q7F,FR,Boulanger,999.0,EUR,"TV QLED SAMSUNG TQ75Q7F5 (2025) 75"" (189 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,83S95F,FR,Boulanger,4199.0,EUR,TV OLED SAMSUNG TQ83S95F sans reflet 4K AI Smart TV2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55QN80H,FR,Boulanger,1299.0,EUR,"TV Mini LED SAMSUNG TQ55QN82H (2026) 55"" (138 cm) 4K - Smart TV, NeoQLED (contrastes intenses et luminosité renforcée) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65M80H,FR,Boulanger,899.0,EUR,"TV Mini LED SAMSUNG TU65M80H (2026) 65"" (163 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,32LS03C,FR,Boulanger,389.0,EUR,TV QLED SAMSUNG The Frame TQ32LS03C-32 pouces (80cm) | Boulanger,Success,降价
+2026-06-22,09:37:07,Samsung,98Q7FA,FR,Boulanger,1799.0,EUR,TV QLED SAMSUNG TQ98Q7FA 4K AI SmartTV | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65S95H,FR,Boulanger,3599.0,EUR,"TV OLED SAMSUNG TQ65S95H (2026) 65"" (163 cm) 4K - Smart TV avec IA, sans reflet, boîtier déporté (câble invisible) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,75QN70H,FR,Boulanger,1699.0,EUR,"TV Mini LED SAMSUNG TQ75QN74H (2026) 75"" (189 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,27F6000,FR,Boulanger,239.0,EUR,TV LED SAMSUNG TU27F6005 2025-27 pouces (68cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,43U8090H,FR,Boulanger,449.0,EUR,"TV LED SAMSUNG TU43U8005H (2026) 43"" (108 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,42S90F,FR,Boulanger,899.0,EUR,TV OLED SAMSUNG TQ42S90F 2025-42 pouces (105cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,83S90F,FR,Boulanger,2799.0,EUR,TV OLED SAMSUNG TQ83S90F 4K AI Smart TV 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,85LS03FW,FR,Boulanger,3199.0,EUR,TV QLED SAMSUNG The Frame Pro 85LS03FW 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55S95H,FR,Boulanger,2399.0,EUR,"TV OLED SAMSUNG TQ55S95H (2026) 55"" (138 cm) 4K - Smart TV avec IA, sans reflet, boîtier déporté (câble invisible) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65QN70H,FR,Boulanger,1199.0,EUR,"TV Mini LED SAMSUNG TQ65QN74H (2026) 65"" (163 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
+2026-06-22,09:37:07,LG,65C5,FR,Boulanger,1399.0,EUR,"TV OLED LG 65C5 (2025) 65"" (164 cm) 4K Ultra HD - 120Hz, Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,LG,75QNED85A,FR,Boulanger,999.0,EUR,TV LED LG 75QNED86A 2025-75 pouces (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65G5,FR,Boulanger,1899.0,EUR,"TV OLED LG 65G5 (2025) 65"" (164 cm) 4K Ultra HD - 120Hz, Smart TV | Boulanger",Success,涨价
+2026-06-22,09:37:07,LG,65QNED85A,FR,Boulanger,749.0,EUR,TV LED LG 65QNED86A 2025 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55C5,FR,Boulanger,999.0,EUR,"TV OLED LG 55C5 (2025) 55"" (139 cm) 4K Ultra HD - 120Hz, Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,LG,55QNED85A,FR,Boulanger,599.0,EUR,TV LED LG 55QNED86A 2025 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55M80H,FR,Boulanger,799.0,EUR,"TV Mini LED SAMSUNG TU55M80H (2026) 55"" (138 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55S90H,FR,Boulanger,1999.0,EUR,"TV OLED SAMSUNG TQ55S92H (2026) 55"" (138 cm) 4K - Expérience Gaming, Smart TV avec IA, sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,75LS03FW,FR,Boulanger,1999.0,EUR,TV QLED SAMSUNG The Frame Pro 75LS03FW 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,50QN70H,FR,Boulanger,849.0,EUR,"TV Mini LED SAMSUNG TQ50QN74H (2026) 50"" (125 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55LS03HW,FR,Boulanger,1799.0,EUR,"TV QLED SAMSUNG The Frame Pro TQ55LS03HW (2026) 55"" (138 cm) 4K - Mode art (effet tableau), sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,48S90H,FR,Boulanger,1599.0,EUR,"TV OLED SAMSUNG TQ48S92H (2026) 48"" (120 cm) 4K - Expérience Gaming, Smart TV avec IA, sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65LS03FA,FR,Boulanger,1299.0,EUR,TV QLED SAMSUNG The Frame 65LS03FA 2025-65 pouces 164cm | Boulanger,Success,降价
+2026-06-22,09:37:07,Samsung,50QN90F,FR,Boulanger,899.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ50QN90F 4K AI 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65U8005H,FR,Boulanger,749.0,EUR,"TV LED SAMSUNG TU65U8005H (2026) 65"" (163 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,50M70H,FR,Boulanger,599.0,EUR,"TV Mini LED SAMSUNG TU50M72H (2026) 50"" (125 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65R95H,FR,Boulanger,3799.0,EUR,"TV RGB SAMSUNG TMR65R95H (2026) 65"" (163 cm) 4K - Smart TV IA, sans reflet, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,50U8090H,FR,Boulanger,549.0,EUR,"TV LED SAMSUNG TU50U8005H (2026) 50"" (125 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55U8090H,FR,Boulanger,579.0,EUR,"TV LED SAMSUNG TU55U8005H (2026) 55"" (138 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,43QN70H,FR,Boulanger,649.0,EUR,"TV Mini LED SAMSUNG TQ43QN74H (2026) 43"" (108 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55QN70H,FR,Boulanger,928.17,EUR,"TV Mini LED SAMSUNG TQ55QN74H (2026) 55"" (138 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,降价
+2026-06-22,09:37:07,Samsung,75U8090H,FR,Boulanger,999.0,EUR,"TV LED SAMSUNG TU75U8005H (2026) 75"" (189 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,50QN80H,FR,Boulanger,999.0,EUR,"TV Mini LED SAMSUNG TQ50QN80H (2026) 50"" (125 cm) 4K - Smart TV, NeoQLED (contrastes intenses et luminosité renforcée) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,42S90H,FR,Boulanger,1399.0,EUR,"TV OLED SAMSUNG TQ42S92H (2026) 42"" (105 cm) 4K - Expérience Gaming, Smart TV avec IA, sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,85U8005H,FR,Boulanger,1499.0,EUR,"TV LED SAMSUNG TU85U8005H (2026) 85"" (214 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55LS03HA,FR,Boulanger,1599.0,EUR,"TV QLED SAMSUNG The Frame TQ55LS03HA (2026) 55"" (138 cm) 4K - Mode art (effet tableau), boîtier déporté, sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65QN80H,FR,Boulanger,1599.0,EUR,"TV Mini LED SAMSUNG TQ65QN82H (2026) 65"" (163 cm) 4K - Smart TV, NeoQLED (contrastes intenses et luminosité renforcée) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55R85H,FR,Boulanger,1799.0,EUR,"TV RGB SAMSUNG TMR55R85H (2026) 55"" (138 cm) 4K - Smart TV avec IA, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,85M80H,FR,Boulanger,1899.0,EUR,"TV Mini LED SAMSUNG TU85M80H (2026) 85"" (214 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,48S95H,FR,Boulanger,1899.0,EUR,"TV OLED SAMSUNG TQ48S95H (2026) 48"" (120 cm) 4K - Smart TV avec IA, sans reflet, boîtier déporté (câble invisible) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,85QN70H,FR,Boulanger,2099.0,EUR,"TV Mini LED SAMSUNG TQ85QN74H (2026) 85"" (214 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65LS03HA,FR,Boulanger,2099.0,EUR,"TV QLED SAMSUNG The Frame TQ65LS03HA (2026) 65"" (163 cm) 4K - Mode art (effet tableau), boîtier déporté, sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65LS03HW,FR,Boulanger,2299.0,EUR,"TV QLED SAMSUNG The Frame Pro TQ65LS03HW (2026) 65"" (163 cm) 4K - Mode art (effet tableau), sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65R85H,FR,Boulanger,2399.0,EUR,"TV RGB SAMSUNG TMR65R85H (2026) 65"" (163 cm) 4K - Smart TV avec IA, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,75QN80H,FR,Boulanger,2499.0,EUR,"TV Mini LED SAMSUNG TQ75QN82H (2026) 75"" (189 cm) 4K - Smart TV, NeoQLED (contrastes intenses et luminosité renforcée) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,65S90H,FR,Boulanger,2699.0,EUR,"TV OLED SAMSUNG TQ65S92H (2026) 65"" (163 cm) 4K - Expérience Gaming, Smart TV avec IA, sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55S99H,FR,Boulanger,2699.0,EUR,"TV OLED SAMSUNG TQ55S99H (2026) 55"" (138 cm) 4K - Smart TV avec IA, sans reflet, mode art (effet tableau) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,77S95F,FR,Boulanger,3085.97,EUR,TV OLED SAMSUNG TQ77S95F sans reflet 4K AI Smart TV 2025 | Boulanger,Success,涨价
+2026-06-22,09:37:07,Samsung,85QN80H,FR,Boulanger,2999.0,EUR,"TV Mini LED SAMSUNG TQ85QN82H (2026) 85"" (214 cm) 4K - Smart TV, NeoQLED (contrastes intenses et luminosité renforcée) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,75R85H,FR,Boulanger,3099.0,EUR,"TV RGB SAMSUNG TMR75R85H (2026) 75"" (189 cm) 4K - Smart TV avec IA, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,85Q80D,FR,Boulanger,3395.51,EUR,TV QLED SAMSUNG TQ85Q80D 4K UHD AI Smart TV | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55LST7D,FR,Boulanger,3490.0,EUR,TV QLED SAMSUNG THE TERRACE TQ55LST7D 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65S99H,FR,Boulanger,3690.0,EUR,"TV OLED SAMSUNG TQ65S99H (2026) 65"" (163 cm) 4K - Smart TV avec IA, sans reflet, mode art (effet tableau) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,85QN90F,FR,Boulanger,3999.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ85QN90F 4K AI 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,85R85H,FR,Boulanger,4499.0,EUR,"TV RGB SAMSUNG TMR85R85H (2026) 85"" (214 cm) 4K - Smart TV avec IA, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,新上线
+2026-06-22,09:37:07,Samsung,77S99H,FR,Boulanger,4699.0,EUR,"TV OLED SAMSUNG TQ77S99H (2026) 77"" (195 cm) 4K - Smart TV avec IA, sans reflet, mode art (effet tableau) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,85LS03HW,FR,Boulanger,4799.0,EUR,"TV QLED SAMSUNG The Frame Pro TQ85LS03HW (2026) 85"" (214 cm) 4K - Mode art (effet tableau), sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,75R95H,FR,Boulanger,4999.0,EUR,"TV RGB SAMSUNG TMR75R95H (2026) 75"" (189 cm) 4K - Smart TV IA, sans reflet, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,85R95H,FR,Boulanger,6699.0,EUR,"TV RGB SAMSUNG TMR85R95H (2026) 85"" (214 cm) 4K - Smart TV IA, sans reflet, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,98QN90F,FR,Boulanger,8601.38,EUR,TV Mini LED SAMSUNG NeoQLED TQ98QN90F 2025-98 pouces (247cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,Samsung,85QN990F,FR,Boulanger,10799.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ85QN990F 8K AI 2025 | Boulanger,Success,降价
+2026-06-22,09:37:07,Samsung,115QN90F,FR,Boulanger,11999.0,EUR,TV Mini LED SAMSUNG TQ115QN90F 2025 - 115 pouces ( 291 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,115MR95F,FR,Boulanger,29999.0,EUR,"TV RGB SAMSUNG MRE115MR95F (2025) 115"" (290 cm) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,77S90H,FR,Boulanger,3699.0,EUR,"TV OLED SAMSUNG TQ77S92H (2026) 77"" (195 cm) 4K - Expérience Gaming, Smart TV avec IA, sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,83S90H,FR,Boulanger,4999.0,EUR,"TV OLED SAMSUNG TQ83S92H (2026) 83"" (209 cm) 4K - Expérience Gaming, Smart TV avec IA, sans reflet | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,83S99H,FR,Boulanger,6499.0,EUR,"TV OLED SAMSUNG TQ83S99H (2026) 83"" (209 cm) 4K - Smart TV avec IA, sans reflet, mode art (effet tableau) | Boulanger",Success,持平
+2026-06-22,09:37:07,Samsung,55S90D,FR,Boulanger,849.0,EUR,TV OLED SAMSUNG TQ55S92D-55 pouces (138cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55QN90F,FR,Boulanger,899.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ55QN90F 4K AI 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,43U8005F,FR,Boulanger,319.0,EUR,TV LED SAMSUNG TU43U8005F 4K AI Smart TV 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55QN80F,FR,Boulanger,749.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ55QN83F 4K AI 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55S92FA,FR,Boulanger,999.0,EUR,TV OLED SAMSUNG TQ55S92FA 2025 - 55 pouces ( 138 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55U8005F,FR,Boulanger,399.0,EUR,TV LED SAMSUNG TU55U8005F4K AI SmartTV 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65S92FA,FR,Boulanger,1399.0,EUR,TV OLED SAMSUNG TQ65S92FA 2025 - 65 pouces ( 164 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,85QN80F,FR,Boulanger,1799.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ85QN80F 4K AI 2025 | Boulanger,Success,涨价
+2026-06-22,09:37:07,Samsung,98DU9000,FR,Boulanger,1479.0,EUR,TV LED SAMSUNG TU98DU9005-98 pouces (247cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,75QEF1A,FR,Boulanger,709.0,EUR,TV QLED SAMSUNG TQ75QEF1A 2025 - 75 pouces ( 189 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65QN90F,FR,Boulanger,1199.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ65QN90F 4K AI 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65S85F,FR,Boulanger,1049.0,EUR,TV OLED SAMSUNG TQ65S85FAE-65 pouces (163cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65U8005F,FR,Boulanger,508.63,EUR,TV LED SAMSUNG TU65U8005F 4K AI SmartTV 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55S85D,FR,Boulanger,729.0,EUR,TV OLED SAMSUNG OLED TQ55S85D | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,43U7000F,FR,Boulanger,366.02,EUR,TV LED SAMSUNG 43U7005F | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55Q6F,FR,Boulanger,429.0,EUR,TV QLED SAMSUNG TQ55Q6FA 2025 - 55 pouces ( 138 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,50AU7025,FR,Boulanger,469.56,EUR,TV LED SAMSUNG UE50AU7025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65Q7F,FR,Boulanger,593.25,EUR,TV QLED SAMSUNG 65Q7F4 | Boulanger,Success,降价
+2026-06-22,09:37:07,Samsung,65Q6F,FR,Boulanger,594.28,EUR,TV QLED SAMSUNG TQ65Q6FA 2025 - 65 pouces ( 164 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65U7000F,FR,Boulanger,609.99,EUR,TV LED SAMSUNG 65U7005F | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,50QN80F,FR,Boulanger,603.66,EUR,TV Mini LED SAMSUNG NeoQLED TQ50QN80F 4K AI 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55U7000F,FR,Boulanger,509.99,EUR,TV LED SAMSUNG 55U7005F | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,75U8005F,FR,Boulanger,829.19,EUR,TV LED SAMSUNG TU75U8005F 4K AI SmartTV 2025 | Boulanger,Success,涨价
+2026-06-22,09:37:07,Samsung,75U7000F,FR,Boulanger,899.98,EUR,TV LED SAMSUNG 75U7005F | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,55S85F,FR,Boulanger,934.37,EUR,TV OLED SAMSUNG TQ55S85FA-55 pouces (138cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,Samsung,85U7000F,FR,Boulanger,961.11,EUR,TV LED SAMSUNG 85U7005F | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75C8K,FR,Boulanger,1289.0,EUR,"TV Mini LED TCL 75C89K (2025) 75"" (189 cm) 4K - 144Hz, système sonore Bang & Olufsen | Boulanger",Success,持平
+2026-06-22,09:37:07,TCL,65C8K,FR,Boulanger,999.0,EUR,"TV Mini LED TCL 65C89K (2025) 65"" (164 cm) 4K Ultra HD - 144Hz, Google TV, système sonore Bang & Olufsen | Boulanger",Success,持平
+2026-06-22,09:37:07,TCL,65C6K,FR,Boulanger,649.0,EUR,"TV Mini LED TCL 65C69K (2025) 65"" (164 cm) Ultra HD - Google TV, système sonore ONKYO | Boulanger",Success,持平
+2026-06-22,09:37:07,TCL,85C8K,FR,Boulanger,1799.0,EUR,"TV Mini LED TCL 85C89K (2025) 85"" (215 cm) 4K Ultra HD - 144Hz, Google TV, système sonore Bang & Olufsen | Boulanger",Success,持平
+2026-06-22,09:37:07,TCL,55C6K,FR,Boulanger,549.0,EUR,TV Mini LED TCL 55C69K 2025-55 pouces (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55C8K,FR,Boulanger,799.0,EUR,TV Mini LED TCL 55C89K 2025-55 pouces (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,98C8K,FR,Boulanger,2699.0,EUR,TV Mini LED TCL 98C89K 2025-98 pouces (248cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,98C6K,FR,Boulanger,1899.0,EUR,TV Mini LED TCL 98C69K 2025-98 pouces (248cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75P8K,FR,Boulanger,849.0,EUR,TV QLED TCL 75P89K 144Hz 2025-75 pouces (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,50C7K,FR,Boulanger,749.0,EUR,TV Mini LED TCL 50C79K 2025-50 pouces (126cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,98C8L,FR,Boulanger,3799.0,EUR,TV Mini LED TCL SQD 98C89L 2026 - 98 pouces ( 248 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75C9K,FR,Boulanger,1599.0,EUR,TV Mini LED TCL 75C9K 2025-75 pouces (189cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,TCL,65C9K,FR,Boulanger,1299.0,EUR,TV Mini LED TCL 65C9K 2025-65 pouces (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65P7K,FR,Boulanger,583.18,EUR,TV QLED TCL 65P79K 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75A300W,FR,Boulanger,1198.99,EUR,TV QLED TCL NXTVISION 75A300W-75 pouces (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,50V6C,FR,Boulanger,322.99,EUR,TV LED TCL 50P69K 2025 - 50 pouces ( 126 cm ) | Boulanger,Success,降价
+2026-06-22,09:37:07,TCL,75V6C,FR,Boulanger,749.0,EUR,TV LED TCL 75P69K 2025-75 pouces (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75P7K,FR,Boulanger,749.0,EUR,TV QLED TCL 75P79K 2025 - 75 pouces ( 189 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,98C7K,FR,Boulanger,2399.0,EUR,TV Mini LED TCL 98C79K 2025-98 pouces (248cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55C8L,FR,Boulanger,1199.0,EUR,TV Mini LED TCL SQD 55C89L 2026 - 55 pouces ( 139 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65C7L,FR,Boulanger,1499.0,EUR,TV Mini LED TCL SQD 65C79L 2026 - 65 pouces ( 164 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55A300W,FR,Boulanger,649.0,EUR,TV QLED TCL NXTVISION 55A300W-55 pouces (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,85P7L,FR,Boulanger,1399.0,EUR,TV QLED TCL 85P79L (216cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75C7K,FR,Boulanger,1247.68,EUR,TV Mini LED TCL 75C79K 2025 - 75 pouces ( 189 cm ) | Boulanger,Success,涨价
+2026-06-22,09:37:07,TCL,65A300W,FR,Boulanger,899.0,EUR,TV QLED TCL NXTVISION 65A300W-65 pouces (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55A300,FR,Boulanger,848.99,EUR,TV QLED TCL NXTVISION 55A300 PRO-55 pouces (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55C7K,FR,Boulanger,861.47,EUR,TV Mini LED TCL 55C79K 2025-55 pouces (139cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,TCL,50C6K,FR,Boulanger,599.0,EUR,TV Mini LED TCL 50C69K 2025-50 pouces (126cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,43P7L,FR,Boulanger,479.0,EUR,TV QLED TCL 43P79L (109cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,40S5L,FR,Boulanger,349.0,EUR,TV QLED TCL 40S5L (102cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,32S5L,FR,Boulanger,269.0,EUR,TV QLED TCL 32S5L (81cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,50S5L,FR,Boulanger,399.0,EUR,TV QLED TCL 50S5L (127cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,43S5L,FR,Boulanger,399.0,EUR,TV QLED TCL 43S5L (109cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,43V6D,FR,Boulanger,399.0,EUR,TV LED TCL 43V6D 2026 - (109cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,50V6D,FR,Boulanger,449.0,EUR,TV LED TCL 50V6D 2026 (127 cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55P6L,FR,Boulanger,499.0,EUR,TV LED TCL 55P6L 2026 (140 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,50P7L,FR,Boulanger,549.0,EUR,TV QLED TCL 50P79L (127cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55P7L,FR,Boulanger,649.0,EUR,TV QLED TCL 55P79L (140cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65P6L,FR,Boulanger,699.0,EUR,TV LED TCL 65P6L 2026 (165 cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55C6KPRO,FR,Boulanger,799.0,EUR,TV Mini LED TCL 55C69K PRO (140cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65P7L,FR,Boulanger,799.0,EUR,TV QLED TCL 65P79L (165cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75P6L,FR,Boulanger,799.0,EUR,TV LED TCL 75P6L 2026 (191cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65P8L,FR,Boulanger,999.0,EUR,TV Mini LED TCL 65P89L (165cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75P7L,FR,Boulanger,999.0,EUR,TV QLED TCL 75P79L (191cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65C6KPRO,FR,Boulanger,999.0,EUR,TV Mini LED TCL 65C69K PRO (165cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55C7L,FR,Boulanger,1099.0,EUR,TV Mini LED TCL SQD 55C79L 2026 - 55 pouces ( 139 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65A300,FR,Boulanger,1099.0,EUR,TV QLED TCL NXTVISION 65A300 PRO-65 pouces (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75A300,FR,Boulanger,1349.99,EUR,TV QLED TCL NXTVISION 75A300 PRO-75 pouces (189cm) | Boulanger,Success,降价
+2026-06-22,09:37:07,TCL,98P8K,FR,Boulanger,1599.0,EUR,"TV QLED TCL 98P89K (2025) 98"" (248 cm) - 144Hz | Boulanger",Success,持平
+2026-06-22,09:37:07,TCL,75C6KPRO,FR,Boulanger,1599.0,EUR,TV Mini LED TCL 75C69K PRO (191cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65C8L,FR,Boulanger,1799.0,EUR,TV Mini LED TCL SQD 65C89L 2026 - 65 pouces ( 164 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,85C6KPRO,FR,Boulanger,1799.0,EUR,TV Mini LED TCL 85C69K PRO (216cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75C7L,FR,Boulanger,1999.0,EUR,TV Mini LED TCL SQD 75C79L 2026 - 75 pouces ( 189 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,85C6K,FR,Boulanger,1999.0,EUR,TV Mini LED TCL 85C69K 2025-85 pouces (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,85C7L,FR,Boulanger,2299.0,EUR,TV Mini LED TCL SQD 85C79L 2026 - 85 pouces ( 215 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,85C8L,FR,Boulanger,2903.8,EUR,"TV Mini LED TCL SQD 85C89L (2026) 85"" (215 cm) | Boulanger",Success,涨价
+2026-06-22,09:37:07,TCL,98C7L,FR,Boulanger,3299.0,EUR,TV Mini LED TCL SQD 98C79L 2026 - 98 pouces ( 248 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75X11L,FR,Boulanger,4299.0,EUR,TV Mini LED TCL SQD 75X11L 2026 - 75 pouces ( 189 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,85RM9L,FR,Boulanger,5999.0,EUR,TV RGB TCL 85RM9L (216cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,98RM9L,FR,Boulanger,7999.0,EUR,TV RGB TCL 98RM9L (249cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,98X11L,FR,Boulanger,8999.0,EUR,TV Mini LED TCL SQD 98X11L 2026 - 98 pouces ( 248 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,115X955MAX,FR,Boulanger,12999.0,EUR,TV Mini LED TCL 115X955MAX-115 pouces (291cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,115RM9L,FR,Boulanger,12999.0,EUR,TV RGB TCL 115RM9L (291cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,43A400PRO,FR,Boulanger,699.0,EUR,TV LED TCL 43A400 PRO (109cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55A400U,FR,Boulanger,849.0,EUR,TV Mini LED TCL 55A400U (140cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65A400PRO,FR,Boulanger,1199.0,EUR,TV Mini LED TCL 65A400 PRO (165cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,85A400PRO,FR,Boulanger,1999.0,EUR,TV Mini LED TCL 85A400 PRO (216cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,85A400U,FR,Boulanger,1999.0,EUR,TV Mini LED TCL 85A400U (216cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,75C8L,FR,Boulanger,2276.48,EUR,TV Mini LED TCL SQD 75C89L 2026 - 75 pouces ( 189 cm ) | Boulanger,Success,降价
+2026-06-22,09:37:07,TCL,65C7K,FR,Boulanger,799.0,EUR,TV Mini LED TCL 65C79K 2025 - 65 pouces ( 164 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55V6C,FR,Boulanger,418.83,EUR,TV LED TCL 55P69K 2025-55 pouces (139cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,TCL,85C9K,FR,Boulanger,2089.0,EUR,TV Mini LED TCL 85C9K 2025-85 pouces (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,85C7K,FR,Boulanger,1545.74,EUR,TV Mini LED TCL Mini LED Pro 85C79K 2025 | Boulanger,Success,降价
+2026-06-22,09:37:07,TCL,43P7K,FR,Boulanger,309.0,EUR,TV QLED TCL 43P79K 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,32S5K,FR,Boulanger,209.0,EUR,TV QLED TCL 32S59K 2025-32 pouces (80cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55P7K,FR,Boulanger,434.48,EUR,TV QLED TCL 55P79K 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,43T69C,FR,Boulanger,309.0,EUR,TV QLED TCL 43T69C (109cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,50P7K,FR,Boulanger,339.0,EUR,TV QLED TCL 50P79K 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,50T69C,FR,Boulanger,359.0,EUR,TV QLED TCL 50T69C (127cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55T69C,FR,Boulanger,435.46,EUR,TV QLED TCL 55T69C (140cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65T69C,FR,Boulanger,547.0,EUR,TV QLED TCL 65T69C (165cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,55P8K,FR,Boulanger,567.01,EUR,TV QLED TCL 55P89K 144Hz 2025-55 pouces (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,65P8K,FR,Boulanger,636.46,EUR,TV QLED TCL 65P89K 144Hz 2025-65 pouces (164cm) | Boulanger,Success,降价
+2026-06-22,09:37:07,TCL,75C6K,FR,Boulanger,876.73,EUR,TV Mini LED TCL 75C69K 2025-75 pouces (189cm) | Boulanger,Success,降价
+2026-06-22,09:37:07,TCL,85P7K,FR,Boulanger,1020.37,EUR,TV QLED TCL 85P79K 2025 - 85 pouces ( 215 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,85P8K,FR,Boulanger,1295.1,EUR,TV QLED TCL 85P89K 144Hz 2025-85 pouces (215cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,TCL,85X11K,FR,Boulanger,2999.99,EUR,TV Mini LED TCL 85X11K 2025-85 pouces (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,98X11K,FR,Boulanger,4573.99,EUR,TV Mini LED TCL 98X11K 2025-98 pouces (248cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,TCL,115C7K,FR,Boulanger,8999.0,EUR,TV Mini LED TCL 115C7K 2025-115 pouces (291cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,77C5,FR,Boulanger,1799.0,EUR,"TV OLED LG 77C5 (2025) 77"" (195 cm) - Expérience Gaming, 120Hz, Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,LG,77G5,FR,Boulanger,2499.0,EUR,TV OLED LG 77G5 2025 (195cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,48C5,FR,Boulanger,947.0,EUR,TV OLED LG 48C5 2025 (121cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55G5,FR,Boulanger,1599.0,EUR,TV OLED LG 55G5 2025 (139cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,83G5,FR,Boulanger,3999.0,EUR,TV OLED LG 83G5 2025 (210cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,83C5,FR,Boulanger,2799.0,EUR,TV OLED LG 83C5 2025 (210cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,77G6,FR,Boulanger,4599.0,EUR,TV OLED LG 77G6 2026 ( 195 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,50QNED85A,FR,Boulanger,549.0,EUR,TV LED LG 50QNED86A 2025 (126cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65B5,FR,Boulanger,1179.0,EUR,TV OLED LG 65B5 2025 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65M5,FR,Boulanger,2499.0,EUR,TV LG 65M5 2025 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55G6,FR,Boulanger,2399.0,EUR,TV OLED LG 55G6 2026 ( 139 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,27LB7000,FR,Boulanger,199.0,EUR,TV LED LG 27LB70006LA (69cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,48G6,FR,Boulanger,1899.0,EUR,TV OLED LG 48G6 2026 (121 cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,43QNED85A,FR,Boulanger,549.0,EUR,TV LED LG 43QNED86A 2025 (108cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,42C6,FR,Boulanger,1399.0,EUR,TV OLED LG 42C6 2026 (106 cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65UA75,FR,Boulanger,499.0,EUR,TV LED LG 65UA75 2025 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55QNED85B,FR,Boulanger,1099.0,EUR,TV Mini LED LG 55QNED86B 2026 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,24LB7000,FR,Boulanger,179.0,EUR,TV LED LG 24LB70006LA (60cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,24TQ510S,FR,Boulanger,212.4,EUR,TV LED LG 24TQ510S-24 pouces (60cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,50QNED70B,FR,Boulanger,599.0,EUR,TV Mini LED LG 50QNED71B 2026 | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,43QNED70A,FR,Boulanger,351.58,EUR,TV LED LG 43QNED70A 2025 (108cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,50QNED80A,FR,Boulanger,799.0,EUR,TV LED LG 50QNED84A 2025 (126cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,43QNED70B,FR,Boulanger,499.0,EUR,TV LED LG 43QNED71B 2026 (108cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55NU850B6,FR,Boulanger,549.0,EUR,TV LED LG 55NU850B6 2026 | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65NU850B6,FR,Boulanger,699.0,EUR,TV LED LG 65NU850B6 2026 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55QNED70B,FR,Boulanger,699.0,EUR,TV Mini LED LG 55QNED71B 2026 | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,50QNED85B,FR,Boulanger,849.0,EUR,TV Mini LED LG 50QNED86B 2026 | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,50MRGB86B6,FR,Boulanger,849.0,EUR,TV RGB LG 50MRGB86B6 | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65QNED70B,FR,Boulanger,899.0,EUR,TV Mini LED LG 65QNED71B 2026 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,75NU850B6,FR,Boulanger,999.0,EUR,TV LED LG 75NU850B6 2026 (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55B5,FR,Boulanger,1299.0,EUR,TV OLED LG 55B5 2025 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65QNED85B,FR,Boulanger,1299.0,EUR,TV Mini LED LG 65QNED86B 2026 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,85NU850B6,FR,Boulanger,1499.0,EUR,TV LED LG 85NU850B6 2026 (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55C6,FR,Boulanger,1999.0,EUR,TV OLED LG 55C6 2026 ( 139 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,75QNED85B,FR,Boulanger,1699.0,EUR,TV Mini LED LG 75QNED86B 2026 (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,48C6,FR,Boulanger,1699.0,EUR,TV OLED LG 48C6 2026 ( 121 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,86QNED85B,FR,Boulanger,2099.0,EUR,TV Mini LED LG 86QNED86B 2026 (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65C6,FR,Boulanger,2699.0,EUR,TV OLED LG 65C6 2026 ( 164 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,100QNED85A,FR,Boulanger,2999.0,EUR,TV LED LG 100QNED86A 2025 (253cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65G6,FR,Boulanger,3599.0,EUR,TV OLED LG 65G6 2026 ( 164 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,77C6,FR,Boulanger,3699.0,EUR,TV OLED LG 77C6 2026 ( 195 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,100QNED85B,FR,Boulanger,4499.0,EUR,TV Mini LED LG 100QNED87B 2026 | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,83C6,FR,Boulanger,4999.0,EUR,TV OLED LG 83C6 2026 ( 210 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,97G5,FR,Boulanger,24999.0,EUR,TV OLED LG 97G5 2025 (245cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,97M5,FR,Boulanger,27990.0,EUR,TV OLED LG 97M5 2025 (245cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55MRGB86B6,FR,Boulanger,999.0,EUR,TV RGB LG 55MRGB86B6 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,43NU850B6,FR,Boulanger,449.99,EUR,TV LED LG 43NU850B6 2026 (108cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,50NU850B6,FR,Boulanger,499.0,EUR,TV LED LG 50NU850B6 2026 | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,43QNED85B,FR,Boulanger,699.0,EUR,TV Mini LED LG 43QNED86B 2026 (108cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,75MRGB86B6,FR,Boulanger,1799.0,EUR,"TV RGB LG 75MRGB86B6 75"" (189 cm) 4K UHD - 120Hz, Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,LG,83G6,FR,Boulanger,5499.0,EUR,TV OLED LG 83G6 2026 ( 210 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,42C5,FR,Boulanger,849.0,EUR,TV OLED LG 42C5 2025 (106cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,48G5,FR,Boulanger,1049.0,EUR,TV OLED LG 48G5 2025 (121cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55UA75,FR,Boulanger,449.0,EUR,TV LED LG 55UA75 2025 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55QNED70A,FR,Boulanger,479.0,EUR,TV LED LG 55QNED70A 2025 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65QNED80A,FR,Boulanger,629.0,EUR,TV LED LG 65QNED84A 2025 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,55QNED90A,FR,Boulanger,699.0,EUR,TV Mini LED LG 55QNED93A 2025 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,86UA75,FR,Boulanger,927.83,EUR,TV LED LG 86UA75 2025 (217cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,43UA75,FR,Boulanger,295.11,EUR,TV LED LG 43UA75 2025 (108cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,27TQ615S,FR,Boulanger,199.94,EUR,TV LED LG 27TQ615S-27 pouces (69cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,32LQ630B,FR,Boulanger,250.57,EUR,TV LED LG 32LQ630B | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,24TQ520S,FR,Boulanger,175.83,EUR,TV LED LG 24TQ520S | Boulanger,Success,降价
+2026-06-22,09:37:07,LG,43UR78,FR,Boulanger,320.73,EUR,TV LED LG 43UR78 | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,50UA75,FR,Boulanger,412.11,EUR,TV LED LG 50UA75 2025 (126cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,75UA75,FR,Boulanger,848.72,EUR,TV LED LG 75UA75 2025 (189cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,65QNED90A,FR,Boulanger,1318.95,EUR,TV LED LG 65QNED93A 2025 (164cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,55G5,FR,Boulanger,1399.0,EUR,TV OLED LG sans pied OLED55G5 | Boulanger,Success,持平
+2026-06-22,09:37:07,LG,65G5,FR,Boulanger,1738.08,EUR,TV OLED LG sans pied OLED65G5 | Boulanger,Success,涨价
+2026-06-22,09:37:07,LG,86UR78,FR,Boulanger,2054.91,EUR,TV LED LG 86UR78 | Boulanger,Success,涨价
+2026-06-22,09:37:07,Hisense,55E7QPRO,FR,Boulanger,399.0,EUR,"TV QLED HISENSE 55E79Q PRO (2025) 55"" (139 cm) 4K Ultra HD - 144Hz, Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,Hisense,65A7Q,FR,Boulanger,479.0,EUR,"TV QLED HISENSE 65A7Q (2025) 65"" (164 cm) 4K Ultra HD - Smart TV, caisson de basses intégré | Boulanger",Success,持平
+2026-06-22,09:37:07,Hisense,58E7Q,FR,Boulanger,399.0,EUR,TV QLED HISENSE 58E7Q 2025 (146cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,100E7QPRO,FR,Boulanger,1799.0,EUR,TV QLED HISENSE 100E7Q PRO 2025 (253cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,43E7S,FR,Boulanger,299.0,EUR,TV QLED HISENSE 43E7S (108cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,65E7S,FR,Boulanger,560.0,EUR,TV QLED HISENSE 65E7S (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,65U7SPRO,FR,Boulanger,1299.0,EUR,TV Mini LED HISENSE 65U7S PRO (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,100U7QPRO,FR,Boulanger,2490.0,EUR,TV Mini LED HISENSE 100U7Q PRO 2025 (253cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,58E7S,FR,Boulanger,549.0,EUR,TV QLED HISENSE 58E7S (146cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,50A7S,FR,Boulanger,449.0,EUR,TV QLED HISENSE 50A7S (126cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,55UR8S,FR,Boulanger,1299.0,EUR,TV RGB HISENSE 55UR8S (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,32S5Q,FR,Boulanger,197.99,EUR,TV LED HISENSE 32S5Q 2025 | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,75E7S,FR,Boulanger,899.0,EUR,TV QLED HISENSE 75E7S (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,65U7SE,FR,Boulanger,899.0,EUR,TV Mini LED HISENSE 65U7SE (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,65A7S,FR,Boulanger,699.0,EUR,TV QLED HISENSE 65A7S (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,32A5S,FR,Boulanger,199.0,EUR,"TV QLED HISENSE 32A5S (2026) 32"" (80 cm) - Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,Hisense,55E7S,FR,Boulanger,499.0,EUR,TV QLED HISENSE 55E7S (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,43A7S,FR,Boulanger,499.0,EUR,TV QLED HISENSE 43A7S (108cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,55E7SPRO,FR,Boulanger,599.0,EUR,TV QLED HISENSE 55E7S PRO (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,50U7SE,FR,Boulanger,799.0,EUR,TV Mini LED HISENSE 50U7SE (126cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,55U7SE,FR,Boulanger,799.0,EUR,TV Mini LED HISENSE 55U7SE (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,55U7SPRO,FR,Boulanger,861.77,EUR,TV Mini LED HISENSE 55U7S PRO (139cm) | Boulanger,Success,降价
+2026-06-22,09:37:07,Hisense,65E7SPRO,FR,Boulanger,999.0,EUR,TV QLED HISENSE 65E7S PRO (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,65UR8S,FR,Boulanger,1499.0,EUR,TV RGB HISENSE 65UR8S (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,75U7SE,FR,Boulanger,1599.0,EUR,TV Mini LED HISENSE 75U7SE (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,85U8Q,FR,Boulanger,1699.0,EUR,TV Mini LED HISENSE 85U8Q 2025-85 pouces (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,75U7SPRO,FR,Boulanger,1799.0,EUR,TV Mini LED HISENSE 75U7S PRO (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,85U7SPRO,FR,Boulanger,1999.0,EUR,TV Mini LED HISENSE 85U7S PRO (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,65UR9S,FR,Boulanger,1999.0,EUR,TV RGB HISENSE 65UR9S (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,75UR8S,FR,Boulanger,2299.0,EUR,TV Mini LED HISENSE 75UR8S (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,75UR9S,FR,Boulanger,2559.94,EUR,TV RGB HISENSE 75UR9S (189cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,Hisense,85UR8S,FR,Boulanger,2799.0,EUR,TV RGB HISENSE 85UR8S (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,85UR9S,FR,Boulanger,2999.0,EUR,TV RGB HISENSE 85UR9S (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,100UXQ,FR,Boulanger,7999.0,EUR,TV RGB HISENSE 100UXQ 2025 ( 253 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,116UXQ,FR,Boulanger,14999.0,EUR,TV RGB HISENSE 116UXQ 2025 - 116 pouces ( 293 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,50U7Q,FR,Boulanger,449.0,EUR,TV Mini LED HISENSE 50U7Q 2025-50 pouces (126cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,32A5Q,FR,Boulanger,199.0,EUR,TV LED HISENSE 32A5Q 2025 (80cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,85E7S,FR,Boulanger,1025.26,EUR,TV QLED HISENSE 85E7S (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,55U8Q,FR,Boulanger,872.88,EUR,TV Mini LED HISENSE 55U8Q 2025 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,58A6Q,FR,Boulanger,493.99,EUR,TV LED HISENSE 58A6Q 2025 (146cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,43A7Q,FR,Boulanger,338.79,EUR,TV QLED HISENSE 43A7Q 2025 (108cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,Hisense,43E7Q,FR,Boulanger,259.0,EUR,TV QLED HISENSE 43E7Q 2025 (108cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,85E7Q,FR,Boulanger,879.0,EUR,TV QLED HISENSE 85E7Q 2025-85 pouces (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,40A5S,FR,Boulanger,252.99,EUR,"TV QLED HISENSE 40A5S (2026) 40"" (100 cm) - Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,Hisense,40A5Q,FR,Boulanger,286.99,EUR,TV LED HISENSE 40A5Q 2025 (100cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,Hisense,43A6Q,FR,Boulanger,336.61,EUR,TV LED HISENSE 43A6Q 2025 | Boulanger,Success,降价
+2026-06-22,09:37:07,Hisense,65E7Q,FR,Boulanger,628.11,EUR,TV QLED HISENSE 65E7Q 2025-65 pouces (164cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,Hisense,55A7Q,FR,Boulanger,525.03,EUR,TV QLED HISENSE 55A7Q 2025-55 pouces (139cm) | Boulanger,Success,降价
+2026-06-22,09:37:07,Hisense,55E7Q,FR,Boulanger,359.0,EUR,TV QLED HISENSE 55E7Q 2025 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,50E7S,FR,Boulanger,425.86,EUR,"TV QLED HISENSE 50E7S (2026) 50"" (126 cm) 4K | Boulanger",Success,持平
+2026-06-22,09:37:07,Hisense,65A6Q,FR,Boulanger,582.41,EUR,TV LED HISENSE 65A6Q 2025 (164cm) | Boulanger,Success,降价
+2026-06-22,09:37:07,Hisense,55U7Q,FR,Boulanger,612.99,EUR,TV Mini LED HISENSE 55U7Q 2025 - 55 pouces ( 139 cm ) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,75E7SPRO,FR,Boulanger,993.04,EUR,"TV QLED HISENSE 75E7S PRO (2026) 75"" (189 cm) 4K - 144Hz | Boulanger",Success,持平
+2026-06-22,09:37:07,Hisense,75E7Q,FR,Boulanger,699.0,EUR,TV QLED HISENSE 75E7Q 2025 (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,85A6Q,FR,Boulanger,1099.99,EUR,TV LED HISENSE 85A6Q 2025-85 pouces (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,85U7SE,FR,Boulanger,1434.01,EUR,"TV Mini LED HISENSE 85U7SE (2026) 85"" (215 cm) 4K - 144Hz | Boulanger",Success,持平
+2026-06-22,09:37:07,Hisense,65A85Q,FR,Boulanger,1454.71,EUR,TV OLED HISENSE 65A85Q 2025 - 65 pouces ( 164 cm ) | Boulanger,Success,降价
+2026-06-22,09:37:07,Hisense,85E7SPRO,FR,Boulanger,1558.33,EUR,"TV QLED HISENSE 85E7S PRO (2026) 85"" (215 cm) 4K - 144Hz | Boulanger",Success,降价
+2026-06-22,09:37:07,Hisense,75U8Q,FR,Boulanger,1199.0,EUR,TV Mini LED HISENSE 75U8Q 2025-75 pouces (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,85U7QPRO,FR,Boulanger,1742.88,EUR,TV Mini LED HISENSE 85U7Q PRO 2025-85 pouces (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Hisense,110UXNQ,FR,Boulanger,9190.0,EUR,TV QLED HISENSE 110UXNQ (280cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,65BRAVIA8,FR,Boulanger,1999.0,EUR,TV OLED SONY 65BRAVIA8 II IMAX Enhanced (164cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,Sony,55BRAVIA8,FR,Boulanger,1799.0,EUR,TV OLED SONY 55BRAVIA8 II IMAX Enhanced (139cm) | Boulanger,Success,涨价
+2026-06-22,09:37:07,Sony,55BRAVIA8,FR,Boulanger,1199.0,EUR,TV OLED SONY 55BRAVIA8 Acoustic Surface (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,65BRAVIA8,FR,Boulanger,1599.0,EUR,TV OLED SONY 65BRAVIA8 Acoustic Surface (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,43BRAVIA3,FR,Boulanger,499.0,EUR,TV LED SONY 43BRAVIA3 PlayStation Remote (109cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,85BRAVIA5,FR,Boulanger,1699.0,EUR,TV Mini LED SONY 85BRAVIA5 IA XR (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,50BRAVIA3,FR,Boulanger,599.0,EUR,TV LED SONY 50BRAVIA3 PlayStation Remote (127cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,75BRAVIA3,FR,Boulanger,999.0,EUR,TV LED SONY 75BRAVIA3 PlayStation Remote (189cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,55BRAVIA3,FR,Boulanger,699.0,EUR,TV LED SONY 55BRAVIA3 PlayStation Remote (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,65BRAVIA3,FR,Boulanger,799.0,EUR,TV LED SONY 65BRAVIA3 PlayStation Remote (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,75BRAVIA9II,FR,Boulanger,3499.0,EUR,"TV RGB SONY 75BRAVIA9II (2026) 75"" (189 cm) 4K - True RGB, 120Hz, Smart TV | Boulanger",Success,持平
+2026-06-22,09:37:07,Sony,65BRAVIA9II,FR,Boulanger,2999.0,EUR,TV RGB SONY 65BRAVIA9II True RGB 2026 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,77BRAVIA8,FR,Boulanger,2199.0,EUR,TV OLED SONY 77BRAVIA8 Acoustic Surface (195cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,65BRAVIA7II,FR,Boulanger,1999.0,EUR,TV RGB SONY 65BRAVIA7II True RGB 2026 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,43BRAVIA3II,FR,Boulanger,799.0,EUR,"TV LED SONY 43BRAVIA3II (2026) 43"" (108 cm) | Boulanger",Success,持平
+2026-06-22,09:37:07,Sony,43BRAVIA2II,FR,Boulanger,699.0,EUR,TV LED SONY 43BRAVIA2II 2026 (108cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,50BRAVIA2II,FR,Boulanger,799.0,EUR,TV LED SONY 50BRAVIA2II 2026 (126cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,55BRAVIA2II,FR,Boulanger,899.0,EUR,TV LED SONY 55BRAVIA2II 2026 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,50BRAVIA3II,FR,Boulanger,899.0,EUR,"TV LED SONY 50BRAVIA3II (2026) 50"" (126 cm) | Boulanger",Success,持平
+2026-06-22,09:37:07,Sony,55BRAVIA3II,FR,Boulanger,999.0,EUR,"TV LED SONY 55BRAVIA3II (2026) 55"" (139 cm) | Boulanger",Success,持平
+2026-06-22,09:37:07,Sony,65BRAVIA3II,FR,Boulanger,1199.0,EUR,"TV LED SONY 65BRAVIA3II (2026) 65"" (164 cm) | Boulanger",Success,持平
+2026-06-22,09:37:07,Sony,65BRAVIA5,FR,Boulanger,1299.0,EUR,TV Mini LED SONY 65BRAVIA5 IA XR (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,75BRAVIA3II,FR,Boulanger,1399.0,EUR,"TV LED SONY 75BRAVIA3II (2026) 75"" (189 cm) | Boulanger",Success,持平
+2026-06-22,09:37:07,Sony,85BRAVIA3,FR,Boulanger,1699.0,EUR,TV LED SONY 85BRAVIA3 PlayStation Remote (215cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,55BRAVIA7II,FR,Boulanger,1899.0,EUR,TV RGB SONY 55BRAVIA7II True RGB 2026 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,100BRAVIA3II,FR,Boulanger,2799.0,EUR,"TV LED SONY 100BRAVIA3II (2026) 100"" (253 cm) | Boulanger",Success,持平
+2026-06-22,09:37:07,Sony,98BRAVIA5,FR,Boulanger,3999.0,EUR,TV Mini LED SONY 98BRAVIA5 IA XR (248cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,55BRAVIA5,FR,Boulanger,899.0,EUR,TV Mini LED SONY 55BRAVIA5 IA XR (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,65BRAVIA8,FR,Boulanger,1599.0,EUR,TV OLED SONY 65BRAVIA8 (164cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Sony,55BRAVIA8,FR,Boulanger,1199.0,EUR,TV OLED SONY 55BRAVIA8 (139cm) | Boulanger,Success,持平
+2026-06-22,09:37:07,Samsung,65S90F,GB,Currys,1499.0,GBP,"Buy SAMSUNG S90F 65"" OLED 4K Vision AI Smart TV 2025 - QE65S90F | Currys",Success,新上线
+2026-06-22,09:37:07,LG,65C5,GB,Currys,1499.0,GBP,"LG C5 65"" OLED evo AI 4K HDR Smart TV 2025 - OLED65C54LA | Currys",Success,降价
+2026-06-22,09:37:07,Hisense,55U7QPRO,GB,Currys,649.0,GBP,"Buy HISENSE U7Q PRO 55"" Mini LED 4K 165Hz Smart AI TV with Freely - 55U7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,LG,65G5,GB,Currys,1999.0,GBP,"LG G5 65"" OLED evo AI 4K HDR Smart TV 2025 (Wall Mount Version) - OLED65G54LW | Currys",Success,持平
+2026-06-22,09:37:07,Sony,55XR8AB,GB,Currys,1199.0,GBP,Buy SONY BRAVIA 8A 55” OLED 4K HDR AI Smart TV - K55XR8AB | Currys,Success,持平
+2026-06-22,09:37:07,LG,55C5,GB,Currys,1099.99,GBP,"LG C5 55"" OLED evo AI 4K HDR Smart TV 2025 - OLED55C54LA | Currys",Success,持平
+2026-06-22,09:37:07,LG,55QNED70A,GB,Currys,379.0,GBP,"Buy LG QNED70 55"" QNED AI 4K HDR Smart TV 2025 - 55QNED70A6A | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65U7QPRO,GB,Currys,849.0,GBP,"Buy HISENSE U7Q PRO 65"" Mini LED 4K 165Hz Smart AI TV with Freely - 65U7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,43U8005F,GB,Currys,239.0,GBP,"Buy SAMSUNG U8000F 43"" Crystal UHD 4K HDR Smart TV 2025 - UE43U8000F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55U8005F,GB,Currys,329.0,GBP,"Buy SAMSUNG U8000F 55"" Crystal UHD 4K HDR Smart TV 2025 - UE55U8000F | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,43A6Q,GB,Currys,199.0,GBP,"Buy HISENSE A6Q 43"" LED 4K HDR Smart TV with Freely - 43A6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65U8005F,GB,Currys,429.0,GBP,"Buy SAMSUNG U8000F 65"" Crystal UHD 4K HDR Smart TV 2025 - UE65U8000F | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50A6Q,GB,Currys,279.0,GBP,"Buy HISENSE A6Q 50"" LED 4K HDR Smart TV with Freely - 50A6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65A6Q,GB,Currys,399.0,GBP,"Buy HISENSE A6Q 65"" LED 4K HDR Smart TV with Freely - 65A6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65Q7F,GB,Currys,549.0,GBP,"Buy SAMSUNG Q7F 65"" QLED 4K Vision AI Smart TV 2025 - QE65Q7F | Currys",Success,降价
+2026-06-22,09:37:07,Hisense,55A6Q,GB,Currys,299.0,GBP,"Buy HISENSE A6Q 55"" LED 4K HDR Smart TV with Freely - 55A6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,43Q7F,GB,Currys,319.0,GBP,"Buy SAMSUNG Q7F 43"" QLED 4K Vision AI Smart TV 2025 - QE43Q7F | Currys",Success,持平
+2026-06-22,09:37:07,TCL,32SF560,GB,Currys,149.0,GBP,Buy TCL SF560 32” QLED Full HD Smart Fire TV - 32SF560-UK | Currys,Success,持平
+2026-06-22,09:37:07,Samsung,75U8005F,GB,Currys,649.0,GBP,"Buy SAMSUNG U8000F 75"" Crystal UHD 4K HDR Smart TV 2025 - UE75U8000F | Currys",Success,持平
+2026-06-22,09:37:07,TCL,40SF560,GB,Currys,179.0,GBP,Buy TCL SF560 40” QLED Full HD Smart Fire TV - 40SF560-UK | Currys,Success,持平
+2026-06-22,09:37:07,LG,43QNED70A,GB,Currys,249.0,GBP,"Buy LG QNED70 43"" QNED AI 4K HDR Smart TV 2025 - 43QNED70A6A | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55Q7F,GB,Currys,429.0,GBP,"Buy SAMSUNG Q7F 55"" QLED 4K Vision AI Smart TV 2025 - QE55Q7F | Currys",Success,降价
+2026-06-22,09:37:07,Hisense,55E7Q,GB,Currys,349.0,GBP,"Buy HISENSE E7Q 55"" QLED 4K Smart AI TV with Freely - 55E7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,43E7Q,GB,Currys,269.0,GBP,"Buy HISENSE E7Q 43"" QLED 4K Smart AI TV with Freely - 43E7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65E7QPRO,GB,Currys,589.0,GBP,"Buy HISENSE E7Q PRO 65"" QLED 4K HDR Smart TV with Freely - 65E7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,LG,55UA7500,GB,Currys,299.99,GBP,"Buy LG UA75 55"" LED 4K HDR Smart TV 2025 - 55UA75006LA | Currys",Success,持平
+2026-06-22,09:37:07,LG,50NANO81A6A,GB,Currys,299.0,GBP,"Buy LG NANO81A 50"" NanoCell AI 4K HDR Smart TV 2025 - 50NANO81A6A | Currys",Success,持平
+2026-06-22,09:37:07,LG,50QNED70A,GB,Currys,319.0,GBP,"Buy LG QNED70 50"" QNED AI 4K HDR Smart TV 2025 - 50QNED70A6A | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50E7Q,GB,Currys,319.0,GBP,"Buy HISENSE E7Q 50"" QLED 4K Smart AI TV with Freely - 50E7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,43QN90F,GB,Currys,649.0,GBP,"Buy SAMSUNG QN90F 43"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE43QN90F | Currys",Success,持平
+2026-06-22,09:37:07,LG,42C5,GB,Currys,729.0,GBP,"LG C5 42"" OLED evo AI 4K HDR Smart TV 2025 - OLED42C54LA | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50E7QPRO,GB,Currys,395.0,GBP,"Buy HISENSE E7Q PRO 50"" QLED 4K HDR Smart TV with Freely - 50E7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,100E7QPRO,GB,Currys,1489.0,GBP,"Buy HISENSE E7Q PRO 100"" QLED 4K HDR Smart TV with Freely - 100E7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,LG,50UA7300,GB,Currys,239.0,GBP,"Buy LG UA73 50"" LED 4K HDR Smart TV 2025 - 50UA73006LA | Currys",Success,降价
+2026-06-22,09:37:07,LG,55B5,GB,Currys,819.0,GBP,"Buy LG B5 55"" OLED AI 4K HDR Smart TV 2025 - OLED55B56LA | Currys",Success,降价
+2026-06-22,09:37:07,Samsung,65S95H,GB,Currys,3199.0,GBP,"Buy SAMSUNG S95H 65"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE65S95H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,77S90F,GB,Currys,2199.0,GBP,"Buy SAMSUNG S90F 77"" OLED 4K Vision AI Smart TV 2025 - QE77S90F | Currys",Success,持平
+2026-06-22,09:37:07,Sony,65XR8M25B,GB,Currys,2299.0,GBP,"Buy SONY BRAVIA 8 II 65"" QD-OLED 4K HDR AI Smart TV - K65XR8M25B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65LS03H,GB,Currys,2099.0,GBP,"Buy SAMSUNG The Frame Pro (2026) 65"" Neo QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE65LS03H | Currys",Success,涨价
+2026-06-22,09:37:07,Samsung,65S95F,GB,Currys,1999.0,GBP,"Buy SAMSUNG S95F 65"" OLED Glare Free 4K Vision AI Smart TV 2025 - QE65S95F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55LS03H,GB,Currys,1699.0,GBP,"Buy SAMSUNG The Frame Pro (2026) 55"" Neo QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE55LS03H | Currys",Success,涨价
+2026-06-22,09:37:07,Samsung,55S85H,GB,Currys,1699.0,GBP,"Buy SAMSUNG S85H 55"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE55S85H | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65C7K,GB,Currys,799.0,GBP,"Buy TCL C7K 65"" QD-Mini LED 4K HDR Smart Google TV - 65C7K | Currys",Success,持平
+2026-06-22,09:37:07,LG,55G5,GB,Currys,1499.99,GBP,"Buy LG G5 55"" OLED evo AI 4K HDR Smart TV 2025 (Stand Version) - OLED55G56LS | Currys",Success,持平
+2026-06-22,09:37:07,TCL,43PF650K,GB,Currys,199.0,GBP,"TCL PF650K 43"" LED 4K HDR Smart Fire TV with Freely - 43PF650K | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55E7QPRO,GB,Currys,445.0,GBP,"Buy HISENSE E7Q PRO 55"" QLED 4K HDR Smart TV with Freely - 55E7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,LG,43UA7500,GB,Currys,229.99,GBP,"Buy LG UA75 43"" LED 4K HDR Smart TV 2025 - 43UA75006LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,50QN90F,GB,Currys,689.0,GBP,"Buy SAMSUNG QN90F 50"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE50QN90F | Currys",Success,降价
+2026-06-22,09:37:07,LG,48B5,GB,Currys,679.0,GBP,"Buy LG B5 48"" OLED AI 4K HDR Smart TV 2025 - OLED48B56LA | Currys",Success,持平
+2026-06-22,09:37:07,LG,65B5,GB,Currys,1099.0,GBP,"Buy LG B5 65"" OLED AI 4K HDR Smart TV 2025 - OLED65B56LA | Currys",Success,持平
+2026-06-22,09:37:07,LG,55NANO81A6A,GB,Currys,379.0,GBP,"Buy LG NANO81A 55"" NanoCell AI 4K HDR Smart TV 2025 - 55NANO81A6A | Currys",Success,持平
+2026-06-22,09:37:07,LG,65UA7500,GB,Currys,429.0,GBP,"Buy LG UA75 65"" LED 4K HDR Smart TV 2025 - 65UA75006LA | Currys",Success,持平
+2026-06-22,09:37:07,TCL,55C6K,GB,Currys,499.0,GBP,"Buy TCL C6K 55"" QD-Mini LED 4K HDR Smart Google TV - 55C6K | Currys",Success,持平
+2026-06-22,09:37:07,LG,65NANO81A6A,GB,Currys,479.0,GBP,"Buy LG NANO81A 65"" NanoCell AI 4K HDR Smart TV 2025 - 65NANO81A6A | Currys",Success,持平
+2026-06-22,09:37:07,LG,48C5,GB,Currys,949.0,GBP,"LG C5 48"" OLED evo AI 4K HDR Smart TV 2025 - OLED48C54LA | Currys",Success,持平
+2026-06-22,09:37:07,TCL,43T6C,GB,Currys,249.0,GBP,"Buy TCL T6C 43"" QLED 4K HDR Smart Fire TV with Freely - 43T6C-UK | Currys",Success,降价
+2026-06-22,09:37:07,Samsung,55S90F,GB,Currys,1099.0,GBP,"Buy SAMSUNG S90F 55"" OLED 4K Vision AI Smart TV 2025 - QE55S90F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,50LS03FA,GB,Currys,679.0,GBP,"Buy SAMSUNG The Frame (2025) 50"" QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE50LS03FA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55QN70F,GB,Currys,699.0,GBP,"Buy SAMSUNG QN70F 55"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE55QN70F | Currys",Success,持平
+2026-06-22,09:37:07,LG,50UA7500,GB,Currys,274.0,GBP,"Buy LG UA75 50"" LED 4K HDR Smart TV 2025 - 50UA75006LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55S95F,GB,Currys,1375.0,GBP,"Buy SAMSUNG S95F 55"" OLED Glare Free 4K Vision AI Smart TV 2025 - QE55S95F | Currys",Success,降价
+2026-06-22,09:37:07,Sony,55S32B,GB,Currys,599.0,GBP,"Buy SONY BRAVIA 3 55"" LED 4K HDR AI Smart TV - K55S38B | Currys",Success,持平
+2026-06-22,09:37:07,LG,65QNED70A,GB,Currys,499.0,GBP,"Buy LG QNED70 65"" QNED AI 4K HDR Smart TV 2025 - 65QNED70A6A | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75Q7F,GB,Currys,899.0,GBP,"Buy SAMSUNG Q7F 75"" QLED 4K Vision AI Smart TV 2025 - QE75Q7F | Currys",Success,降价
+2026-06-22,09:37:07,Samsung,55S85F,GB,Currys,799.0,GBP,"Buy SAMSUNG S85F 55"" OLED 4K Vision AI Smart TV 2025 - QE55S85F | Currys",Success,持平
+2026-06-22,09:37:07,Sony,65XR8A1B,GB,Currys,1499.0,GBP,"Buy SONY BRAVIA 8A 65"" OLED 4K HDR AI Smart TV - K65XR8A1B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65QN70F,GB,Currys,849.0,GBP,"Buy SAMSUNG QN70F 65"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE65QN70F | Currys",Success,持平
+2026-06-22,09:37:07,LG,50QNED85A,GB,Currys,549.0,GBP,"Buy LG QNED86 50"" QNED evo AI Mini LED 4K HDR Smart TV 2025 - 50QNED86A6C | Currys",Success,持平
+2026-06-22,09:37:07,Sony,55XR8M25BP,GB,Currys,1799.0,GBP,"Buy SONY BRAVIA 8 II 55"" QD-OLED 4K HDR AI Smart TV - K55XR8M25BP | Currys",Success,持平
+2026-06-22,09:37:07,LG,65G5,GB,Currys,1999.0,GBP,"Buy LG G5 65"" OLED evo AI 4K HDR Smart TV 2025 (Stand Version) - OLED65G56LS | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65S85F,GB,Currys,1199.0,GBP,"Buy SAMSUNG S85F 65"" OLED 4K Vision AI Smart TV 2025 - QE65S85F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,43LS03FA,GB,Currys,579.0,GBP,"Buy SAMSUNG The Frame (2025) 43"" QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE43LS03FA | Currys",Success,降价
+2026-06-22,09:37:07,Sony,50S32BP,GB,Currys,549.0,GBP,"Buy SONY BRAVIA 3 50"" LED 4K HDR AI Smart TV - K50S38BP | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,32S5Q,GB,Currys,299.0,GBP,"Buy HISENSE Deco 32S5QTUK 32"" Smart Full HD HDR LED TV with Freely - White | Currys",Success,持平
+2026-06-22,09:37:07,Sony,65S32BP,GB,Currys,759.0,GBP,"Buy SONY BRAVIA 3 65"" LED 4K HDR AI Smart TV - K65S38BP | Currys",Success,持平
+2026-06-22,09:37:07,LG,48G5,GB,Currys,1099.99,GBP,"Buy LG G5 48"" OLED evo AI 4K HDR Smart TV 2025 (Stand Version) - OLED48G56LS | Currys",Success,持平
+2026-06-22,09:37:07,LG,55G5,GB,Currys,1499.99,GBP,"LG G5 55"" OLED evo AI 4K HDR Smart TV 2025 (Wall Mount Version) - OLED55G54LW | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,48S90F,GB,Currys,899.0,GBP,"Buy SAMSUNG S90F 48"" OLED 4K Vision AI Smart TV 2025 - QE48S90F | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,43E6Q,GB,Currys,229.0,GBP,"Buy HISENSE E6Q 43"" LED 4K HDR Smart TV with Freely - 43E6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,43QNED85B,GB,Currys,599.99,GBP,"Buy LG QNED86 43"" QNED AI Mini LED 4K HDR Smart TV 2026 - 43QNED86B6B | Currys",Success,持平
+2026-06-22,09:37:07,LG,43QNED70B,GB,Currys,399.99,GBP,"Buy LG QNED72 43"" QNED AI 4K HDR Smart TV 2026 - 43QNED72B6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,42S90F,GB,Currys,749.0,GBP,"Buy SAMSUNG S90F 42"" OLED 4K Vision AI Smart TV 2025 - QE42S90F | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65U8Q,GB,Currys,1249.0,GBP,"Buy HISENSE U8Q 65"" Mini LED 4K 165Hz Smart AI TV with Freely - 65U8QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65LS03FA,GB,Currys,1099.0,GBP,"Buy SAMSUNG The Frame (2025) 65"" QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE65LS03FA | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,32A5S,GB,Currys,329.0,GBP,"Buy HISENSE A5S 32"" QLED Full HD HDR Smart TV with Freely - 32A5STUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55QN80F,GB,Currys,749.0,GBP,"Buy SAMSUNG QN80F 55"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE55QN80F | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,40A5S,GB,Currys,399.0,GBP,"Buy HISENSE A5S 40"" QLED Full HD HDR Smart TV with Freely - 40A5STUK | Currys",Success,持平
+2026-06-22,09:37:07,Sony,65XR55B,GB,Currys,1299.0,GBP,"Buy SONY BRAVIA 5 65"" XR Mini LED 4K HDR Smart TV - K65XR55B | Currys",Success,持平
+2026-06-22,09:37:07,Sony,55XR80PU,GB,Currys,1399.0,GBP,"Buy SONY BRAVIA 8 55"" OLED 4K HDR AI Smart TV - K55XR80PU | Currys",Success,持平
+2026-06-22,09:37:07,Sony,65XR80U,GB,Currys,1799.0,GBP,"Buy SONY BRAVIA 8 65"" OLED 4K HDR AI Smart TV - K65XR80U | Currys",Success,持平
+2026-06-22,09:37:07,Sony,55XR55B,GB,Currys,1099.0,GBP,"Buy SONY BRAVIA 5 55"" XR Mini LED 4K HDR Smart TV - K55XR55B | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,32A4S,GB,Currys,249.0,GBP,"Buy HISENSE A4S 32"" LED HD Ready HDR Smart TV with Freely - 32A4STUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,40A4S,GB,Currys,329.0,GBP,"Buy HISENSE A4S 40"" LED Full HD HDR Smart TV with Freely - 40A4STUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,32F6000,GB,Currys,179.0,GBP,"Buy SAMSUNG UE32F6000FKXXU 32"" Smart Full HD HDR LED TV | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55A85Q,GB,Currys,899.0,GBP,"Buy HISENSE A85Q 55"" OLED 4K Smart AI TV with Freely - 55A85QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,24F6000,GB,Currys,149.0,GBP,"Buy SAMSUNG UE24F6000FKXXU 24"" Smart Full HD HDR LED TV | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,32A5Q,GB,Currys,199.0,GBP,"Buy HISENSE A5Q 32"" QLED Full HD HDR Smart TV with Freely - 32A5QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,43E7QPRO,GB,Currys,345.0,GBP,"Buy HISENSE E7Q PRO 43"" QLED 4K HDR Smart TV with Freely - 43E7QTUK PRO | Currys",Success,降价
+2026-06-22,09:37:07,Hisense,32A4Q,GB,Currys,149.0,GBP,"Buy HISENSE A4Q 32"" LED HD Ready HDR Smart TV with Freely - 32A4QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,32H5000,GB,Currys,159.0,GBP,"Buy SAMSUNG UE32H5000FKXXU 32"" Smart HD Ready HDR LED TV | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,40A4Q,GB,Currys,189.0,GBP,"Buy HISENSE A4Q 40"" LED Full HD HDR Smart TV with Freely - 40A4QTUK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,43SF560,GB,Currys,189.0,GBP,Buy TCL SF560 43” QLED Full HD Smart Fire TV - 43SF560-UK | Currys,Success,降价
+2026-06-22,09:37:07,Samsung,98DU9000,GB,Currys,1299.0,GBP,"SAMSUNG DU9000 98"" Crystal UHD 4K HDR Smart TV 2024 - UE98DU9000 | Currys",Success,持平
+2026-06-22,09:37:07,LG,43LR6000,GB,Currys,179.99,GBP,"Buy LG 43LR60006LA 43"" Smart Full HD HDR LED TV | Currys",Success,持平
+2026-06-22,09:37:07,LG,43UA7300,GB,Currys,219.99,GBP,"Buy LG UA73 43"" LED 4K HDR Smart TV 2025 - 43UA73006LA | Currys",Success,持平
+2026-06-22,09:37:07,TCL,55PF650K,GB,Currys,289.0,GBP,"TCL PF650K 55"" LED 4K HDR Smart Fire TV with Freely - 55PF650K | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,40A5Q,GB,Currys,249.0,GBP,"Buy HISENSE A5Q 40"" QLED Full HD HDR Smart TV with Freely - 40A5QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55Q7F,GB,Currys,449.0,GBP,"Buy SAMSUNG Q7F5 55"" QLED 4K Vision AI Smart TV 2025 - QE55Q7F5 | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,43A7Q,GB,Currys,329.0,GBP,"Buy HISENSE A7Q 43"" QLED 4K Smart AI TV with Freely - 43A7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,58A6Q,GB,Currys,349.0,GBP,"Buy HISENSE A6Q 58"" LED 4K HDR Smart TV with Freely - 58A6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,55C7K,GB,Currys,649.0,GBP,"Buy TCL C7K 55"" QD-Mini LED 4K HDR Smart Google TV - 55C7K | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,43Q8F,GB,Currys,419.0,GBP,"Buy SAMSUNG Q8F 43"" QLED 4K Vision AI Smart TV 2025 - QE43Q8F | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75U7QPRO,GB,Currys,1189.0,GBP,"Buy HISENSE U7Q PRO 75"" Mini LED 4K 165Hz Smart AI TV with Freely - 75U7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85Q7F,GB,Currys,1099.0,GBP,"Buy SAMSUNG Q7F 85"" QLED 4K Vision AI Smart TV 2025 - QE85Q7F | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75E7Q,GB,Currys,649.0,GBP,"Buy HISENSE E7Q 75"" QLED 4K Smart AI TV with Freely - 75E7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,85A6Q,GB,Currys,779.0,GBP,"Buy HISENSE A6Q 85"" LED 4K HDR Smart TV with Freely - 85A6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65T6C,GB,Currys,446.0,GBP,"Buy TCL T6C 65"" QLED 4K HDR Smart Fire TV with Freely - 65T6C-UK | Currys",Success,降价
+2026-06-22,09:37:07,TCL,50C7K,GB,Currys,599.0,GBP,"Buy TCL C7K 50"" QD-Mini LED 4K HDR Smart Google TV - 50C7K | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75V6C,GB,Currys,549.0,GBP,"Buy TCL 75P6K-UK 75"" Smart 4K Ultra HD HDR LED TV | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50U7Q,GB,Currys,449.0,GBP,"Buy HISENSE U7Q 50"" Mini LED 4K 144Hz Smart AI TV with Freely - 50U7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,77C5,GB,Currys,2399.99,GBP,"LG C5 77"" OLED evo AI 4K HDR Smart TV 2025 - OLED77C54LA | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65PF650K,GB,Currys,395.0,GBP,"TCL PF650K 65"" LED 4K HDR Smart Fire TV with Freely - 65PF650K | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75E7QPRO,GB,Currys,789.0,GBP,"Buy HISENSE E7Q PRO 75"" QLED 4K HDR Smart TV with Freely - 75E7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,TCL,50T6C,GB,Currys,279.0,GBP,"Buy TCL T6C 50"" QLED 4K HDR Smart Fire TV with Freely - 50T6C-UK | Currys",Success,降价
+2026-06-22,09:37:07,Samsung,55Q8F,GB,Currys,549.0,GBP,"Buy SAMSUNG Q8F 55"" QLED 4K Vision AI Smart TV 2025 - QE55Q8F | Currys",Success,持平
+2026-06-22,09:37:07,LG,43QNED80A,GB,Currys,359.99,GBP,"Buy LG QNED82 43"" QNED AI 4K HDR Smart TV 2025 - 43QNED82A6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65QN80F,GB,Currys,999.0,GBP,"Buy SAMSUNG QN80F 65"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE65QN80F | Currys",Success,持平
+2026-06-22,09:37:07,LG,55QNED85A,GB,Currys,699.0,GBP,"Buy LG QNED86 55"" QNED evo AI Mini LED 4K HDR Smart TV 2025 - 55QNED86A6A | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75C7K,GB,Currys,1099.0,GBP,"Buy TCL C7K 75"" QD-Mini LED 4K HDR Smart Google TV - 75C7K | Currys",Success,持平
+2026-06-22,09:37:07,TCL,55T6C,GB,Currys,329.0,GBP,"Buy TCL T6C 55"" QLED 4K HDR Smart Fire TV with Freely - 55T6C-UK | Currys",Success,降价
+2026-06-22,09:37:07,TCL,50C6K,GB,Currys,449.0,GBP,"Buy TCL C6K 50"" QD-Mini LED 4K HDR Smart Google TV - 50C6K | Currys",Success,持平
+2026-06-22,09:37:07,TCL,98P8K,GB,Currys,1299.0,GBP,"Buy TCL 98P8K 98"" Smart 4K Ultra HD HDR QLED TV | Currys",Success,持平
+2026-06-22,09:37:07,LG,75QNED7EB,GB,Currys,699.99,GBP,"Buy LG QNED7E 75"" QNED AI Mini LED 4K HDR Smart TV 2026 - 75QNED7EB3C | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50A7Q,GB,Currys,349.0,GBP,"Buy HISENSE A7Q 50"" QLED 4K Smart AI TV with Freely - 50A7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,65QNED85A,GB,Currys,899.0,GBP,"Buy LG QNED86 65"" QNED evo AI Mini LED 4K HDR Smart TV 2025 - 65QNED86A6A | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75QN70F,GB,Currys,1199.0,GBP,"Buy SAMSUNG QN70F 75"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE75QN70F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,32LS03CB,GB,Currys,399.0,GBP,"SAMSUNG The Frame LS03C 32"" QLED Full HD Art Mode Smart TV 2023 - QE32LS03CB | Currys",Success,持平
+2026-06-22,09:37:07,TCL,85C7K,GB,Currys,1399.0,GBP,"Buy TCL C7K 85"" QD-Mini LED 4K HDR Smart Google TV - 85C7K | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65E7Q,GB,Currys,529.0,GBP,"Buy HISENSE E7Q 65"" QLED 4K Smart AI TV with Freely - 65E7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55U8Q,GB,Currys,899.0,GBP,"Buy HISENSE U8Q 55"" Mini LED 4K 165Hz Smart AI TV with Freely - 55U8QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55U7Q,GB,Currys,599.0,GBP,"Buy HISENSE U7Q 55"" Mini LED 4K 144Hz Smart AI TV with Freely - 55U7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75T6C,GB,Currys,699.0,GBP,"Buy TCL T6C 75"" QLED 4K HDR Smart Fire TV with Freely - 75T6C-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,85T6C,GB,Currys,799.0,GBP,"Buy TCL T6C 85"" QLED 4K HDR Smart Fire TV with Freely - 85T6C-UK | Currys",Success,降价
+2026-06-22,09:37:07,TCL,65C6K,GB,Currys,679.0,GBP,"Buy TCL C6K 65"" QD-Mini LED 4K HDR Smart Google TV - 65C6K | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75A6Q,GB,Currys,649.0,GBP,"Buy HISENSE A6Q 75"" LED 4K HDR Smart TV with Freely - 75A6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65C8K,GB,Currys,1199.0,GBP,"Buy TCL C8K 65"" QD-Mini LED 4K HDR Smart Google TV - 65C8K-UK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75U7Q,GB,Currys,999.0,GBP,"Buy HISENSE 75U7QTUK 75"" Smart 4K Ultra HD HDR Mini LED TV | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65Q7F,GB,Currys,679.0,GBP,"Buy SAMSUNG Q7F5 65"" QLED 4K Vision AI Smart TV 2025 - QE65Q7F5 | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65U7Q,GB,Currys,749.0,GBP,"Buy HISENSE U7Q 65"" Mini LED 4K 144Hz Smart AI TV with Freely - 65U7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,100QN80F,GB,Currys,2299.0,GBP,"Buy SAMSUNG QN80F 100"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE100QN80F | Currys",Success,降价
+2026-06-22,09:37:07,LG,75NU800B,GB,Currys,649.99,GBP,"Buy LG NU80 75"" LED 4K HDR Smart TV 2026 - 75NU800B6LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65Q8F,GB,Currys,749.0,GBP,"Buy SAMSUNG Q8F 65"" QLED 4K Vision AI Smart TV 2025 - QE65Q8F | Currys",Success,持平
+2026-06-22,09:37:07,LG,55QNED80A,GB,Currys,499.99,GBP,"Buy LG QNED82 55"" QNED AI 4K HDR Smart TV 2025 - 55QNED82A6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,43U8000H,GB,Currys,319.0,GBP,"Buy SAMSUNG U8000H 43"" Crystal UHD 4K HDR Smart TV 2026 - UE43U8000H | Currys",Success,持平
+2026-06-22,09:37:07,LG,48C6,GB,Currys,1399.99,GBP,"Buy LG C6 48"" OLED AI 4K HDR Smart TV 2026 - OLED48C64LA | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55S7NQ,GB,Currys,749.0,GBP,"HISENSE Canvas S7NQ 55"" QLED 4K Smart TV with Freely & Art Mode - 55S7NQTUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,55C5,GB,Currys,1099.99,GBP,"Buy LG C5 55"" OLED evo AI 4K HDR Smart TV 2025 - OLED55C56LB | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55A7Q,GB,Currys,399.0,GBP,"Buy HISENSE A7Q 55"" QLED 4K Smart AI TV with Freely - 55A7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,85E7Q,GB,Currys,895.0,GBP,"Buy HISENSE E7Q 85"" QLED 4K Smart AI TV with Freely - 85E7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75U8Q,GB,Currys,1599.0,GBP,"Buy HISENSE U8Q 75"" Mini LED 4K 165Hz Smart AI TV with Freely - 75U8QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,85U7QPRO,GB,Currys,1489.0,GBP,"Buy HISENSE U7Q PRO 85"" Mini LED 4K 165Hz Smart AI TV with Freely - 85U7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,LG,50QNED70B,GB,Currys,329.99,GBP,"Buy LG QNED7E 50"" QNED AI Mini LED 4K HDR Smart TV 2026 - 50QNED7EB3C | Currys",Success,降价
+2026-06-22,09:37:07,LG,50QNED80A,GB,Currys,399.99,GBP,"Buy LG QNED82 50"" QNED AI 4K HDR Smart TV 2025 - 50QNED82A6B | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,116UXQ,GB,Currys,17999.0,GBP,"Buy HISENSE UX 116"" Tri-Chroma RGB Mini LED Smart AI TV with Freely - 116UXQTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65E6Q,GB,Currys,429.0,GBP,"Buy HISENSE E6Q 65"" LED 4K HDR Smart TV with Freely - 65E6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75P8K,GB,Currys,699.0,GBP,"Buy TCL 75P8K 75"" Smart 4K Ultra HD HDR QLED TV | Currys",Success,持平
+2026-06-22,09:37:07,LG,55QNED70B,GB,Currys,429.99,GBP,"Buy LG QNED7E 55"" QNED AI Mini LED 4K HDR Smart TV 2026 - 55QNED7EB3C | Currys",Success,降价
+2026-06-22,09:37:07,TCL,75C6K,GB,Currys,899.0,GBP,"Buy TCL C6K 75"" QD-Mini LED 4K HDR Smart Google TV - 75C6K | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65A7Q,GB,Currys,549.0,GBP,"Buy HISENSE A7Q 65"" QLED 4K Smart AI TV with Freely - 65A7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,50MRGB88B6B,GB,Currys,1099.99,GBP,"Buy LG MRGB88 50"" Mini RGB AI 4K HDR Smart TV 2026 - 50MRGB88B6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,115MR95F,GB,Currys,24999.0,GBP,"Buy SAMSUNG MR95F 115"" Micro RGB 4K Smart AI TV - MRE115MR95F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,50QN80F,GB,Currys,599.0,GBP,"Buy SAMSUNG QN80F 50"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE50QN80F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75Q7F,GB,Currys,999.0,GBP,"Buy SAMSUNG Q7F5 75"" QLED 4K Vision AI Smart TV 2025 - QE75Q7F5 | Currys",Success,持平
+2026-06-22,09:37:07,TCL,98C7K,GB,Currys,1999.0,GBP,"Buy TCL C7K 98"" QD-Mini LED 4K HDR Smart Google TV - 98C7K | Currys",Success,持平
+2026-06-22,09:37:07,LG,43NU800B,GB,Currys,259.99,GBP,"Buy LG NU80 43"" LED 4K HDR Smart TV 2026 - 43NU800B6LC | Currys",Success,持平
+2026-06-22,09:37:07,LG,65G6,GB,Currys,3099.99,GBP,"Buy LG G6 65"" OLED AI 4K HDR Smart TV 2026 (Wall Mount Version) - OLED65G64LW | Currys",Success,持平
+2026-06-22,09:37:07,Sony,85XR55BP,GB,Currys,1999.0,GBP,"Buy SONY BRAVIA 5 85"" XR Mini LED 4K HDR Smart TV - K85XR55BP | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75C6KS,GB,Currys,799.0,GBP,"Buy TCL C6KS 75"" QD-Mini LED 4K HDR Smart Google TV - 75C6KS | Currys",Success,持平
+2026-06-22,09:37:07,LG,65C5,GB,Currys,1499.0,GBP,"Buy LG C5 65"" OLED evo AI 4K HDR Smart TV 2025 - OLED65C56LB | Currys",Success,降价
+2026-06-22,09:37:07,TCL,55P8K,GB,Currys,429.0,GBP,"Buy TCL 55P8K 55"" Smart 4K Ultra HD HDR QLED TV | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55E6Q,GB,Currys,299.0,GBP,"Buy HISENSE E6Q 55"" LED 4K HDR Smart TV with Freely - 55E6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65LS03FW,GB,Currys,1299.0,GBP,"Buy SAMSUNG The Frame Pro (2025) 65"" Neo QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE65LS03FW | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,85U7Q,GB,Currys,1299.0,GBP,"Buy HISENSE U7Q 85"" Mini LED 4K 144Hz Smart AI TV with Freely - 85U7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Sony,65XR90PU,GB,Currys,2299.0,GBP,"SONY BRAVIA 9 65"" QLED XR Mini LED 4K HDR Smart TV - K65XR90PU | Currys",Success,持平
+2026-06-22,09:37:07,LG,86NANO81A6A,GB,Currys,1099.0,GBP,"Buy LG NANO81A 86"" NanoCell AI 4K HDR Smart TV 2025 - 86NANO81A6A | Currys",Success,持平
+2026-06-22,09:37:07,LG,77G5,GB,Currys,3599.0,GBP,"LG G5 77"" OLED evo AI 4K HDR Smart TV 2025 (Wall Mount Version) - OLED77G54LW | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,85E7QPRO,GB,Currys,1099.0,GBP,"Buy HISENSE E7Q PRO 85"" QLED 4K HDR Smart TV with Freely - 85E7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,LG,50QNED85B,GB,Currys,799.99,GBP,"Buy LG QNED86 50"" QNED AI Mini LED 4K HDR Smart TV 2026 - 50QNED86B6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,43LS01D,GB,Currys,599.0,GBP,"SAMSUNG The Serif LS01D 43"" QLED 4K HDR Smart TV in Cloud White 2024 - QE43LS01DA | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,100U7QPRO,GB,Currys,2489.0,GBP,"Buy HISENSE U7Q PRO 100"" Mini LED 4K 165Hz Smart AI TV with Freely - 100U7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75LS03FW,GB,Currys,1699.0,GBP,"Buy SAMSUNG The Frame Pro (2025) 75"" Neo QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE75LS03FW | Currys",Success,降价
+2026-06-22,09:37:07,LG,65G6,GB,Currys,3099.99,GBP,"Buy LG G6 65"" OLED AI 4K HDR Smart TV 2026 (Stand Version) - OLED65G66LS | Currys",Success,持平
+2026-06-22,09:37:07,Sony,77XR8AB,GB,Currys,2399.0,GBP,"Buy SONY BRAVIA 8A 77"" OLED 4K HDR AI Smart TV - K77XR8AB | Currys",Success,持平
+2026-06-22,09:37:07,LG,83C5,GB,Currys,3499.99,GBP,"Buy LG C5 83"" OLED evo AI 4K HDR Smart TV 2025 - OLED83C54LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65M80H,GB,Currys,999.0,GBP,"Buy SAMSUNG M80H 65"" Mini LED 4K Vision AI Smart TV 2026 - UE65M80H | Currys",Success,持平
+2026-06-22,09:37:07,LG,65QNED80A,GB,Currys,699.0,GBP,"Buy LG QNED82 65"" QNED AI 4K HDR Smart TV 2025 - 65QNED82A6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75QN80F,GB,Currys,1399.0,GBP,"Buy SAMSUNG QN80F 75"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE75QN80F | Currys",Success,持平
+2026-06-22,09:37:07,LG,55B6,GB,Currys,1099.99,GBP,"Buy LG B6 55"" OLED AI 4K HDR Smart TV 2026 - OLED55B6ELC | Currys",Success,降价
+2026-06-22,09:37:07,Hisense,50E6Q,GB,Currys,279.0,GBP,"Buy HISENSE E6Q 50"" LED 4K HDR Smart TV with Freely - 50E6QTUK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,98C6K,GB,Currys,1699.0,GBP,"Buy TCL C6K 98"" QD-Mini LED 4K HDR Smart Google TV - 98C6K | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85QN70F,GB,Currys,1599.0,GBP,"Buy SAMSUNG QN70F 85"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE85QN70F | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65C6KS,GB,Currys,629.0,GBP,"Buy TCL C6KS 65"" QD-Mini LED 4K HDR Smart Google TV - 65C6KS | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,100U7Q,GB,Currys,1999.0,GBP,"Buy HISENSE U7Q 100"" Mini LED 4K 165Hz Smart AI TV with Freely - 100U7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85QN90F,GB,Currys,2799.0,GBP,"Buy SAMSUNG QN90F 85"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE85QN90F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,50Q8F,GB,Currys,499.0,GBP,"Buy SAMSUNG Q8F 50"" QLED 4K Vision AI Smart TV 2025 - QE50Q8F | Currys",Success,持平
+2026-06-22,09:37:07,Sony,75S32B,GB,Currys,999.0,GBP,"Buy SONY BRAVIA 3 75"" LED 4K HDR AI Smart TV - K75S38B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,83S90F,GB,Currys,3299.0,GBP,"Buy SAMSUNG S90F 83"" OLED 4K Vision AI Smart TV 2025 - QE83S90F | Currys",Success,持平
+2026-06-22,09:37:07,Sony,75XR95M2,GB,Currys,4299.0,GBP,"Buy SONY BRAVIA 9 II 75"" True RGB Mini LED 4K HDR Smart TV 2026 - 75XR95M2 | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,48S95H,GB,Currys,1799.0,GBP,"Buy SAMSUNG S95H 48"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE48S95H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,85U8Q,GB,Currys,2099.0,GBP,"Buy HISENSE U8Q 85"" Mini LED 4K 165Hz Smart AI TV with Freely - 85U8QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,50U8000H,GB,Currys,399.0,GBP,"Buy SAMSUNG U8000H 50"" Crystal UHD 4K HDR Smart TV 2026 - UE50U8000H | Currys",Success,持平
+2026-06-22,09:37:07,Sony,65XR95M2,GB,Currys,3499.0,GBP,"Buy SONY BRAVIA 9 II 65"" True RGB Mini LED 4K HDR Smart TV 2026 - 65XR95M2 | Currys",Success,持平
+2026-06-22,09:37:07,Sony,75XR55BP,GB,Currys,1699.0,GBP,"Buy SONY BRAVIA 5 75"" XR Mini LED 4K HDR Smart TV - K75XR55BP | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65P8K,GB,Currys,649.0,GBP,"Buy TCL 65P8K 65"" Smart 4K Ultra HD HDR QLED TV | Currys",Success,持平
+2026-06-22,09:37:07,Sony,55XR75M2,GB,Currys,1999.0,GBP,"Buy SONY BRAVIA 7 II 55"" True RGB Mini LED 4K HDR Smart TV 2026 - K55XR75M2 | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,43QN70H,GB,Currys,599.0,GBP,"Buy SAMSUNG QN70H 43"" Neo QLED 4K Mini LED Vision AI Smart TV 2026 - QE43QN70H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65A85Q,GB,Currys,1199.0,GBP,"Buy HISENSE A85Q 65"" OLED 4K Smart AI TV with Freely - 65A85QTUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,55NANO80A6B,GB,Currys,379.0,GBP,"Buy LG NANO80 55"" NanoCell AI 4K HDR Smart TV 2025 - 55NANO80A6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55U8000H,GB,Currys,449.0,GBP,"Buy SAMSUNG U8000H 55"" Crystal UHD 4K HDR Smart TV 2026 - UE55U8000H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55S99H,GB,Currys,2499.0,GBP,"Buy SAMSUNG S99H 55"" OLED Glare Free & Art Mode 4K Vision AI Smart TV 2026 - QE55S99H | Currys",Success,持平
+2026-06-22,09:37:07,LG,43NANO80A6B,GB,Currys,248.97,GBP,"Buy LG NANO80 43"" NanoCell AI 4K HDR Smart TV 2025 - 43NANO80A6B | Currys",Success,持平
+2026-06-22,09:37:07,TCL,85P7K,GB,Currys,899.0,GBP,"Buy TCL 85P7K 85"" Smart 4K Ultra HD HDR QLED TV | Currys",Success,持平
+2026-06-22,09:37:07,LG,65MRGB88B9B,GB,Currys,1399.99,GBP,"Buy LG MRGB88 65"" Mini RGB AI 4K HDR Smart TV 2026 - 65MRGB88B6B | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75A7Q,GB,Currys,749.0,GBP,"Buy HISENSE A7Q 75"" QLED 4K Smart AI TV with Freely - 75A7QTUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,83G5,GB,Currys,5499.0,GBP,"Buy LG G5 83"" OLED evo AI 4K HDR Smart TV 2025 (Wall Mount Version) - OLED83G54LW | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,100U8Q,GB,Currys,3495.0,GBP,"Buy HISENSE U8Q 100"" Mini LED 4K 165Hz Smart AI TV with Freely - 100U8QTUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,43S5Q,GB,Currys,499.0,GBP,"Buy HISENSE Deco 43S5QTUK 43"" Smart 4K Ultra HD HDR QLED TV with Freely - White | Currys",Success,持平
+2026-06-22,09:37:07,LG,75QNED80A,GB,Currys,1199.0,GBP,"Buy LG QNED82 75"" QNED AI 4K HDR Smart TV 2025 - 75QNED82A6B | Currys",Success,新上线
+2026-06-22,09:37:07,Sony,85S32BP,GB,Currys,1399.0,GBP,"Buy SONY BRAVIA 3 85"" LED 4K HDR AI Smart TV - K85S38BP | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65P7K,GB,Currys,529.0,GBP,"Buy TCL 65P7K 65"" Smart 4K Ultra HD HDR QLED TV | Currys",Success,持平
+2026-06-22,09:37:07,LG,55NU800B,GB,Currys,379.99,GBP,"Buy LG NU80 55"" LED 4K HDR Smart TV 2026 - 55NU800B6LA | Currys",Success,持平
+2026-06-22,09:37:07,LG,75QNED9MA,GB,Currys,1499.0,GBP,"Buy LG QNED9MA 75"" QNED evo AI Mini LED 4K HDR True Wireless Smart TV 2025 - 75QNED9MA6B | Currys",Success,持平
+2026-06-22,09:37:07,TCL,115C7K,GB,Currys,7499.0,GBP,"Buy TCL C7K 115"" QD-Mini LED 4K HDR Smart Google TV - 115C7K-UK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,83S85F,GB,Currys,2799.0,GBP,"Buy SAMSUNG S85F 83"" OLED 4K Vision AI Smart TV 2025 - QE83S85F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55QN85F,GB,Currys,799.0,GBP,"Buy SAMSUNG QN85F 55"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE55QN85F | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65S7NQ,GB,Currys,949.0,GBP,"Buy HISENSE Canvas S7NQ 65"" QLED 4K Smart TV with Freely & Art Mode - 65S7NQTUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,98QN90F,GB,Currys,5299.0,GBP,"Buy SAMSUNG QN90F 98"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE98QN90F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75Q8F,GB,Currys,1099.0,GBP,"Buy SAMSUNG Q8F 75"" QLED 4K Vision AI Smart TV 2025 - QE75Q8F | Currys",Success,持平
+2026-06-22,09:37:07,LG,86QNED85A,GB,Currys,1999.0,GBP,"Buy LG QNED86 86"" QNED evo AI Mini LED 4K HDR Smart TV 2025 - 86QNED86A6A | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,27LSM7,GB,Currys,999.0,GBP,"Buy SAMSUNG The Movingstyle UE27LSM7FAXXXU 27"" Smart Quad HD HDR LED TV - White | Currys",Success,持平
+2026-06-22,09:37:07,Sony,77XR80PU,GB,Currys,2699.0,GBP,"Buy SONY BRAVIA 8 77"" OLED 4K HDR AI Smart TV - K77XR80PU | Currys",Success,持平
+2026-06-22,09:37:07,LG,75QNED85B,GB,Currys,1699.99,GBP,"Buy LG QNED86 75"" QNED AI Mini LED 4K HDR Smart TV 2026 - 75QNED86B6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,50QN70H,GB,Currys,799.0,GBP,"Buy SAMSUNG QN70H 50"" Neo QLED 4K Mini LED Vision AI Smart TV 2026 - QE50QN70H | Currys",Success,持平
+2026-06-22,09:37:07,TCL,50PF650K,GB,Currys,249.0,GBP,"TCL PF650K 50"" LED 4K HDR Smart Fire TV with Freely - 50PF650K | Currys",Success,持平
+2026-06-22,09:37:07,LG,100QNED85B,GB,Currys,3999.99,GBP,"Buy LG QNED87 100"" QNED AI Mini LED 4K HDR Smart TV 2026 - 100QNED87B6 | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55S90H,GB,Currys,1799.0,GBP,"Buy SAMSUNG S90H 55"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE55S90H | Currys",Success,持平
+2026-06-22,09:37:07,LG,77C6,GB,Currys,3599.99,GBP,"Buy LG C6 77"" OLED AI 4K HDR Smart TV 2026 - OLED77C64LA | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65UR9S,GB,Currys,2999.0,GBP,"Buy HISENSE 65UR9STUK 65"" Smart 4K Ultra HD HDR RGB Mini LED TV | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65M70H,GB,Currys,799.0,GBP,"Buy SAMSUNG M70H 65"" 4K Mini LED Vision AI Smart TV 2026 - UE65M70H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65U7S,GB,Currys,1599.0,GBP,"Buy HISENSE U7S 65"" Mini LED 4K 144Hz Smart AI TV with Freely - 65U7STUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,100QNED85A,GB,Currys,2999.0,GBP,"Buy LG QNED86 100"" QNED evo AI Mini LED 4K HDR Smart TV 2025 - 100QNED86A6 | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85R95H,GB,Currys,6099.0,GBP,"Buy SAMSUNG R95H 85"" Micro RGB 4K Smart AI TV 2026 - MRE85R95H | Currys",Success,持平
+2026-06-22,09:37:07,TCL,85C6K,GB,Currys,1099.0,GBP,"Buy TCL C6K 85"" QD-Mini LED 4K HDR Smart Google TV - 85C6K | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75R95H,GB,Currys,4199.0,GBP,"Buy SAMSUNG R95H 75"" Micro RGB 4K Smart AI TV 2026 - MRE75R95H | Currys",Success,持平
+2026-06-22,09:37:07,LG,55NU850B,GB,Currys,389.99,GBP,"Buy LG NU85 55"" LED 4K HDR Smart TV 2026 - 55NU850B6LA | Currys",Success,持平
+2026-06-22,09:37:07,TCL,55P7K,GB,Currys,379.0,GBP,"Buy TCL 55P7K 55"" Smart 4K Ultra HD HDR QLED TV | Currys",Success,持平
+2026-06-22,09:37:07,LG,65QNED85B,GB,Currys,1099.99,GBP,"Buy LG QNED86 65"" QNED AI Mini LED 4K HDR Smart TV 2026 - 65QNED86B6B | Currys",Success,持平
+2026-06-22,09:37:07,Sony,65XR75M2,GB,Currys,2299.0,GBP,"Buy SONY BRAVIA 7 II 65"" True RGB Mini LED 4K HDR Smart TV 2026 - K65XR75M2 | Currys",Success,持平
+2026-06-22,09:37:07,LG,77B6,GB,Currys,2199.0,GBP,"Buy LG B6 77"" OLED AI 4K HDR Smart TV 2026 - OLED77B6ELC | Currys",Success,新上线
+2026-06-22,09:37:07,LG,48G6,GB,Currys,1699.99,GBP,"Buy LG G6 48"" OLED AI 4K HDR Smart TV 2026 (Stand Version) - OLED48G66LS | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65QN990FT,GB,Currys,2999.0,GBP,"Buy SAMSUNG QN990F 65"" Neo QLED 8K Mini LED Vision AI Smart TV 2025 - QE65QN990FT | Currys",Success,持平
+2026-06-22,09:37:07,TCL,55A300W,GB,Currys,799.0,GBP,"Buy TCL NXTVISION A300W 55"" QLED 4K HDR Smart Google TV - 55A300W-UK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55S95H,GB,Currys,2399.0,GBP,"Buy SAMSUNG S95H 55"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE55S95H | Currys",Success,持平
+2026-06-22,09:37:07,LG,65B6,GB,Currys,1599.99,GBP,"Buy LG B6 65"" OLED AI 4K HDR Smart TV 2026 - OLED65B6ELC | Currys",Success,持平
+2026-06-22,09:37:07,Sony,50XR75M2,GB,Currys,1899.0,GBP,"Buy SONY BRAVIA 7 II 50"" True RGB Mini LED 4K HDR Smart TV 2026 - K50XR75M2 | Currys",Success,持平
+2026-06-22,09:37:07,LG,48C5,GB,Currys,949.0,GBP,"Buy LG C5 48"" OLED evo AI 4K HDR Smart TV 2025 - OLED48C56LB | Currys",Success,持平
+2026-06-22,09:37:07,TCL,98C8L,GB,Currys,3999.0,GBP,"Buy TCL C8L 98"" SQD-Mini LED 4K HDR Smart Google TV - 98C8L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,85P8K,GB,Currys,949.0,GBP,"Buy TCL 85P8K 85"" Smart 4K Ultra HD HDR QLED TV | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50U7S,GB,Currys,999.0,GBP,"Buy HISENSE U7S 50"" Mini LED 4K 144Hz Smart AI TV with Freely - 50U7STUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,50LS01D,GB,Currys,749.0,GBP,"SAMSUNG The Serif LS01D 50"" QLED 4K HDR Smart TV in Cloud White 2024 - QE50LS01DA | Currys",Success,持平
+2026-06-22,09:37:07,LG,65C6,GB,Currys,2599.99,GBP,"Buy LG C6 65"" OLED AI 4K HDR Smart TV 2026 - OLED65C66LB | Currys",Success,持平
+2026-06-22,09:37:07,Sony,98XR55BP,GB,Currys,3999.0,GBP,"Buy SONY BRAVIA 5 98"" XR Mini LED 4K HDR Smart TV - K98XR55BP | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,48S90H,GB,Currys,1399.0,GBP,"Buy SAMSUNG S90H 48"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE48S90H | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65C7L,GB,Currys,1299.0,GBP,"Buy TCL C7L 65"" SQD-Mini LED 4K HDR Smart Google TV - 65C7L-UK | Currys",Success,持平
+2026-06-22,09:37:07,LG,43NU850B,GB,Currys,269.99,GBP,"Buy LG NU85 43"" LED 4K HDR Smart TV 2026 - 43NU850B6LA | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,43E7QPRO,GB,Currys,699.0,GBP,"Buy HISENSE E7S PRO 43"" QLED 4K HDR Smart TV with Freely - 43E7QTUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,LG,85QNED70B,GB,Currys,1499.99,GBP,"Buy LG QNED72 85"" QNED AI 4K HDR Smart TV 2026 - 85QNED72B6A | Currys",Success,涨价
+2026-06-22,09:37:07,LG,75NU850B,GB,Currys,699.99,GBP,"Buy LG NU85 75"" LED 4K HDR Smart TV 2026 - 75NU850B6LA | Currys",Success,持平
+2026-06-22,09:37:07,LG,55MRGB88B9B,GB,Currys,1299.99,GBP,"Buy LG MRGB88 55"" Mini RGB AI 4K HDR Smart TV 2026 - 55MRGB88B6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85LS03FW,GB,Currys,1999.0,GBP,"Buy SAMSUNG The Frame Pro (2025) 85"" Neo QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE85LS03FW | Currys",Success,降价
+2026-06-22,09:37:07,Hisense,110UXNQ,GB,Currys,14999.0,GBP,"Buy HISENSE 110UXNQTUK 110"" Smart 4K Ultra HD HDR Mini LED TV with Amazon Alexa | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,50QN80H,GB,Currys,999.0,GBP,"Buy SAMSUNG QN80H 50"" Neo QLED 4K Mini LED Vision AI Smart TV 2026 - QE50QN80H | Currys",Success,持平
+2026-06-22,09:37:07,LG,50NU800B,GB,Currys,329.99,GBP,"Buy LG NU80 50"" LED 4K HDR Smart TV 2026 - 50NU800B6LC | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75U8000H,GB,Currys,769.0,GBP,"Buy SAMSUNG U8000H 75"" Crystal UHD 4K HDR Smart TV 2026 - UE75U8000H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65S90H,GB,Currys,2599.0,GBP,"Buy SAMSUNG S90H 65"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE65S90H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65R95H,GB,Currys,3299.0,GBP,"Buy SAMSUNG R95H 65"" Micro RGB 4K Smart AI TV 2026 - MRE65R95H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85U8000H,GB,Currys,1249.0,GBP,"Buy SAMSUNG U8000H 85"" Crystal UHD 4K HDR Smart TV 2026 - UE85U8000H | Currys",Success,持平
+2026-06-22,09:37:07,LG,65NU850B,GB,Currys,549.0,GBP,"Buy LG NU85 65"" LED 4K HDR Smart TV 2026 - 65NU850B6LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55R85H,GB,Currys,1599.0,GBP,"Buy SAMSUNG R85H 55"" Micro RGB 4K Smart AI TV 2026 - MRE55R85H | Currys",Success,持平
+2026-06-22,09:37:07,LG,86QNED85A,GB,Currys,1999.0,GBP,"Buy LG QNED85 86"" QNED evo AI Mini LED 4K HDR Smart TV 2025 - 86QNED85A6C | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,77S99H,GB,Currys,4299.0,GBP,"Buy SAMSUNG S99H 77"" OLED Glare Free & Art Mode 4K Vision AI Smart TV 2026 - QE77S99H | Currys",Success,持平
+2026-06-22,09:37:07,LG,55C6,GB,Currys,1799.99,GBP,"Buy LG C6 55"" OLED evo AI 4K HDR Smart TV 2026 - OLED55C66LB | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75P7K,GB,Currys,699.0,GBP,"Buy TCL 75P7K 75"" Smart 4K Ultra HD HDR QLED TV | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50E6S,GB,Currys,499.0,GBP,"Buy HISENSE E6S 50"" LED 4K HDR Smart TV with Freely - 50E6STUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85QN990F,GB,Currys,5499.0,GBP,"Buy SAMSUNG QN990F 85"" Neo QLED 8K Mini LED Vision AI Smart TV 2025 - QE85QN990F | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55U7SPRO,GB,Currys,1499.0,GBP,"Buy HISENSE U7S PRO 55"" Mini LED 4K 165 Hz Smart AI TV with Freely - 55U7STUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,LG,65M5,GB,Currys,2299.0,GBP,"Buy LG M5 65"" OLED evo AI 4K HDR True Wireless Smart TV 2025 - OLED65M59LA | Currys",Success,持平
+2026-06-22,09:37:07,LG,75QNED70B,GB,Currys,999.99,GBP,"Buy LG QNED72 75"" QNED AI 4K HDR Smart TV 2026 - 75QNED72B6A | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75QN70H,GB,Currys,1699.0,GBP,"Buy SAMSUNG QN70H 75"" Neo QLED 4K Mini LED Vision AI Smart TV 2026 - QE75QN70H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85LS03HW,GB,Currys,3999.0,GBP,"Buy SAMSUNG The Frame Pro (2026) 85"" Neo QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE85LS03H | Currys",Success,持平
+2026-06-22,09:37:07,LG,86QNED9MA,GB,Currys,2199.0,GBP,"Buy LG QNED9MA 86"" QNED evo AI Mini LED 4K HDR True Wireless Smart TV 2025 - 86QNED9MA6B | Currys",Success,持平
+2026-06-22,09:37:07,LG,86MRGB96B,GB,Currys,5799.99,GBP,"Buy LG MRGB96 86"" Micro RGB AI 4K HDR Smart TV 2026 - 86MRGB96B6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,43M70H,GB,Currys,429.0,GBP,"Buy SAMSUNG M70H 43"" 4K Mini LED Vision AI Smart TV 2026 - UE43M70H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75LS03FW,GB,Currys,1799.0,GBP,"Buy SAMSUNG The Frame Pro QE75LS03FW 75"" Neo QLED 4K Smart TV & The Frame QE32LS03CBUXXU 32"" Smart Full HD HDR QLED TV Bundle | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,77S95H,GB,Currys,4199.0,GBP,"Buy SAMSUNG S95H 77"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE77S95H | Currys",Success,持平
+2026-06-22,09:37:07,LG,65C6,GB,Currys,2599.99,GBP,"Buy LG C6 65"" OLED AI 4K HDR Smart TV 2026 - OLED65C64LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,42S90H,GB,Currys,1299.0,GBP,"Buy SAMSUNG S90H 42"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE42S90H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65U8000H,GB,Currys,619.0,GBP,"Buy SAMSUNG U8000H 65"" Crystal UHD 4K HDR Smart TV 2026 - UE65U8000H | Currys",Success,持平
+2026-06-22,09:37:07,TCL,55C7L,GB,Currys,1099.0,GBP,"Buy TCL C7L 55"" SQD-Mini LED 4K HDR Smart Google TV - 55C7L-UK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55LS01D,GB,Currys,999.0,GBP,"SAMSUNG The Serif LS01D 55"" QLED 4K HDR Smart TV in Cloud White 2024 - QE55LS01DA | Currys",Success,持平
+2026-06-22,09:37:07,LG,86QNED85B,GB,Currys,2299.99,GBP,"Buy LG QNED86 86"" QNED AI Mini LED 4K HDR Smart TV 2026 - 86QNED86B6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75QN990FT,GB,Currys,3999.0,GBP,"Buy SAMSUNG QN990F 75"" Neo QLED 8K Mini LED Vision AI Smart TV 2025 - QE75QN990FT | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55M70H,GB,Currys,649.0,GBP,"Buy SAMSUNG M70H 55"" 4K Mini LED Vision AI Smart TV 2026 - UE55M70H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75UR9S,GB,Currys,3999.0,GBP,"Buy HISENSE 75UR9STUK 75"" Smart 4K Ultra HD HDR RGB Mini LED TV | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85QN85F,GB,Currys,2499.0,GBP,"Buy SAMSUNG QN85F 85"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE85QN85F | Currys",Success,持平
+2026-06-22,09:37:07,Sony,50S25M2PB,GB,Currys,749.0,GBP,Buy SONY BRAVIA 2 II 50” Smart 4K HDR LED TV - K50S25M2PB | Currys,Success,持平
+2026-06-22,09:37:07,Samsung,55LS03H,GB,Currys,1499.0,GBP,"Buy SAMSUNG The Frame (2026) 55"" QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE55LS03H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65QN80H,GB,Currys,1599.0,GBP,"Buy SAMSUNG QN80H 65"" Neo QLED 4K Mini LED Vision AI Smart TV 2026 - QE65QN80H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65S99H,GB,Currys,3299.0,GBP,"Buy SAMSUNG S99H 65"" OLED Glare Free & Art Mode 4K Vision AI Smart TV 2026 - QE65S99H | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65A300W,GB,Currys,999.0,GBP,"Buy TCL NXTVISION A300W 65"" QLED 4K HDR Smart Google TV - 65A300W-UK | Currys",Success,新上线
+2026-06-22,09:37:07,Hisense,85UR9S,GB,Currys,5499.0,GBP,"Buy HISENSE 85UR9STUK 85"" Smart 4K Ultra HD HDR RGB Mini LED TV | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85QN900F,GB,Currys,4499.0,GBP,"Buy SAMSUNG QN900F 85"" Neo QLED 8K Mini LED Vision AI Smart TV 2025 - QE85QN900F | Currys",Success,新上线
+2026-06-22,09:37:07,LG,85NU800B,GB,Currys,1049.99,GBP,"Buy LG NU80 85"" LED 4K HDR Smart TV 2026 - 85NU800B6LA | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55S7S,GB,Currys,1299.0,GBP,"Buy HISENSE Canvas S7S 55"" QLED 4K Smart TV with Freely & Art Mode - 55S7STUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,48B6,GB,Currys,1299.99,GBP,"Buy LG B6 48"" OLED AI 4K HDR Smart TV 2026 - OLED48B65LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55M80H,GB,Currys,799.0,GBP,"Buy SAMSUNG M80H 55"" Mini LED 4K Vision AI Smart TV 2026 - UE55M80H | Currys",Success,持平
+2026-06-22,09:37:07,LG,55QNED70B,GB,Currys,599.99,GBP,"Buy LG QNED72 55"" QNED AI 4K HDR Smart TV 2026 - 55QNED72B6B | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55QN70H,GB,Currys,899.0,GBP,"Buy SAMSUNG QN70H 55"" Neo QLED 4K Mini LED Vision AI Smart TV 2026 - QE55QN70H | Currys",Success,持平
+2026-06-22,09:37:07,Sony,55S25M2PB,GB,Currys,899.0,GBP,Buy SONY BRAVIA 2 II 55” Smart 4K HDR LED TV - K55S25M2PB | Currys,Success,持平
+2026-06-22,09:37:07,Hisense,65U7SPRO,GB,Currys,1799.0,GBP,"Buy HISENSE U7S PRO 65"" Mini LED 4K 165 Hz Smart AI TV with Freely - 65U7STUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,77S90H,GB,Currys,3599.0,GBP,"Buy SAMSUNG S90H 77"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE77S90H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,43Q7S,GB,Currys,519.0,GBP,"Buy HISENSE Q7S 43"" QLED 4K Smart AI TV with Freely - 43Q7STUK | Currys",Success,新上线
+2026-06-22,09:37:07,Samsung,75M70H,GB,Currys,1099.0,GBP,"Buy SAMSUNG M70H 75"" 4K Mini LED Vision AI Smart TV 2026 - UE75M70H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,48S85H,GB,Currys,1399.0,GBP,"Buy SAMSUNG S85H 48"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE48S85H | Currys",Success,持平
+2026-06-22,09:37:07,LG,50NU850B,GB,Currys,339.99,GBP,"Buy LG NU85 50"" LED 4K HDR Smart TV 2026 - 50NU850B6LA | Currys",Success,持平
+2026-06-22,09:37:07,LG,85NU850B,GB,Currys,1099.99,GBP,"Buy LG NU85 85"" LED 4K HDR Smart TV 2026 - 85NU850B6LA | Currys",Success,持平
+2026-06-22,09:37:07,LG,55B6,GB,Currys,1599.99,GBP,"Buy LG B6 55"" OLED AI 4K HDR Smart TV 2026 - OLED55B65LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85R85H,GB,Currys,3699.0,GBP,"Buy SAMSUNG R85H 85"" Micro RGB 4K Smart AI TV 2026 - MRE85R85H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55QN80H,GB,Currys,1299.0,GBP,"Buy SAMSUNG QN80H 55"" Neo QLED 4K Mini LED Vision AI Smart TV 2026 - QE55QN80H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65E7SPRO,GB,Currys,1199.0,GBP,"Buy HISENSE E7S PRO 65"" QLED 4K HDR Smart TV with Freely - 65E7STUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Sony,65S25M2PB,GB,Currys,1199.0,GBP,Buy SONY BRAVIA 2 II 65” Smart 4K HDR LED TV - K65S25M2PB | Currys,Success,持平
+2026-06-22,09:37:07,Samsung,65R85H,GB,Currys,2399.0,GBP,"Buy SAMSUNG R85H 65"" Micro RGB 4K Smart AI TV 2026 - MRE65R85H | Currys",Success,持平
+2026-06-22,09:37:07,LG,65NU800B,GB,Currys,529.99,GBP,"Buy LG NU80 65"" LED 4K HDR Smart TV 2026 - 65NU800B6LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,83S90H,GB,Currys,4799.0,GBP,"Buy SAMSUNG S90H 83"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE83S90H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65LS03H,GB,Currys,1899.0,GBP,"Buy SAMSUNG The Frame (2026) 65"" QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE65LS03H | Currys",Success,持平
+2026-06-22,09:37:07,LG,65QNED70B,GB,Currys,729.99,GBP,"Buy LG QNED72 65"" QNED AI 4K HDR Smart TV 2026 - 65QNED72B6B | Currys",Success,涨价
+2026-06-22,09:37:07,Hisense,55A6S,GB,Currys,579.0,GBP,"Buy HISENSE A6S 55"" LED 4K HDR Smart TV with Freely - 55A6STUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55Q7S,GB,Currys,699.0,GBP,"Buy HISENSE Q7S 55"" QLED 4K Smart AI TV with Freely - 55Q7STUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,100QN80H,GB,Currys,4499.0,GBP,"Buy SAMSUNG QN80H 100"" Neo QLED 4K Mini LED Vision AI Smart TV 2026 - QE100QN80H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,43E6S,GB,Currys,429.0,GBP,"Buy HISENSE E6S 43"" LED 4K HDR Smart TV with Freely - 43E6STUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,50QNED70B,GB,Currys,499.99,GBP,"Buy LG QNED72 50"" QNED AI 4K HDR Smart TV 2026 - 50QNED72B6B | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55E7SPRO,GB,Currys,899.0,GBP,"Buy HISENSE E7S PRO 55"" QLED 4K HDR Smart TV with Freely - 55E7STUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75M80H,GB,Currys,1399.0,GBP,"Buy SAMSUNG M80H 75"" Mini LED 4K Vision AI Smart TV 2026 - UE75M80H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50E7SPRO,GB,Currys,799.0,GBP,"Buy HISENSE E7S PRO 50"" QLED 4K HDR Smart TV with Freely - 50E7STUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85M70H,GB,Currys,1599.0,GBP,"Buy SAMSUNG M70H 85"" 4K Mini LED Vision AI Smart TV 2026 - UE85M70H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75LS03HW,GB,Currys,2999.0,GBP,"Buy SAMSUNG The Frame Pro (2026) 75"" Neo QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE75LS03H | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75A300W,GB,Currys,1499.0,GBP,"Buy TCL NXTVISION A300W 75"" QLED 4K HDR Smart Google TV - 75A300W-UK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65Q7S,GB,Currys,899.0,GBP,"Buy HISENSE Q7S 65"" QLED 4K Smart AI TV with Freely - 65Q7STUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50A7S,GB,Currys,649.0,GBP,"Buy HISENSE A7S 50"" QLED 4K Smart AI TV with Freely - 50A7STUK | Currys",Success,持平
+2026-06-22,09:37:07,Sony,75S25M2PB,GB,Currys,1399.0,GBP,Buy SONY BRAVIA 2 II 75” Smart 4K HDR LED TV - K75S25M2PB | Currys,Success,持平
+2026-06-22,09:37:07,Hisense,65E6S,GB,Currys,799.0,GBP,"Buy HISENSE E6S 65"" LED 4K HDR Smart TV with Freely - 65E6STUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,97G6,GB,Currys,15999.99,GBP,"Buy LG G6 97"" OLED AI 4K HDR Smart TV 2026 (Wall Mount Version) - OLED97G64LW | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50A6S,GB,Currys,499.0,GBP,"Buy HISENSE A6S 50"" LED 4K HDR Smart TV with Freely - 50A6STUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55A7S,GB,Currys,749.0,GBP,"Buy HISENSE A7S 55"" QLED 4K Smart AI TV with Freely - 55A7STUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,42C6,GB,Currys,1299.99,GBP,"Buy LG C6 42"" OLED AI 4K HDR Smart TV 2026 - OLED42C64LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75R85H,GB,Currys,3099.0,GBP,"Buy SAMSUNG R85H 75"" Micro RGB 4K Smart AI TV 2026 - MRE75R85H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65S85H,GB,Currys,2499.0,GBP,"Buy SAMSUNG S85H 65"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE65S85H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85LS03FW,GB,Currys,2199.0,GBP,"Buy SAMSUNG The Frame Pro QE85LS03FW 85"" Neo QLED Smart 4K TV & The Frame QE32LS03CBUXXU 32"" Smart Full HD HDR QLED TV | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75QN80H,GB,Currys,2299.0,GBP,"Buy SAMSUNG QN80H 75"" Neo QLED 4K Mini LED Vision AI Smart TV 2026 - QE75QN80H | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,83S85H,GB,Currys,3699.0,GBP,"Buy SAMSUNG S85H 83"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE83S85H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65A7S,GB,Currys,949.0,GBP,"Buy HISENSE A7S 65"" QLED 4K Smart AI TV with Freely - 65A7STUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,83S99H,GB,Currys,6099.0,GBP,"Buy SAMSUNG S99H 83"" OLED Glare Free & Art Mode 4K Vision AI Smart TV 2026 - QE83S99H | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65C8L,GB,Currys,1899.0,GBP,"Buy TCL C8L 65"" SQD-Mini LED 4K HDR Smart Google TV - 65C8L-UK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,55E6S,GB,Currys,579.0,GBP,"Buy HISENSE E6S 55"" LED 4K HDR Smart TV with Freely - 55E6STUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75E7SPRO,GB,Currys,1699.0,GBP,"Buy HISENSE E7S PRO 75"" QLED 4K HDR Smart TV with Freely - 75E7STUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,50Q7S,GB,Currys,599.0,GBP,"Buy HISENSE Q7S 50"" QLED 4K Smart AI TV with Freely - 50Q7STUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,77S85H,GB,Currys,3199.0,GBP,"Buy SAMSUNG S85H 77"" OLED Glare Free 4K Vision AI Smart TV 2026 - QE77S85H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,65A6S,GB,Currys,799.0,GBP,"Buy HISENSE A6S 65"" LED 4K HDR Smart TV with Freely - 65A6STUK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,85U7S,GB,Currys,2799.0,GBP,"Buy HISENSE U7S 85"" Mini LED 4K 144Hz Smart AI TV with Freely - 85U7STUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85QN80H,GB,Currys,2999.0,GBP,"Buy SAMSUNG QN80H 85"" Neo QLED 4K Mini LED Vision AI Smart TV 2026 - QE85QN80H | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75C8L,GB,Currys,2299.0,GBP,"Buy TCL C8L 75"" SQD-Mini LED 4K HDR Smart Google TV - 75C8L-UK | Currys",Success,新上线
+2026-06-22,09:37:07,Samsung,85M80H,GB,Currys,1899.0,GBP,"Buy SAMSUNG M80H 85"" Mini LED 4K Vision AI Smart TV 2026 - UE85M80H | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75Q7S,GB,Currys,1399.0,GBP,"Buy HISENSE Q7S 75"" QLED 4K Smart AI TV with Freely - 75Q7STUK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,85C8L,GB,Currys,2999.0,GBP,"Buy TCL C8L 85"" SQD-Mini LED 4K HDR Smart Google TV - 85C8L-UK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,85E7SPRO,GB,Currys,2099.0,GBP,"Buy HISENSE E7S PRO 85"" QLED 4K HDR Smart TV with Freely - 85E7STUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,85Q7S,GB,Currys,1799.0,GBP,"Buy HISENSE Q7S 85"" QLED 4K Smart AI TV with Freely - 85Q7STUK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65P8L,GB,Currys,849.0,GBP,"Buy TCL P8L 65"" QD-Mini LED 4K HDR Smart Google TV 2026 - 65P8L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,55C8L,GB,Currys,1199.0,GBP,"Buy TCL C8L 55"" SQD-Mini LED 4K HDR Smart Google TV - 55C8L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,85X11L,GB,Currys,5499.0,GBP,"Buy TCL X11L 85"" SQD-Mini LED 4K HDR Smart Google TV 2026 - 85X11L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,65RM7L,GB,Currys,1299.0,GBP,"Buy TCL RM7L 65"" RGB-Mini LED 4K HDR Smart Google TV - 65RM7L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,55A400U,GB,Currys,949.0,GBP,"Buy TCL A400U 55"" Premium Wallpaper QD-Mini LED 4K HDR Smart Google TV 2026 - 55A400U-UK | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,75U7SPRO,GB,Currys,2099.0,GBP,"Buy HISENSE U7S PRO 75"" Mini LED 4K 165 Hz Smart AI TV with Freely - 75U7STUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,LG,86MRGB88B9B,GB,Currys,2999.99,GBP,"Buy LG MRGB88 86"" Mini RGB AI 4K HDR Smart TV 2026 - 86MRGB88B6B | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75X11L,GB,Currys,3999.0,GBP,"Buy TCL X11L 75"" SQD-Mini LED 4K HDR Smart Google TV 2026 - 75X11L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75C7L,GB,Currys,1699.0,GBP,"Buy TCL C7L 75"" SQD-Mini LED 4K HDR Smart Google TV - 75C7L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,85RM7L,GB,Currys,2299.0,GBP,"Buy TCL RM7L 85"" RGB-Mini LED 4K HDR Smart Google TV - 85RM7L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,75RM7L,GB,Currys,1699.0,GBP,"Buy TCL RM7L 75"" RGB-Mini LED 4K HDR Smart Google TV - 75RM7L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,85C7L,GB,Currys,2299.0,GBP,"Buy TCL C7L 85"" SQD-Mini LED 4K HDR Smart Google TV - 85C7L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,98RM9L,GB,Currys,7999.0,GBP,"Buy TCL RM9L 98"" RGB-Mini LED 4K HDR Smart Google TV - 98RM9L-UK | Currys",Success,持平
+2026-06-22,09:37:07,TCL,85RM9L,GB,Currys,5499.0,GBP,"Buy TCL RM9L 85"" RGB-Mini LED 4K HDR Smart Google TV - 85RM9L-UK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,50U8005F,GB,Currys,279.0,GBP,"Buy SAMSUNG U8000F 50"" Crystal UHD 4K HDR Smart TV 2025 - UE50U8000F | Currys",Success,持平
+2026-06-22,09:37:07,Sony,43S32BP,GB,Currys,449.0,GBP,"Buy SONY BRAVIA 3 43"" LED 4K HDR AI Smart TV - K43S38BP | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55QN90F,GB,Currys,899.0,GBP,"Buy SAMSUNG QN90F 55"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE55QN90F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,77S85F,GB,Currys,1499.0,GBP,"Buy SAMSUNG S85F 77"" OLED 4K Vision AI Smart TV 2025 - QE77S85F | Currys",Success,新上线
+2026-06-22,09:37:07,Samsung,85U8005F,GB,Currys,899.0,GBP,"Buy SAMSUNG U8000F 85"" Crystal UHD 4K HDR Smart TV 2025 - UE85U8000F | Currys",Success,新上线
+2026-06-22,09:37:07,LG,65UA7300,GB,Currys,349.97,GBP,"Buy LG UA73 65"" LED 4K HDR Smart TV 2025 - 65UA73006LA | Currys",Success,降价
+2026-06-22,09:37:07,Samsung,65QN85F,GB,Currys,1099.0,GBP,"Buy SAMSUNG QN85F 65"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE65QN85F | Currys",Success,持平
+2026-06-22,09:37:07,LG,65QNED70B,GB,Currys,499.99,GBP,"Buy LG QNED7E 65"" QNED AI Mini LED 4K HDR Smart TV 2026 - 65QNED7EB3C | Currys",Success,持平
+2026-06-22,09:37:07,LG,55G6,GB,Currys,2299.99,GBP,"Buy LG G6 55"" OLED AI 4K HDR Smart TV 2026 (Wall Mount Version) - OLED55G64LW | Currys",Success,持平
+2026-06-22,09:37:07,LG,32LQ6300,GB,Currys,159.0,GBP,"Buy LG 32LQ63006LA 32"" Smart Full HD HDR LED TV | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,115QN90F,GB,Currys,7999.0,GBP,"Buy SAMSUNG QN90F 115"" Neo QLED 4K Mini LED Vision AI Smart TV 2025 - QE115QN90F | Currys",Success,持平
+2026-06-22,09:37:07,LG,55C6,GB,Currys,1799.99,GBP,"Buy LG C6 55"" OLED AI 4K HDR Smart TV 2026 - OLED55C64LA | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,65LS01D,GB,Currys,1199.0,GBP,"SAMSUNG The Serif LS01D 65"" QLED 4K HDR Smart TV in Cloud White 2024 - QE65LS01DA | Currys",Success,持平
+2026-06-22,09:37:07,LG,55G6,GB,Currys,2299.99,GBP,"Buy LG G6 55"" OLED AI 4K HDR Smart TV 2026 (Stand Version) - OLED55G66LS | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,98Q7F,GB,Currys,1699.0,GBP,"Buy SAMSUNG Q7F 98"" QLED 4K Vision AI Smart TV 2025 - QE98Q7F | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,55LST7DA,GB,Currys,2399.0,GBP,"Buy SAMSUNG The Terrace 55"" Neo QLED 4K Outdoor Smart TV - QE55LST7DA | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,100UXQ,GB,Currys,8999.0,GBP,"Buy HISENSE UX 100"" Tri-Chroma RGB Mini LED Smart AI TV with Freely - 100UXQTUK | Currys",Success,持平
+2026-06-22,09:37:07,LG,85QNED70B,GB,Currys,999.99,GBP,"Buy LG QNED7E 85"" QNED AI Mini LED 4K HDR Smart TV 2026 - 85QNED7EB3A | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,75LST7DA,GB,Currys,3999.0,GBP,"Buy SAMSUNG The Terrace 75"" Neo QLED 4K Outdoor Smart TV – QE75LST7DA | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,43A6S,GB,Currys,429.0,GBP,"Buy HISENSE A6S 43"" LED 4K HDR Smart TV with Freely - 43A6STUK | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,85QN85DBTXXU,GB,Currys,1979.97,GBP,"SAMSUNG QN85D 85"" Neo QLED 4K Mini LED Smart AI TV 2024 - QE85QN85D | Currys",Success,持平
+2026-06-22,09:37:07,Hisense,100E7S,GB,Currys,3599.0,GBP,"Buy HISENSE E7S PRO 100"" QLED 4K HDR Smart TV with Freely - 100E7STUK PRO | Currys",Success,持平
+2026-06-22,09:37:07,Samsung,43LS03H,GB,Currys,999.0,GBP,"Buy SAMSUNG The Frame (2026) 43"" QLED 4K Art Mode Smart AI TV with Slim Fit Wall Mount - QE43LS03H | Currys",Success,持平
+2026-06-22,09:37:07,LG,48C3,GB,Currys,949.0,GBP,"LG C5 48"" OLED evo AI 4K HDR Smart TV 2025 - OLED48C54LA | Currys",Success,持平
