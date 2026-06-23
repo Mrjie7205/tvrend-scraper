@@ -7,6 +7,15 @@ on:
   schedule:
     - cron: "15 4 * * 1"
   workflow_dispatch:
+    inputs:
+      channels:
+        description: "渠道白名单(逗号分隔)。默认 Boulanger,Currys;全规模验 Amazon 填 Amazon"
+        required: false
+        default: "Boulanger,Currys"
+      amazon_max_pages:
+        description: "Amazon 每品牌翻页数(默认 7;全规模验填 15)"
+        required: false
+        default: "7"
 
 jobs:
   catalog:
@@ -31,11 +40,13 @@ jobs:
       - name: Install Playwright Chromium
         run: python -m playwright install chromium --with-deps
 
-      - name: Scrape catalog (Boulanger/Currys;Amazon 走私库本地手动工具)
+      - name: Scrape catalog（默认 B/C;dispatch 可填 Amazon 做全规模验)
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
-          CHANNELS: "Boulanger,Currys"   # 排除 Amazon catalog(GitHub 美国 IP 抓不到德国价)
+          # 默认 B/C(定时);dispatch 可传 channels=Amazon + amazon_max_pages=15 做全规模验。
+          CHANNELS: ${{ inputs.channels || 'Boulanger,Currys' }}
+          AMAZON_MAX_PAGES: ${{ inputs.amazon_max_pages || '7' }}
         run: python -m catalog_scrape.run_weekly
 
       - name: Commit catalog（rebase 重试，防并发）
