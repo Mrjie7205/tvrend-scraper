@@ -1,0 +1,76 @@
+name: Daily Amazon Catalog
+
+# 每天抓 amazon.de 五品牌电视清单+价(catalog-driven Option C)。
+# 价 = 搜索页 price_hint(已验 = /dp 价、parity ≤5%=100%);走 set_amazon_de_location
+# (glow AJAX 设德国邮编 26935,任意 IP)+ canary 守门 + fail-closed(没设成/canary 不过 → 返回空、不提交,
+# 绝不吐错国价)。反爬:1 次 set-loc + ~75 搜索页/天(比 daily-monitor 的 ~330 /dp 还少)。
+on:
+  schedule:
+    - cron: "0 4 * * *"   # 每天 04:00 UTC(GitHub 实际迟到 2-6h → 约 06-10 UTC,赶在私库 enrich 12 UTC 前)
+  workflow_dispatch:
+    inputs:
+      amazon_max_pages:
+        description: "Amazon 每品牌翻页数(默认 15)"
+        required: false
+        default: "15"
+
+# 同一时刻只跑一个,防与上一轮/并发抢提交
+concurrency:
+  group: daily-amazon-catalog
+  cancel-in-progress: false
+
+jobs:
+  amazon-catalog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: python -m playwright install chromium --with-deps
+
+      - name: Scrape Amazon catalog（set德国地址 + canary + fail-closed)
+        working-directory: scripts
+        env:
+          HEADLESS_MODE: "true"
+          AMAZON_MAX_PAGES: ${{ inputs.amazon_max_pages || '15' }}
+        run: python -m catalog_scrape.run_weekly --only Amazon
+
+      - name: Commit catalog（清理旧份 + rebase 重试，防并发）
+        run: |
+          set -e
+          git config user.name "tvrend-scraper bot"
+          git config user.email "actions@github.com"
+          # 只留最近 14 份 Amazon catalog,防 public 仓膨胀(私库 enrich 每天消费最新即可)
+          ls catalog/amazon_de_*.csv 2>/dev/null | sort | head -n -14 | while read -r f; do
+            git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"
+          done
+          git add -A -- catalog/
+          if git diff --cached --quiet; then
+            echo "无新目录（canary/fail-closed 可能 abort 了，或同日已抓），跳过提交。"
+            exit 0
+          fi
+          git commit -m "chore: daily amazon catalog ${{ github.run_id }} [skip ci]"
+          BR="${{ github.ref_name }}"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase -X theirs origin "$BR" && git push origin "HEAD:$BR"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 3))
+          done
+          echo "::error::推送失败。"
+          exit 1
