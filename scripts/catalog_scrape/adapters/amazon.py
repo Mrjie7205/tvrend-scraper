@@ -11,8 +11,10 @@ DOM 关键点:
 - 标题在 h2 span,含品牌+型号+尺寸(如 'Samsung Crystal UHD 4K U7099F 43 Zoll ...')→ 直接当 raw_text 交匹配器。
 - 商品 URL 由 ASIN 直接拼 /dp/<ASIN>(比抓卡片链接稳)。
 - 广告位('Vorgestellte Produkte von Amazon-Marken' / 'Gesponsert')要剔。
-- ⚠ 搜索页价格随连接的配送地 localize(实测从非德 IP 会显示 GBP),仅作 price_hint 去重用,**真实 EUR 价由
-  monitor adapter 在 /dp 页设德国配送地后取**。
+- 搜索页价格随连接的配送地 localize → **fetch_catalog 开头先 set_amazon_de_location(设德国邮编,纯 AJAX、
+  任意 IP)+ canary 守门**,此后搜索页 price_hint_eur 即真·德国 EUR 价。set-loc/canary 失败 → fail-closed
+  返回空(绝不用默认美国地址抓→错国价)。
+- 配件/投影/商显在源头剔(护栏3 RE_NON_TV,与私库 matcher 同口径 + 补 ü/Fußständer/Netzteil/TV-Beine 漏网)。
 
 匹配脏活留给 match_to_truth,这里只交付原始标题 + /dp URL + 价格数字(hint)。
 """
@@ -37,6 +39,19 @@ _KNOWN_BRANDS = {
     "PHILIPS": "Philips", "PANASONIC": "Panasonic", "TOSHIBA": "Toshiba", "XIAOMI": "Xiaomi",
 }
 RE_SIZE = re.compile(r"(\d{2,3})\s*(?:Zoll|[\"”″])", re.IGNORECASE)
+
+# 护栏3:非电视/配件——Amazon 按品牌搜会混入投影/激光电视/便携屏/商显/屏保/支架/电源/遥控。
+# 与私库 matcher RE_NON_TV 同口径,并补其漏网:ü 变体(Standfüße)、Fußständer、Netzteil、TV-Beine、商显。
+# 锚定"TV-配件"措辞(tv-ständer/tv-beine),避免误杀"mit Standfuß"的真电视。在 catalog 源头剔。
+RE_NON_TV = re.compile(
+    r"projektor|projector|projecteur|laser\s*tv|beamer"
+    r"|\bstanbyme\b|\bmonitor\b|moniteur"
+    r"|business\s*display|professional\s*display|signage"
+    r"|displayschutz|bildschirmschutz|schutzfolie|displayfolie|screen\s*protector|panzerglas"
+    r"|wandhalterung|tv[- ]?halterung"
+    r"|fußständer|tv[- ]?ständer|tv[- ]?beine|netzteil|fernbedienung",
+    re.IGNORECASE,
+)
 
 # 一次性抓本页全部结果(asin/标题/价格/是否广告)
 _JS_EXTRACT = r"""
@@ -96,8 +111,18 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             pass
 
     async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
+        from monitor_prices.core import set_amazon_de_location, verify_amazon_de_canary
+        # ★ fail-closed:先把会话配送地设成德国邮编(任意 IP 可用)。失败 → 返回空,绝不用默认美国地址抓(错国价)。
+        if not await set_amazon_de_location(page):
+            print("[catalog/Amazon] ✗ 设德国地区失败 → abort(返回空,不写错国价)")
+            return []
+        # canary 守门:确认真拿到德国价(防 glow 静默坏掉吐错国价)
+        if not await verify_amazon_de_canary(page):
+            print("[catalog/Amazon] ✗ canary 不过 → abort(返回空)")
+            return []
+
         by_asin: dict[str, CatalogItem] = {}     # 全品牌跨页按 ASIN 去重
-        cookie_done = False
+        cookie_done = False                       # set-loc 已点过 cookie,首搜索页再点一次兜底
         for q in BRAND_QUERIES:
             for n in range(1, MAX_PAGES + 1):
                 url = f"{BASE}/s?k={q}+fernseher&page={n}"
@@ -127,6 +152,8 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     brand = _brand_from_title(title)
                     size = _size_from_title(title)
                     if not brand or size is None:      # 要求像「真电视」:有品牌 + 有尺寸
+                        continue
+                    if RE_NON_TV.search(title):        # 护栏3:配件/投影/商显 在源头剔
                         continue
                     by_asin[asin] = CatalogItem(
                         brand_raw=brand,

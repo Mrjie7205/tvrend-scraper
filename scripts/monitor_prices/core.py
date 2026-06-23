@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 
 # ============================================================
@@ -280,3 +281,141 @@ async def handle_antibot_page(page, label: str = "", max_waits: int = 4, wait_se
         return False
     except Exception:
         return True
+
+
+# ============================================================
+# Amazon.de:把会话配送地设成德国邮编(任意 IP 可用,纯 AJAX、无需弹窗)+ canary 守门
+# ============================================================
+# 一个普通德国邮编(26935 = Stadland,下萨克森)。用 LOCATION_INPUT 设邮编,
+# Amazon 据此判配送国=德国,搜索页 + /dp 页随之给真·德国 EUR 价。
+AMAZON_DE_ZIP = os.environ.get("AMAZON_DE_ZIP", "26935")
+
+# canary 锚点:已知德国价的稳定型号(逐台核过)。set 完地区后抓它们验"真拿到德国价"。
+# (asin, 已知德国标价 EUR)。价带 0.5–1.5×:容促销/小涨,逮错国价/0/垃圾。
+AMAZON_DE_CANARY = (
+    ("B0GYZMPVXG", 229.99),   # Hisense 32A5DS
+    ("B0GT9QKMRM", 169.99),   # Hisense 32E4DS
+)
+_CANARY_LO, _CANARY_HI = 0.5, 1.5
+
+_AMZ_PRICE_SELECTORS = (
+    "#corePriceDisplay_desktop_feature_div span.priceToPay span.a-offscreen",
+    "#corePriceDisplay_desktop_feature_div .a-offscreen",
+    ".priceToPay .a-offscreen",
+    ".a-price .a-offscreen",
+)
+
+
+async def set_amazon_de_location(page, zipcode: "str | None" = None) -> bool:
+    """从【任意 IP】把 amazon.de 当前会话的配送地设成德国邮编 + 锁币种 EUR。
+
+    背景(2026-06 实测推翻旧结论):amazon.de 按"连接 IP"猜配送国 → 非德 IP(GitHub Azure / 本机 VPN)
+    默认配送美国、给美元价。但 Amazon glow「地址变更」AJAX **接受客户端设邮编**(响应 isAddressUpdated:1),
+    设成德国邮编后搜索页 + /dp 页都给真·德国 EUR 价(逐台对照德国标准核验;Azure runner 实测 3/3)。
+    **无需德国 IP、无需 glow 弹窗(headless 弹窗不弹也无妨)、纯 AJAX。**
+
+    步骤:① 锁 i18n-prefs=EUR(防别国币种/换算显示)② 进首页拿会话 ③ get-rendered-toaster 响应里取
+    data-toaster-csrfToken ④ POST address-change 设邮编。
+
+    ★ fail-closed:返回 False(没拿到 isAddressUpdated:1)时,调用方必须 abort 整个 Amazon 抓取,
+    **绝不 fall through 到默认美国地址的价**(否则吐错国价、污染数据=踩红线)。
+    """
+    zipc = zipcode or AMAZON_DE_ZIP
+    try:
+        await page.context.add_cookies([
+            {"name": "i18n-prefs", "value": "EUR", "domain": ".amazon.de", "path": "/"},
+            {"name": "lc-acbde", "value": "de_DE", "domain": ".amazon.de", "path": "/"},
+        ])
+    except Exception:
+        pass
+    try:
+        await page.goto("https://www.amazon.de/", wait_until="domcontentloaded", timeout=45000)
+    except Exception as e:
+        print(f"  [set-loc] 进 amazon.de 首页失败: {e}")
+        return False
+    for sel in ("#sp-cc-accept", "#sp-cc-accept input"):
+        try:
+            await page.click(sel, timeout=2500)
+            break
+        except Exception:
+            pass
+    try:
+        html = await page.evaluate(
+            """async () => {
+                const url = "https://www.amazon.de/portal-migration/hz/glow/get-rendered-toaster"
+                    + "?pageType=Gateway&aisTransitionState=null&rancorLocationSource=IP_GEOLOCATION&isB2B=false";
+                const r = await fetch(url, {credentials: "include"});
+                return await r.text();
+            }"""
+        )
+    except Exception as e:
+        print(f"  [set-loc] 取 CSRF token 失败: {e}")
+        return False
+    m = re.search(r'data-toaster-csrfToken="([^"]+)"', html)
+    if not m:
+        print("  [set-loc] 没找到 CSRF token(amazon.de glow 可能改版,需排查)")
+        return False
+    token = m.group(1)
+    try:
+        res = await page.evaluate(
+            """async ({token, zip}) => {
+                const r = await fetch("https://www.amazon.de/portal-migration/hz/glow/address-change?actionSource=glow", {
+                    method: "POST",
+                    headers: {"anti-csrftoken-a2z": token, "content-type": "application/json"},
+                    credentials: "include",
+                    body: JSON.stringify({locationType: "LOCATION_INPUT", zipCode: zip, deviceType: "web",
+                                          storeContext: "generic", pageType: "Gateway", actionSource: "glow"})
+                });
+                let updated = false;
+                try { updated = (await r.json()).isAddressUpdated === 1; } catch (e) {}
+                return {status: r.status, updated};
+            }""",
+            {"token": token, "zip": zipc},
+        )
+    except Exception as e:
+        print(f"  [set-loc] POST address-change 失败: {e}")
+        return False
+    ok = bool(res.get("updated"))
+    print(f"  [set-loc] amazon.de 配送地 → 德国 {zipc}:{'✓ isAddressUpdated:1' if ok else '✗ 未生效'}"
+          f" (status={res.get('status')})")
+    return ok
+
+
+async def verify_amazon_de_canary(page) -> bool:
+    """canary 守门:抓已知德国价锚点,断言原生 EUR + 价落在合理带。**任一通过即 True**(防单款下架误杀);
+    全部不符 → False(说明地区没设成 / glow 静默坏掉吐错国价)→ 调用方 abort 整轮 Amazon、不提交。
+
+    这是防"无人值守 CI 悄悄坏 → 污染数据"最有效的一招(主开发护栏 2)。
+    """
+    ok_any = False
+    for asin, known in AMAZON_DE_CANARY:
+        try:
+            await page.goto(f"https://www.amazon.de/dp/{asin}", wait_until="domcontentloaded", timeout=45000)
+            await page.wait_for_timeout(1500)
+            txt = await page.evaluate(
+                """(sels) => {
+                    for (const s of sels) {
+                        const e = document.querySelector(s);
+                        if (e && e.textContent && e.textContent.trim()) return e.textContent.trim();
+                    }
+                    return "";
+                }""",
+                list(_AMZ_PRICE_SELECTORS),
+            )
+        except Exception as e:
+            print(f"  [canary] {asin} 抓取异常: {str(e)[:60]}")
+            continue
+        cp = clean_price(txt)
+        if not cp:
+            print(f"  [canary] {asin} 无价(raw={txt[:16]!r})")
+            continue
+        val, cur = cp
+        lo, hi = _CANARY_LO * known, _CANARY_HI * known
+        if cur == "EUR" and lo <= val <= hi:
+            print(f"  [canary] {asin} {val}€ ∈ [{lo:.0f},{hi:.0f}] vs 已知 {known} ✓")
+            ok_any = True
+        else:
+            print(f"  [canary] {asin} {val} {cur} 不符(要 EUR 且 ∈[{lo:.0f},{hi:.0f}])⚠")
+    if not ok_any:
+        print("  [canary] ✗ 所有锚点不符 → 地区没设成/吐错国价 → 整轮 Amazon abort、不提交")
+    return ok_any
