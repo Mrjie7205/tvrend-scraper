@@ -10,6 +10,20 @@ import asyncio
 import os
 import re
 
+
+# ============================================================
+# 渠道作用域过滤(CHANNELS 环境变量:逗号分隔的渠道白名单)
+# ============================================================
+def channels_in_scope() -> "set[str] | None":
+    """读取 CHANNELS 白名单；未设置或空值表示全部渠道。"""
+    raw = os.environ.get("CHANNELS", "")
+    names = {part.strip().lower() for part in raw.split(",") if part.strip()}
+    return names or None
+
+
+def platform_in_scope(platform: str, scope: "set[str] | None") -> bool:
+    return scope is None or (platform or "").strip().lower() in scope
+
 # ============================================================
 # UA 池(每次启动 context 随机选 1 个)
 # ============================================================
@@ -101,6 +115,7 @@ COUNTRY_LOCALE: dict[str, tuple[str, str]] = {
     "NL": ("nl-NL", "Europe/Amsterdam"),
     "ES": ("es-ES", "Europe/Madrid"),
     "IT": ("it-IT", "Europe/Rome"),
+    "NO": ("nb-NO", "Europe/Oslo"),
 }
 
 DEFAULT_LOCALE = ("en-GB", "Europe/London")
@@ -117,7 +132,7 @@ def clean_price(text: str | None) -> tuple[float, str] | None:
     """从带货币符号的文本提取价格 + 币种。
 
     支持:
-      - 货币符号 / 三字码 (€ / £ / $ / EUR / GBP / USD)
+      - 货币符号 / 三字码 (€ / £ / $ / kr / EUR / GBP / USD / NOK)
       - 法国千分位空格(1 999,00) / 德国千分位点(1.999,00) / 通用逗号小数
     """
     if not text:
@@ -128,6 +143,8 @@ def clean_price(text: str | None) -> tuple[float, str] | None:
         currency = "GBP"
     elif "$" in text or "USD" in text:
         currency = "USD"
+    elif "NOK" in text.upper() or re.search(r"(?:^|\s)kr(?:\s|$)", text, re.IGNORECASE):
+        currency = "NOK"
 
     s = (
         text.replace("€", "")
@@ -136,16 +153,23 @@ def clean_price(text: str | None) -> tuple[float, str] | None:
         .replace("EUR", "")
         .replace("GBP", "")
         .replace("USD", "")
+        .replace("NOK", "")
+        .replace("nok", "")
+        .replace("KR", "")
+        .replace("kr", "")
         .replace("\xa0", "")
         .strip()
     )
 
     try:
-        if currency == "EUR":
+        if currency in {"EUR", "NOK"}:
             # 先清除千分位空格,再区分德式(1.999,00)和法式(1 999,00)
             s = s.replace(" ", "")
             if "," in s and "." in s:
                 s = s.replace(".", "").replace(",", ".")
+            elif currency == "NOK" and "." in s and "," not in s:
+                left, right = s.rsplit(".", 1)
+                s = left + right if len(right) == 3 else s
             else:
                 s = s.replace(",", ".")
         else:
@@ -257,6 +281,7 @@ ANTIBOT_TITLE_MARKERS: tuple[str, ...] = (
     "access denied",
     "attention required",
     "cloudflare",
+    "security checkpoint",
 )
 
 ANTIBOT_CONTENT_MARKERS: tuple[str, ...] = (

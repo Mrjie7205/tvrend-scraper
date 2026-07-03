@@ -66,13 +66,16 @@ def load_active_skus() -> list[dict]:
             url = (row.get("url") or "").strip()
             if not url:
                 continue
-            out.append({
-                "brand": (row.get("brand") or "").strip(),
-                # 展示名用 model(匹配器已解析好的基础型号);不用渠道 sku 码——
-                # re-resolve 渠道码会丢 Pro 等变体信息,落到错 base(如 65E79Q → 非 Pro)。
-                "product_name": (row.get("model") or "").strip(),
-                "country": (row.get("country") or "FR").strip().upper(),
-                "platform": (row.get("platform") or "").strip(),
+                platform = (row.get("platform") or "").strip()
+                sku_name = (row.get("sku") or "").strip()
+                model_name = (row.get("model") or "").strip()
+                # Elkjop 的 SKU 经常把尺寸与系列拆开；使用已匹配的尺寸化 model 避免不同尺寸被聚合去重。
+                product_name = model_name if platform.lower() == "elkjop" else (sku_name or model_name)
+                out.append({
+                    "brand": (row.get("brand") or "").strip(),
+                    "product_name": product_name,
+                    "country": (row.get("country") or "FR").strip().upper(),
+                    "platform": platform,
                 "url": url,
             })
     print(f"[load] channel_links.csv → {len(out)} active SKU")

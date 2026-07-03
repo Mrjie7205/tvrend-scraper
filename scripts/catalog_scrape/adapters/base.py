@@ -33,6 +33,9 @@ class CatalogItem:
     url: str
     size_hint_inch: float | None = None
     price_hint_eur: float | None = None
+    price_local: float | None = None
+    currency: str = ""
+    price_eur: float | None = None
     extra: dict = field(default_factory=dict)  # 任何渠道特定的额外字段
 
 

@@ -37,7 +37,7 @@ jobs:
         env:
           HEADLESS_MODE: "true"
           MONITOR_CONCURRENCY: "3"
-          CHANNELS: "Boulanger,Currys"   # 自动管线排除 Amazon(需德国 IP,走私库本地手动工具)
+          CHANNELS: "Boulanger,Currys,Elkjop"   # Amazon 走独立 catalog 链路；Elkjop 走 NOK 原币抓取
         run: python -m monitor_prices.run_daily
 
       - name: Upload debug screenshots(失败 SKU 截图)

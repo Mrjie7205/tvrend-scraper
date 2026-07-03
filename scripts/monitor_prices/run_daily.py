@@ -34,8 +34,10 @@ from monitor_prices.core import (  # noqa: E402
     USER_AGENTS,
     VIEWPORT_HEIGHTS,
     VIEWPORT_WIDTHS,
+    channels_in_scope,
     handle_antibot_page,
     locale_for,
+    platform_in_scope,
 )
 from monitor_prices.prices_io import (  # noqa: E402
     append_prices,
@@ -64,7 +66,28 @@ def _safe_filename(s: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", s or "unknown")[:64]
 
 
-async def process_sku(sem, browser, sku: dict, hist: dict) -> dict:
+async def _new_context(browser, adapter, country: str):
+    """按渠道地区创建浏览器会话，供单 SKU 或共享会话渠道复用。"""
+    locale, tz = adapter.locale_override or locale_for(country)
+    ctx = await browser.new_context(
+        user_agent=random.choice(USER_AGENTS),
+        viewport={
+            "width": random.choice(VIEWPORT_WIDTHS),
+            "height": random.choice(VIEWPORT_HEIGHTS),
+        },
+        locale=locale,
+        timezone_id=tz,
+    )
+    await ctx.add_init_script(STEALTH_JS)
+    if getattr(adapter, "context_cookies", ()):
+        try:
+            await ctx.add_cookies(list(adapter.context_cookies))
+        except Exception as e:
+            print(f"  [{adapter.platform_name}] 注入 context_cookies 失败: {str(e)[:80]}")
+    return ctx
+
+
+async def process_sku(sem, browser, sku: dict, hist: dict, shared_context=None) -> dict:
     """抓一个 SKU 的价格,返回结果 dict(供 append_prices 写入)。"""
     async with sem:
         url = sku["url"]
@@ -94,26 +117,12 @@ async def process_sku(sem, browser, sku: dict, hist: dict) -> dict:
 
         print(f"\n→ [{country}] {name} ({platform})")
 
-        ctx = None
+        ctx = shared_context
+        owns_context = shared_context is None
+        page = None
         try:
-            # 独立 context + 随机指纹
-            ua = random.choice(USER_AGENTS)
-            locale, tz = adapter.locale_override or locale_for(country)
-            ctx = await browser.new_context(
-                user_agent=ua,
-                viewport={
-                    "width": random.choice(VIEWPORT_WIDTHS),
-                    "height": random.choice(VIEWPORT_HEIGHTS),
-                },
-                locale=locale,
-                timezone_id=tz,
-            )
-            await ctx.add_init_script(STEALTH_JS)
-            if getattr(adapter, "context_cookies", ()):   # 渠道预置 cookie(如 Amazon 设德语内容)
-                try:
-                    await ctx.add_cookies(list(adapter.context_cookies))
-                except Exception as e:
-                    print(f"  [{name}] 注入 context_cookies 失败: {str(e)[:80]}")
+            if owns_context:
+                ctx = await _new_context(browser, adapter, country)
             page = await ctx.new_page()
 
             # 导航(2 次重试 + 反爬等待)
@@ -124,7 +133,14 @@ async def process_sku(sem, browser, sku: dict, hist: dict) -> dict:
                     await asyncio.sleep(random.uniform(1.0, 3.0))
                     timeout_ms = 40000 if attempt == 0 else 60000
                     await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-                    await handle_antibot_page(page, name)
+                    passed = await handle_antibot_page(
+                        page,
+                        name,
+                        max_waits=getattr(adapter, "antibot_max_waits", 4),
+                        wait_seconds=getattr(adapter, "antibot_wait_seconds", 5.0),
+                    )
+                    if not passed:
+                        raise RuntimeError("反爬验证等待超时")
                 except Exception as e:
                     print(f"  [{name}] 导航异常 ({attempt + 1}/{MAX_RETRIES}): {str(e)[:80]}")
                     if attempt < MAX_RETRIES - 1:
@@ -178,13 +194,50 @@ async def process_sku(sem, browser, sku: dict, hist: dict) -> dict:
             print(f"  [{name}] 严重异常: {str(e)[:120]}")
             result["Status"] = f"Failed: Critical {str(e)[:50]}"
         finally:
-            if ctx:
+            if page:
+                try:
+                    await page.close()
+                except Exception:
+                    pass
+            if owns_context and ctx:
                 try:
                     await ctx.close()
                 except Exception:
                     pass
 
         return result
+
+
+async def process_shared_group(browser, adapter, skus: list[dict], hist: dict) -> list[dict]:
+    """同一渠道串行复用 context，保留 Vercel 等验证产生的会话状态。"""
+    ctx = await _new_context(browser, adapter, skus[0]["country"])
+    try:
+        if adapter.warmup_url:
+            page = await ctx.new_page()
+            try:
+                print(f"\n[monitor/{adapter.platform_name}] 预热共享会话: {adapter.warmup_url}")
+                try:
+                    await page.goto(adapter.warmup_url, wait_until="domcontentloaded", timeout=120000)
+                except Exception as exc:
+                    print(f"[monitor/{adapter.platform_name}] 预热导航提示: {str(exc)[:100]}")
+                passed = await handle_antibot_page(
+                    page,
+                    f"{adapter.platform_name} warmup",
+                    max_waits=adapter.antibot_max_waits,
+                    wait_seconds=adapter.antibot_wait_seconds,
+                )
+                if not passed:
+                    print(f"[monitor/{adapter.platform_name}] 预热验证未通过，仍继续商品页测试")
+            finally:
+                await page.close()
+
+        serial_sem = asyncio.Semaphore(1)
+        results = []
+        for sku in skus:
+            results.append(await process_sku(serial_sem, browser, sku, hist, shared_context=ctx))
+        return results
+    finally:
+        await ctx.close()
 
 
 async def run() -> int:
@@ -194,13 +247,15 @@ async def run() -> int:
         print("[monitor] 无 active SKU,退出")
         return 0
 
-    # CHANNELS 白名单(逗号分隔,大小写不敏感)。自动 Action 用它排除 Amazon(GitHub 美国 IP 抓不到德国价)。
-    _only = os.environ.get("CHANNELS", "").strip()
-    if _only:
-        allow = {c.strip().lower() for c in _only.split(",") if c.strip()}
+    # CHANNELS 白名单过滤(不设/空 = 全跑)。自动 action 用它排除 Amazon。
+    scope = channels_in_scope()
+    if scope is not None:
         before = len(skus)
-        skus = [s for s in skus if (s["platform"] or "").strip().lower() in allow]
-        print(f"[monitor] CHANNELS={_only} → 保留 {len(skus)}/{before} SKU")
+        skus = [s for s in skus if platform_in_scope(s["platform"], scope)]
+        print(f"[monitor] CHANNELS={sorted(scope)} → {len(skus)}/{before} SKU 入选")
+        if not skus:
+            print("[monitor] CHANNELS 白名单下无匹配 SKU,退出")
+            return 0
 
     # 过滤掉无 adapter 的渠道(避免开浏览器后再 skip)
     runnable = [s for s in skus if get_adapter(s["platform"]) is not None]
@@ -224,7 +279,22 @@ async def run() -> int:
             browser = await p.chromium.launch(headless=HEADLESS, args=list(BROWSER_ARGS))
 
         sem = asyncio.Semaphore(CONCURRENCY)
-        results = await asyncio.gather(*[process_sku(sem, browser, s, hist) for s in runnable])
+        normal = [s for s in runnable if not get_adapter(s["platform"]).shared_context]
+        shared: dict[str, list[dict]] = {}
+        for sku in runnable:
+            adapter = get_adapter(sku["platform"])
+            if adapter.shared_context:
+                shared.setdefault(adapter.platform_name.lower(), []).append(sku)
+
+        jobs = [process_sku(sem, browser, s, hist) for s in normal]
+        jobs.extend(
+            process_shared_group(browser, get_adapter(name), group, hist)
+            for name, group in shared.items()
+        )
+        batches = await asyncio.gather(*jobs)
+        results = []
+        for batch in batches:
+            results.extend(batch if isinstance(batch, list) else [batch])
         await browser.close()
 
     # 批量追加进 prices.csv(给每行打时间戳)

@@ -15,11 +15,13 @@ from .base import BaseAdapter
 from .boulanger import BoulangerAdapter
 from .currys import CurrysAdapter
 from .amazon import AmazonAdapter
+from .elkjop import ElkjopAdapter
 
 REGISTRY: dict[str, BaseAdapter] = {
     BoulangerAdapter.platform_name.lower(): BoulangerAdapter(),
     CurrysAdapter.platform_name.lower(): CurrysAdapter(),
     AmazonAdapter.platform_name.lower(): AmazonAdapter(),
+    ElkjopAdapter.platform_name.lower(): ElkjopAdapter(),
 }
 
 

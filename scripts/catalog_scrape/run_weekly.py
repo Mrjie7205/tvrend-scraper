@@ -11,7 +11,9 @@
   python -m catalog_scrape.run_weekly --only Boulanger  # 只抓一个
 
 输出 schema:
-  brand_raw, raw_text, url, size_hint_inch, price_hint_eur, platform, country, scraped_at
+  brand_raw, raw_text, url, size_hint_inch, price_hint_eur,
+  price_local, currency, price_eur, platform, country, scraped_at,
+  asin, elkjop_sku, model_year, filter_year, source_brand, fx_rate_date
 """
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ import csv
 import os
 import random
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -31,6 +33,7 @@ from monitor_prices.core import (  # noqa: E402
     USER_AGENTS,
     VIEWPORT_HEIGHTS,
     VIEWPORT_WIDTHS,
+    channels_in_scope,
     locale_for,
 )
 from catalog_scrape import REGISTRY, supported_catalogs  # noqa: E402
@@ -51,9 +54,18 @@ OUTPUT_COLUMNS = (
     "url",
     "size_hint_inch",
     "price_hint_eur",
+    "price_local",
+    "currency",
+    "price_eur",
     "platform",
     "country",
     "scraped_at",
+    "asin",
+    "elkjop_sku",
+    "model_year",
+    "filter_year",
+    "source_brand",
+    "fx_rate_date",
 )
 
 
@@ -90,7 +102,7 @@ async def run_one_adapter(browser, adapter) -> Path | None:
         print(f"[catalog/{adapter.platform_name}] 0 条记录,不写文件")
         return None
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     date_tag = now.strftime("%Y%m%d")
     scraped_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -108,26 +120,34 @@ async def run_one_adapter(browser, adapter) -> Path | None:
                 "url": it.url,
                 "size_hint_inch": it.size_hint_inch if it.size_hint_inch is not None else "",
                 "price_hint_eur": it.price_hint_eur if it.price_hint_eur is not None else "",
+                "price_local": it.price_local if it.price_local is not None else "",
+                "currency": it.currency,
+                "price_eur": it.price_eur if it.price_eur is not None else "",
                 "platform": adapter.platform_name,
                 "country": adapter.country,
                 "scraped_at": scraped_at,
+                "asin": it.extra.get("asin", ""),
+                "elkjop_sku": it.extra.get("elkjop_sku", ""),
+                "model_year": it.extra.get("model_year", ""),
+                "filter_year": it.extra.get("filter_year", ""),
+                "source_brand": it.extra.get("source_brand", ""),
+                "fx_rate_date": it.extra.get("fx_rate_date", ""),
             })
     print(f"[catalog/{adapter.platform_name}] → {out_path.relative_to(_catalog_dir().parent.parent)}")
     return out_path
 
 
 async def run(only: str | None = None) -> int:
+    scope = channels_in_scope()
     selected = REGISTRY.items() if not only else [(k, a) for k, a in REGISTRY.items() if k == only.lower()]
-    # CHANNELS 白名单(逗号分隔):自动 Action 用它排除 Amazon。--only 优先,再叠加 CHANNELS(交集)。
-    _chs = os.environ.get("CHANNELS", "").strip()
-    if _chs:
-        allow = {c.strip().lower() for c in _chs.split(",") if c.strip()}
-        selected = [(k, a) for k, a in selected if k in allow]
-        print(f"[catalog] CHANNELS={_chs} → 跑 {[a.platform_name for k, a in selected]}")
-    targets = [a for k, a in selected]
+    targets = [a for k, a in selected if scope is None or k in scope]
     if not targets:
-        print(f"[catalog] no adapter for only={only!r} CHANNELS={_chs!r}. Supported: {supported_catalogs()}")
+        hint = f"only={only!r} " if only else ""
+        scope_hint = f"CHANNELS={sorted(scope)} " if scope else ""
+        print(f"[catalog] no adapter for {hint}{scope_hint}- Supported: {supported_catalogs()}")
         return 1
+    if scope is not None:
+        print(f"[catalog] CHANNELS={sorted(scope)} → 跑 {[a.platform_name for a in targets]}")
 
     print(f"[catalog] supported: {supported_catalogs()} · headless={HEADLESS}")
 

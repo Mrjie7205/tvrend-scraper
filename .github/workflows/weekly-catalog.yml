@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       channels:
-        description: "渠道白名单(逗号分隔)。默认 Boulanger,Currys;全规模验 Amazon 填 Amazon"
+        description: "渠道白名单(逗号分隔)。默认 Boulanger,Currys,Elkjop;全规模验 Amazon 填 Amazon"
         required: false
-        default: "Boulanger,Currys"
+        default: "Boulanger,Currys,Elkjop"
       amazon_max_pages:
         description: "Amazon 每品牌翻页数(默认 7;全规模验填 15)"
         required: false
@@ -44,8 +44,8 @@ jobs:
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
-          # 默认 B/C(定时);dispatch 可传 channels=Amazon + amazon_max_pages=15 做全规模验。
-          CHANNELS: ${{ inputs.channels || 'Boulanger,Currys' }}
+          # 默认 B/C/Elkjop(定时);dispatch 可传 channels=Amazon + amazon_max_pages=15 做全规模验。
+          CHANNELS: ${{ inputs.channels || 'Boulanger,Currys,Elkjop' }}
           AMAZON_MAX_PAGES: ${{ inputs.amazon_max_pages || '7' }}
         run: python -m catalog_scrape.run_weekly
 

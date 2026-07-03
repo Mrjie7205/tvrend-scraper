@@ -10,7 +10,7 @@
 | 价格监控 `monitor_prices` | 每天 | `raw/prices.csv`(跟踪 SKU 的当日价格) |
 | 目录反向拉 `catalog_scrape` | 每周 | `catalog/*.csv`(在售商品列表快照) |
 
-渠道:Boulanger(FR)、Currys(GB)。每个渠道一个 adapter,新增渠道只需加一个 adapter。
+渠道:Boulanger(FR)、Currys(GB)、Elkjop(NO)。Amazon(DE) 走独立 daily catalog 链路。每个渠道一个 adapter,新增渠道只需加一个 adapter。
 
 ## 目录
 
