@@ -58,27 +58,41 @@ def load_active_skus() -> list[dict]:
     if not src.exists():
         print("[load] 无 channel_links.csv,跳过本次抓取(上游私库尚未推入清单)")
         return out
+    total_rows = 0
+    active_rows = 0
+    skipped_no_url = 0
     with src.open("r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
+            total_rows += 1
             if str(row.get("active", "true")).strip().lower() not in ("true", "1", "yes"):
                 continue
+            active_rows += 1
             url = (row.get("url") or "").strip()
             if not url:
+                skipped_no_url += 1
                 continue
-                platform = (row.get("platform") or "").strip()
-                sku_name = (row.get("sku") or "").strip()
-                model_name = (row.get("model") or "").strip()
-                # Elkjop 的 SKU 经常把尺寸与系列拆开；使用已匹配的尺寸化 model 避免不同尺寸被聚合去重。
-                product_name = model_name if platform.lower() == "elkjop" else (sku_name or model_name)
-                out.append({
-                    "brand": (row.get("brand") or "").strip(),
-                    "product_name": product_name,
-                    "country": (row.get("country") or "FR").strip().upper(),
-                    "platform": platform,
+            platform = (row.get("platform") or "").strip()
+            sku_name = (row.get("sku") or "").strip()
+            model_name = (row.get("model") or "").strip()
+            # Elkjop 的 SKU 经常把尺寸与系列拆开；使用已匹配的尺寸化 model 避免不同尺寸被聚合去重。
+            product_name = model_name if platform.lower() == "elkjop" else (sku_name or model_name)
+            out.append({
+                "brand": (row.get("brand") or "").strip(),
+                "product_name": product_name,
+                "country": (row.get("country") or "FR").strip().upper(),
+                "platform": platform,
                 "url": url,
             })
-    print(f"[load] channel_links.csv → {len(out)} active SKU")
+    if total_rows and active_rows and not out:
+        raise RuntimeError(
+            f"channel_links.csv 有 {total_rows} 行、{active_rows} 行 active=true，"
+            f"但可抓 SKU 为 0（无 URL 行 {skipped_no_url}）。请检查清单 schema/读取逻辑。"
+        )
+    print(
+        f"[load] channel_links.csv → {len(out)} active SKU "
+        f"(rows={total_rows}, active={active_rows}, no_url={skipped_no_url})"
+    )
     return out
 
 
