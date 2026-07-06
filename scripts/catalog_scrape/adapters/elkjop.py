@@ -1,15 +1,17 @@
 """Elkjøp 挪威电视类目抓取。
 
-站点是客户端渲染并带 Vercel Security Checkpoint。策略是一个 context 内先访问
-首页取得验证会话，然后使用站点自身的筛选 URL 按年份分页抓取。
+GitHub hosted runner 打开类目页会被 Vercel Security Checkpoint 拦住，因此默认
+直接调用 Elkjøp 前端实际使用的 Algolia 搜索接口。接口同样按年份/品牌/类目筛选，
+并用 ``nbHits``、``nbPages`` 和唯一 SKU 数做严格完整性校验。
 
-这里刻意不用“无限滚动猜测加载完成”，因为 Elkjøp 的电视列表实际是分页形态；
-类目页会显示类似 ``1–48 av 231 produkter`` 的范围文本，可以作为每页与全年份
-总量校验依据，避免只抓到第一页就误判完成。
+旧的浏览器分页实现保留为可选兜底，仅供本地排障；GitHub Action 使用 API-only，
+避免安全检查再次拖住整条每周链路。
 """
 from __future__ import annotations
 
 import asyncio
+from collections import Counter
+import json
 import os
 import re
 from typing import Sequence
@@ -22,11 +24,22 @@ from monitor_prices.adapters.elkjop import ElkjopAdapter
 
 LISTING_URL = "https://www.elkjop.no/tv-lyd-og-smarte-hjem/tv-og-tilbehor/tv"
 HOME_URL = "https://www.elkjop.no/"
+ALGOLIA_KEY_URL = "https://www.elkjop.no/api/algolia/signed-api-key"
+ALGOLIA_QUERY_URL = "https://z0fl7r8ubh-dsn.algolia.net/1/indexes/*/queries"
+ALGOLIA_APP_ID = "Z0FL7R8UBH"
+ALGOLIA_INDEX = "commerce_b2c_OCNOELK"
+ALGOLIA_TAXONOMY_FILTER = "productTaxonomy.id:PT351"
 MAX_ITEMS = int(os.environ.get("ELKJOP_MAX_ITEMS", "0"))
 PAGE_SIZE = int(os.environ.get("ELKJOP_PAGE_SIZE", "48"))
+API_ENABLED = os.environ.get("ELKJOP_CATALOG_API", "true").strip().lower() not in {"0", "false", "no"}
+PAGE_FALLBACK_ENABLED = os.environ.get(
+    "ELKJOP_CATALOG_PAGE_FALLBACK", "false"
+).strip().lower() in {"1", "true", "yes"}
+MIN_EXPECTED_PER_YEAR = int(os.environ.get("ELKJOP_MIN_EXPECTED_PER_YEAR", "100"))
 TARGET_YEARS = (2025, 2026)
 FILTER_BRANDS = ("Hisense", "LG", "iFfalcon", "Samsung", "Sony", "TCL")
 TARGET_BRANDS = ("Samsung", "LG", "Sony", "TCL", "Hisense", "iFfalcon")
+REQUIRED_SOURCE_BRANDS = {"hisense", "lg", "samsung", "sony", "tcl"}
 BRAND_PARAM = "1|brand[]"
 YEAR_PARAM = "1|attributes.33627[]"
 
@@ -149,10 +162,293 @@ def _price_nok(text: str) -> float | None:
     return value if 100 <= value <= 500_000 else None
 
 
+def _first(value):
+    """Algolia attributes 的值通常是单元素 list；统一取首值。"""
+    if isinstance(value, list):
+        return value[0] if value else None
+    return value
+
+
+def _api_year(hit: dict) -> int | None:
+    value = _first((hit.get("attributes") or {}).get("33627"))
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _api_size(hit: dict) -> float | None:
+    value = _first((hit.get("attributes") or {}).get("31323"))
+    try:
+        size = float(value)
+    except (TypeError, ValueError):
+        return _size_from_text(str(hit.get("title") or hit.get("name") or ""))
+    return size if 24 <= size <= 120 else None
+
+
+def _api_price(hit: dict) -> float | None:
+    price = hit.get("price") or {}
+    currency = str(price.get("currency") or "").upper()
+    value = price.get("amount")
+    if value in (None, ""):
+        return None
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return None
+    if currency != "NOK":
+        raise RuntimeError(
+            f"Elkjop Algolia SKU {hit.get('articleNumber')} 币种异常: {currency or '空'}"
+        )
+    if not 100 <= amount <= 500_000:
+        raise RuntimeError(
+            f"Elkjop Algolia SKU {hit.get('articleNumber')} 价格异常: {amount} NOK"
+        )
+    return amount
+
+
+def _api_raw_text(hit: dict) -> str:
+    """保留匹配需要的标题、厂商型号和描述，同时去掉重复片段。"""
+    parts = (
+        hit.get("title"),
+        hit.get("name"),
+        hit.get("manufacturerArticleNumber"),
+        hit.get("shortDescription"),
+    )
+    return " ".join(dict.fromkeys(str(p).strip() for p in parts if str(p or "").strip()))
+
+
+def _api_source_brand(hit: dict) -> str:
+    raw = str(hit.get("brand") or "").strip()
+    allowed = {b.lower(): b for b in FILTER_BRANDS}
+    canonical = allowed.get(raw.lower())
+    if not canonical:
+        raise RuntimeError(
+            f"Elkjop Algolia 返回筛选外品牌: {raw or '空'} "
+            f"(SKU={hit.get('articleNumber') or hit.get('objectID')})"
+        )
+    return "iFFALCON" if canonical.lower() == "iffalcon" else canonical
+
+
+def _api_business_brand(source_brand: str) -> str:
+    return "TCL" if source_brand.lower() == "iffalcon" else source_brand
+
+
 class ElkjopCatalogAdapter(BaseCatalogAdapter):
     platform_name = "Elkjop"
     country = "NO"
     locale_override = ("nb-NO", "Europe/Oslo")
+
+    async def _signed_api_key(self, request_context) -> str:
+        """取短时效搜索 key；不访问网页，因此 GitHub runner 不触发 checkpoint。"""
+        last_error = ""
+        for attempt in range(1, 4):
+            try:
+                response = await request_context.get(
+                    ALGOLIA_KEY_URL,
+                    headers={
+                        "accept": "application/json",
+                        "referer": HOME_URL,
+                    },
+                    timeout=30_000,
+                )
+                if response.ok:
+                    payload = await response.json()
+                    key = str(payload.get("apiKey") or "").strip()
+                    if key:
+                        return key
+                last_error = f"HTTP {response.status}"
+            except Exception as exc:
+                last_error = str(exc)[:120]
+            if attempt < 3:
+                await asyncio.sleep(attempt)
+        raise RuntimeError(f"Elkjop Algolia signed key 获取失败: {last_error}")
+
+    @staticmethod
+    def _algolia_payload(year: int, page_index: int) -> dict:
+        return {
+            "requests": [{
+                "indexName": ALGOLIA_INDEX,
+                "query": "",
+                "facetFilters": [
+                    [f"attributes.33627:{year}"],
+                    [f"brand:{brand}" for brand in FILTER_BRANDS],
+                ],
+                "filters": ALGOLIA_TAXONOMY_FILTER,
+                "attributesToRetrieve": [
+                    "articleNumber",
+                    "objectID",
+                    "brand",
+                    "title",
+                    "name",
+                    "manufacturerArticleNumber",
+                    "productUrl",
+                    "urlB2C",
+                    "price",
+                    "attributes",
+                    "shortDescription",
+                    "isOnline",
+                    "isBuyableOnline",
+                    "onlineSalesStatus",
+                ],
+                "hitsPerPage": PAGE_SIZE,
+                "page": page_index,
+                "analytics": False,
+                "clickAnalytics": False,
+            }],
+        }
+
+    async def _algolia_page(
+        self,
+        request_context,
+        *,
+        api_key: str,
+        year: int,
+        page_index: int,
+    ) -> dict:
+        last_error = ""
+        for attempt in range(1, 4):
+            try:
+                response = await request_context.post(
+                    ALGOLIA_QUERY_URL,
+                    headers={
+                        "content-type": "application/json",
+                        "x-algolia-application-id": ALGOLIA_APP_ID,
+                        "x-algolia-api-key": api_key,
+                    },
+                    data=json.dumps(self._algolia_payload(year, page_index)),
+                    timeout=30_000,
+                )
+                if response.ok:
+                    payload = await response.json()
+                    results = payload.get("results") or []
+                    if results and isinstance(results[0], dict):
+                        return results[0]
+                    last_error = "响应缺少 results[0]"
+                else:
+                    last_error = f"HTTP {response.status}"
+            except Exception as exc:
+                last_error = str(exc)[:120]
+            if attempt < 3:
+                await asyncio.sleep(attempt)
+        raise RuntimeError(
+            f"Elkjop Algolia {year} page={page_index} 获取失败: {last_error}"
+        )
+
+    async def _fetch_catalog_api(self, request_context) -> Sequence[CatalogItem]:
+        api_key = await self._signed_api_key(request_context)
+        by_year_sku: dict[int, dict[str, dict]] = {}
+        source_brand_counts: Counter[str] = Counter()
+        total_with_price = 0
+
+        for year in TARGET_YEARS:
+            first = await self._algolia_page(
+                request_context, api_key=api_key, year=year, page_index=0
+            )
+            expected = int(first.get("nbHits") or 0)
+            total_pages = int(first.get("nbPages") or 0)
+            if expected < MIN_EXPECTED_PER_YEAR or total_pages < 1:
+                raise RuntimeError(
+                    f"Elkjop Algolia {year} 总量异常: nbHits={expected}, nbPages={total_pages}"
+                )
+
+            hits_by_sku: dict[str, dict] = {}
+            for page_index in range(total_pages):
+                result = first if page_index == 0 else await self._algolia_page(
+                    request_context,
+                    api_key=api_key,
+                    year=year,
+                    page_index=page_index,
+                )
+                if int(result.get("nbHits") or 0) != expected:
+                    raise RuntimeError(
+                        f"Elkjop Algolia {year} 分页总量漂移: "
+                        f"page={page_index}, {result.get('nbHits')} != {expected}"
+                    )
+                if int(result.get("nbPages") or 0) != total_pages:
+                    raise RuntimeError(
+                        f"Elkjop Algolia {year} 页数漂移: "
+                        f"page={page_index}, {result.get('nbPages')} != {total_pages}"
+                    )
+                hits = result.get("hits") or []
+                for hit in hits:
+                    sku = str(hit.get("articleNumber") or hit.get("objectID") or "").strip()
+                    if not sku.isdigit():
+                        raise RuntimeError(f"Elkjop Algolia {year} 返回无效 SKU: {sku!r}")
+                    if _api_year(hit) != year:
+                        raise RuntimeError(
+                            f"Elkjop Algolia SKU {sku} 年份异常: {_api_year(hit)} != {year}"
+                        )
+                    url = _canonical_url(str(hit.get("productUrl") or hit.get("urlB2C") or ""))
+                    if not RE_SKU.search(url) or sku not in url:
+                        raise RuntimeError(f"Elkjop Algolia SKU {sku} URL 异常: {url}")
+                    if sku in hits_by_sku:
+                        raise RuntimeError(f"Elkjop Algolia {year} 分页重复 SKU: {sku}")
+                    source_brand = _api_source_brand(hit)
+                    source_brand_counts[source_brand] += 1
+                    hit["_catalog_url"] = url
+                    hit["_source_brand"] = source_brand
+                    hits_by_sku[sku] = hit
+                print(
+                    f"    [Elkjop/api] {year} page {page_index + 1}/{total_pages}: "
+                    f"{len(hits)} 条，累计 {len(hits_by_sku)}/{expected}"
+                )
+
+            if len(hits_by_sku) != expected:
+                raise RuntimeError(
+                    f"Elkjop Algolia {year} 完整性失败: 唯一 SKU {len(hits_by_sku)} != nbHits {expected}"
+                )
+            by_year_sku[year] = hits_by_sku
+            print(f"    [Elkjop/api] {year} 年抓取完成: {len(hits_by_sku)}/{expected}")
+
+        sku_years: dict[str, set[int]] = {}
+        for year, hits in by_year_sku.items():
+            for sku in hits:
+                sku_years.setdefault(sku, set()).add(year)
+        cross_year = {sku: years for sku, years in sku_years.items() if len(years) > 1}
+        if cross_year:
+            sample_sku, sample_years = next(iter(cross_year.items()))
+            raise RuntimeError(
+                f"Elkjop Algolia 跨年份重复 SKU {len(cross_year)} 条，"
+                f"示例 {sample_sku}:{sorted(sample_years)}"
+            )
+
+        seen_required = {brand.lower() for brand in source_brand_counts}
+        missing_brands = sorted(REQUIRED_SOURCE_BRANDS - seen_required)
+        if missing_brands:
+            raise RuntimeError(f"Elkjop Algolia 品牌覆盖缺失: {missing_brands}")
+
+        items: list[CatalogItem] = []
+        for year in TARGET_YEARS:
+            for sku, hit in by_year_sku[year].items():
+                source_brand = hit["_source_brand"]
+                price_nok = _api_price(hit)
+                if price_nok is not None:
+                    total_with_price += 1
+                price_eur = price_to_eur(price_nok, "NOK")
+                items.append(CatalogItem(
+                    brand_raw=_api_business_brand(source_brand),
+                    raw_text=_api_raw_text(hit),
+                    url=hit["_catalog_url"],
+                    size_hint_inch=_api_size(hit),
+                    price_hint_eur=price_eur,
+                    price_local=price_nok,
+                    currency="NOK",
+                    price_eur=price_eur,
+                    extra={
+                        "elkjop_sku": sku,
+                        "model_year": year,
+                        "filter_year": year,
+                        "source_brand": source_brand,
+                        "fx_rate_date": ECB_RATE_DATE,
+                    },
+                ))
+
+        print(
+            f"[catalog/Elkjop/api] 完整性通过: {len(items)} 唯一 SKU，"
+            f"{total_with_price} 条带价，品牌={dict(sorted(source_brand_counts.items()))}"
+        )
+        return items[:MAX_ITEMS] if MAX_ITEMS else items
 
     async def _open_and_pass_checkpoint(self, page, url: str, label: str) -> bool:
         try:
@@ -257,7 +553,7 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
             finally:
                 await detail.close()
 
-    async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
+    async def _fetch_catalog_page(self, page) -> Sequence[CatalogItem]:
         print("    [Elkjop] 预热首页并等待安全检查")
         if not await self._open_and_pass_checkpoint(page, HOME_URL, "Elkjop warmup"):
             print("    [Elkjop] 首页安全检查未通过")
@@ -334,3 +630,14 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
                 break
         print(f"[catalog/Elkjop] 提取 {len(items)} 个目标品牌电视")
         return items
+
+    async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
+        if API_ENABLED:
+            try:
+                return await self._fetch_catalog_api(page.context.request)
+            except Exception as exc:
+                print(f"[catalog/Elkjop/api] 抓取失败: {str(exc)[:200]}")
+                if not PAGE_FALLBACK_ENABLED:
+                    raise
+                print("[catalog/Elkjop] 启用网页分页兜底")
+        return await self._fetch_catalog_page(page)

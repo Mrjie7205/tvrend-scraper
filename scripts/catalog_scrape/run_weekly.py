@@ -165,11 +165,16 @@ async def run(only: str | None = None) -> int:
         await browser.close()
 
     print()
+    failed = []
     for name, path in results:
         if path:
             print(f"  ✓ {name}: {path.name}")
         else:
             print(f"  ✗ {name}: failed")
+            failed.append(name)
+    if failed:
+        print(f"[catalog] 失败渠道: {failed}，返回非零状态，拒绝假成功")
+        return 1
     return 0
 
 

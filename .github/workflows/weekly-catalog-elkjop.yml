@@ -1,27 +1,29 @@
-name: Weekly Catalog Scrape
+name: Weekly Catalog - Elkjop
 
-# 每周一抓各渠道在售目录全量 → catalog/<platform>_<country>_<date>.csv。
+# Elkjop 每周在售目录使用站点前端同源的 Algolia 搜索 API。
+# 与 Boulanger/Currys 拆开，避免任一渠道失败阻塞其它 catalog 提交。
 on:
-  # ↓↓↓ 仓库转 public 后，取消下面 schedule 注释即可启用每周定时。
-  #     private 期间定时抓取会消耗免费 Actions 分钟，故先只保留手动触发(workflow_dispatch)。
   schedule:
-    - cron: "15 4 * * 1"
+    - cron: "15 6 * * 1"
   workflow_dispatch:
     inputs:
-      channels:
-        description: "渠道白名单(逗号分隔)。默认 Boulanger,Currys；Elkjop 走独立 API workflow"
+      max_items:
+        description: "手动 smoke test 输出上限；留空/0 表示完整目录"
         required: false
-        default: "Boulanger,Currys"
-      amazon_max_pages:
-        description: "Amazon 每品牌翻页数(默认 7;全规模验填 15)"
-        required: false
-        default: "7"
+        default: "0"
+
+concurrency:
+  group: weekly-catalog-elkjop
+  cancel-in-progress: false
 
 jobs:
   catalog:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
+    env:
+      CATALOG_MAX_ITEMS: ${{ inputs.max_items || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,26 +42,32 @@ jobs:
       - name: Install Playwright Chromium
         run: python -m playwright install chromium --with-deps
 
-      - name: Scrape catalog（默认 B/C;dispatch 可填 Amazon 做全规模验)
+      - name: Scrape Elkjop catalog via API
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
-          # 默认 B/C(定时);Elkjop 走独立 API workflow;dispatch 可传 Amazon 做全规模验。
-          CHANNELS: ${{ inputs.channels || 'Boulanger,Currys' }}
-          AMAZON_MAX_PAGES: ${{ inputs.amazon_max_pages || '7' }}
-        run: python -m catalog_scrape.run_weekly
+          PYTHONUNBUFFERED: "1"
+          CHANNELS: "Elkjop"
+          ELKJOP_CATALOG_API: "true"
+          ELKJOP_CATALOG_PAGE_FALLBACK: "false"
+          ELKJOP_MAX_ITEMS: ${{ env.CATALOG_MAX_ITEMS }}
+        run: python -m catalog_scrape.run_weekly --only Elkjop
 
-      - name: Commit catalog（rebase 重试，防并发）
+      - name: Commit Elkjop catalog
         run: |
           set -e
           git config user.name "tvrend-scraper bot"
           git config user.email "actions@github.com"
-          git add -- catalog/
-          if git diff --cached --quiet; then
-            echo "无新目录，跳过提交。"
+          if [ "${CATALOG_MAX_ITEMS:-0}" != "0" ]; then
+            echo "手动 smoke test（ELKJOP_MAX_ITEMS=${CATALOG_MAX_ITEMS}），跳过 catalog 提交。"
             exit 0
           fi
-          git commit -m "chore: weekly catalog ${{ github.run_id }} [skip ci]"
+          git add -- catalog/elkjop_no_*.csv
+          if git diff --cached --quiet; then
+            echo "无新 Elkjop catalog，跳过提交。"
+            exit 0
+          fi
+          git commit -m "chore: weekly elkjop catalog ${{ github.run_id }} [skip ci]"
           BR="${{ github.ref_name }}"
           for i in 1 2 3 4 5; do
             if git pull --rebase -X theirs origin "$BR" && git push origin "HEAD:$BR"; then
