@@ -1,18 +1,12 @@
-name: Daily Price Monitor
+name: Daily Price Monitor - Elkjop
 
-# 每天抓 mapping/channel_links.csv 里所有 active SKU 的价格 → 追加 raw/prices.csv。
+# Elkjop 由 Vercel Security Checkpoint 保护，GitHub Actions 上耗时和失败风险
+# 明显高于 Boulanger/Currys，因此独立调度，避免拖住其它渠道的每日价格提交。
 on:
-  # ↓↓↓ 仓库转 public 后，取消下面 schedule 注释即可启用每日定时。
-  #     private 期间定时抓取会消耗免费 Actions 分钟，故先只保留手动触发(workflow_dispatch)。
-  #     注:GitHub 定时任务实际会迟到 2-6 小时，cron 仅为大致时间。
   schedule:
-    - cron: "15 5 * * *"
+    - cron: "45 6 * * *"
   workflow_dispatch:
     inputs:
-      channels:
-        description: "逗号分隔渠道；默认 Boulanger,Currys"
-        required: false
-        default: "Boulanger,Currys"
       max_skus:
         description: "手动测试用：最多抓取 SKU 数；留空/0 表示全量"
         required: false
@@ -25,7 +19,6 @@ jobs:
     permissions:
       contents: write
     env:
-      MONITOR_INPUT_CHANNELS: ${{ inputs.channels || 'Boulanger,Currys' }}
       MONITOR_INPUT_MAX_SKUS: ${{ inputs.max_skus || '0' }}
     steps:
       - name: Checkout
@@ -45,21 +38,21 @@ jobs:
       - name: Install Playwright Chromium
         run: python -m playwright install chromium --with-deps
 
-      - name: Run daily monitor
+      - name: Run Elkjop daily monitor
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
           PYTHONUNBUFFERED: "1"
-          MONITOR_CONCURRENCY: "3"
+          MONITOR_CONCURRENCY: "1"
           MONITOR_MAX_SKUS: ${{ env.MONITOR_INPUT_MAX_SKUS }}
-          CHANNELS: ${{ env.MONITOR_INPUT_CHANNELS }}   # Amazon 走独立 catalog 链路；Elkjop 走 NOK 原币抓取
+          CHANNELS: "Elkjop"
         run: python -m monitor_prices.run_daily
 
       - name: Upload debug screenshots(失败 SKU 截图)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: monitor-debug-${{ github.run_id }}
+          name: monitor-elkjop-debug-${{ github.run_id }}
           path: scripts/debug_screenshots/
           retention-days: 7
           if-no-files-found: ignore
@@ -70,7 +63,7 @@ jobs:
           git config user.name "tvrend-scraper bot"
           git config user.email "actions@github.com"
           if [ "${MONITOR_INPUT_MAX_SKUS:-0}" != "0" ]; then
-            echo "手动 smoke test（MONITOR_MAX_SKUS=${MONITOR_INPUT_MAX_SKUS}），跳过 prices.csv 提交。"
+            echo "手动 Elkjop smoke test（MONITOR_MAX_SKUS=${MONITOR_INPUT_MAX_SKUS}），跳过 prices.csv 提交。"
             exit 0
           fi
           git add -- raw/prices.csv
@@ -78,7 +71,7 @@ jobs:
             echo "无新数据，跳过提交。"
             exit 0
           fi
-          git commit -m "chore: daily prices ${{ github.run_id }} [skip ci]"
+          git commit -m "chore: daily elkjop prices ${{ github.run_id }} [skip ci]"
           BR="${{ github.ref_name }}"
           for i in 1 2 3 4 5; do
             if git pull --rebase -X theirs origin "$BR" && git push origin "HEAD:$BR"; then
