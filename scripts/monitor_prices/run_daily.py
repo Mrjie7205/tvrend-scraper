@@ -50,6 +50,7 @@ from monitor_prices.adapters import get_adapter, supported_platforms  # noqa: E4
 
 CONCURRENCY = int(os.environ.get("MONITOR_CONCURRENCY", "3"))
 HEADLESS = os.environ.get("HEADLESS_MODE", "true").lower() != "false"
+MAX_SKUS = int(os.environ.get("MONITOR_MAX_SKUS", "0") or "0")
 
 # Playwright 启动参数(降低指纹)
 BROWSER_ARGS = (
@@ -266,6 +267,10 @@ async def run() -> int:
     if not runnable:
         print("[monitor] 全部 SKU 渠道都没 adapter,退出")
         return 0
+
+    if MAX_SKUS > 0 and len(runnable) > MAX_SKUS:
+        print(f"[monitor] MONITOR_MAX_SKUS={MAX_SKUS} → {MAX_SKUS}/{len(runnable)} SKU 入选")
+        runnable = runnable[:MAX_SKUS]
 
     print(f"[monitor] 抓取 {len(runnable)} SKU · headless={HEADLESS} · concurrency={CONCURRENCY}")
     hist = load_latest_historical_prices()

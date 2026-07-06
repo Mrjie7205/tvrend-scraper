@@ -8,10 +8,20 @@ on:
   schedule:
     - cron: "15 5 * * *"
   workflow_dispatch:
+    inputs:
+      channels:
+        description: "逗号分隔渠道；默认 Boulanger,Currys,Elkjop"
+        required: false
+        default: "Boulanger,Currys,Elkjop"
+      max_skus:
+        description: "手动测试用：最多抓取 SKU 数；留空/0 表示全量"
+        required: false
+        default: "0"
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     permissions:
       contents: write
     steps:
@@ -36,8 +46,10 @@ jobs:
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
+          PYTHONUNBUFFERED: "1"
           MONITOR_CONCURRENCY: "3"
-          CHANNELS: "Boulanger,Currys,Elkjop"   # Amazon 走独立 catalog 链路；Elkjop 走 NOK 原币抓取
+          MONITOR_MAX_SKUS: ${{ inputs.max_skus || '0' }}
+          CHANNELS: ${{ inputs.channels || 'Boulanger,Currys,Elkjop' }}   # Amazon 走独立 catalog 链路；Elkjop 走 NOK 原币抓取
         run: python -m monitor_prices.run_daily
 
       - name: Upload debug screenshots(失败 SKU 截图)
