@@ -124,6 +124,24 @@ async def process_sku(sem, browser, sku: dict, hist: dict, shared_context=None) 
         try:
             if owns_context:
                 ctx = await _new_context(browser, adapter, country)
+
+            if getattr(adapter, "direct_price_enabled", False):
+                try:
+                    price_data = await adapter.extract_price_direct(url, ctx.request)
+                except Exception as e:
+                    print(f"  [{name}] direct API 异常，回退页面抓取: {str(e)[:100]}")
+                    price_data = None
+                if price_data:
+                    new_price, currency = price_data
+                    result["Price"] = new_price
+                    result["Currency"] = currency
+                    result["Status"] = "Success"
+                    result["Page Title"] = "Direct API"
+                    result["Price_Trend"] = compute_price_trend(name, country, platform, new_price, hist)
+                    print(f"  [ok/api] {currency} {new_price} ({result['Price_Trend']})")
+                    return result
+                print(f"  [{name}] direct API 无价，回退页面抓取")
+
             page = await ctx.new_page()
 
             # 导航(2 次重试 + 反爬等待)

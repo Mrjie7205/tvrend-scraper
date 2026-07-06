@@ -43,8 +43,9 @@ jobs:
         env:
           HEADLESS_MODE: "true"
           PYTHONUNBUFFERED: "1"
-          MONITOR_CONCURRENCY: "1"
+          MONITOR_CONCURRENCY: "3"
           MONITOR_MAX_SKUS: ${{ env.MONITOR_INPUT_MAX_SKUS }}
+          ELKJOP_DIRECT_PRICE: "true"
           CHANNELS: "Elkjop"
         run: python -m monitor_prices.run_daily
 

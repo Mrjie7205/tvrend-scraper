@@ -22,9 +22,15 @@ class BaseAdapter:
     context_cookies: tuple[dict, ...] = ()
     # 某些渠道的反爬验证绑定浏览器会话；同渠道 SKU 需串行复用一个 context。
     shared_context: bool = False
+    # 某些渠道可以从站点 JSON/API 直接取价，优先走 direct API，失败再回退页面。
+    direct_price_enabled: bool = False
     warmup_url: str | None = None
     antibot_max_waits: int = 4
     antibot_wait_seconds: float = 5.0
+
+    async def extract_price_direct(self, url: str, request_context=None) -> tuple[float, str] | None:
+        """可选：不打开商品页，直接从站点 API/JSON 取价。默认不支持。"""
+        return None
 
     async def extract_price(self, page) -> tuple[float, str] | None:
         """返回 (price, currency) 或 None。子类必须实现。"""
