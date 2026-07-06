@@ -24,6 +24,9 @@ jobs:
     timeout-minutes: 180
     permissions:
       contents: write
+    env:
+      MONITOR_INPUT_CHANNELS: ${{ inputs.channels || 'Boulanger,Currys,Elkjop' }}
+      MONITOR_INPUT_MAX_SKUS: ${{ inputs.max_skus || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,8 +51,8 @@ jobs:
           HEADLESS_MODE: "true"
           PYTHONUNBUFFERED: "1"
           MONITOR_CONCURRENCY: "3"
-          MONITOR_MAX_SKUS: ${{ inputs.max_skus || '0' }}
-          CHANNELS: ${{ inputs.channels || 'Boulanger,Currys,Elkjop' }}   # Amazon 走独立 catalog 链路；Elkjop 走 NOK 原币抓取
+          MONITOR_MAX_SKUS: ${{ env.MONITOR_INPUT_MAX_SKUS }}
+          CHANNELS: ${{ env.MONITOR_INPUT_CHANNELS }}   # Amazon 走独立 catalog 链路；Elkjop 走 NOK 原币抓取
         run: python -m monitor_prices.run_daily
 
       - name: Upload debug screenshots(失败 SKU 截图)
@@ -66,6 +69,10 @@ jobs:
           set -e
           git config user.name "tvrend-scraper bot"
           git config user.email "actions@github.com"
+          if [ "${MONITOR_INPUT_MAX_SKUS:-0}" != "0" ]; then
+            echo "手动 smoke test（MONITOR_MAX_SKUS=${MONITOR_INPUT_MAX_SKUS}），跳过 prices.csv 提交。"
+            exit 0
+          fi
           git add -- raw/prices.csv
           if git diff --cached --quiet; then
             echo "无新数据，跳过提交。"
