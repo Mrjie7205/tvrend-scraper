@@ -5,10 +5,14 @@
 - GB 先接入 amazon.co.uk，配送邮编使用用户指定的 Warwick 邮编 CV4 7ES。
   GB 阶段使用「地址设置成功 + 搜索页原生 GBP 合理价格」作为 fail-closed 守门；
   等 GitHub smoke 跑出稳定样本后，再把 GB 升级为固定 ASIN canary。
+- IT/ES 复用 GB 已验证的搜索卡片结构化品牌/尺寸抽取策略，先用地址设置
+  成功 + 搜索页 EUR 合理价格作为 fail-closed 守门。
 
 输出仍保持 platform=Amazon，用 country 区分市场：
   catalog/amazon_de_YYYYMMDD.csv
   catalog/amazon_gb_YYYYMMDD.csv
+  catalog/amazon_it_YYYYMMDD.csv
+  catalog/amazon_es_YYYYMMDD.csv
 
 价格口径：
 - price_local/currency 保存渠道原币；
@@ -140,6 +144,7 @@ class AmazonMarket:
     currency: str
     language_cookie_name: str
     language_cookie_value: str
+    location_required: bool = True
     de_canary: tuple[tuple[str, float], ...] = ()
 
 
@@ -173,6 +178,34 @@ AMAZON_GB = AmazonMarket(
     language_cookie_value="en_GB",
 )
 
+AMAZON_IT = AmazonMarket(
+    code="IT",
+    base_url="https://www.amazon.it",
+    cookie_domain=".amazon.it",
+    locale="it-IT",
+    timezone="Europe/Rome",
+    search_word="televisore",
+    postcode=os.environ.get("AMAZON_IT_POSTCODE", "20121"),
+    currency="EUR",
+    language_cookie_name="lc-acbit",
+    language_cookie_value="it_IT",
+    location_required=False,
+)
+
+AMAZON_ES = AmazonMarket(
+    code="ES",
+    base_url="https://www.amazon.es",
+    cookie_domain=".amazon.es",
+    locale="es-ES",
+    timezone="Europe/Madrid",
+    search_word="televisor",
+    postcode=os.environ.get("AMAZON_ES_POSTCODE", "28013"),
+    currency="EUR",
+    language_cookie_name="lc-acbes",
+    language_cookie_value="es_ES",
+    location_required=False,
+)
+
 
 def _brand_from_title(title: str) -> str:
     up = title.upper()
@@ -200,12 +233,52 @@ def _price_pair(text: str, expected_currency: str) -> tuple[float | None, str, f
 
 
 async def _accept_cookie(page) -> None:
-    for sel in (COOKIE_ACCEPT_SELECTOR, f"{COOKIE_ACCEPT_SELECTOR} input"):
+    for sel in (
+        COOKIE_ACCEPT_SELECTOR,
+        f"{COOKIE_ACCEPT_SELECTOR} input",
+        "#sp-cc-rejectall-link",
+        "input#sp-cc-accept",
+        "input[name='accept']",
+        "button[name='accept']",
+    ):
         try:
             await page.click(sel, timeout=2500)
             return
         except Exception:
             pass
+    for pat in ("Accetta", "Accetta tutto", "Aceptar", "Aceptar todo", "Accept", "Reject", "Rifiuta", "Rechazar"):
+        try:
+            await page.get_by_text(pat, exact=False).first.click(timeout=1200)
+            return
+        except Exception:
+            pass
+
+
+async def set_amazon_location_via_popup(page, market: AmazonMarket) -> bool:
+    """旧 glow toaster 接口为空时，用顶部配送地弹窗填邮编作为 fallback。"""
+    try:
+        await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
+        await _accept_cookie(page)
+        await page.click("#nav-global-location-popover-link, #glow-ingress-block", timeout=8000)
+        await page.wait_for_timeout(1500)
+        inp = page.locator("#GLUXZipUpdateInput").first
+        if await inp.count() == 0:
+            print(f"  [set-loc/{market.code}] 弹窗未出现邮编输入框")
+            return False
+        await inp.fill(market.postcode, timeout=5000)
+        await page.click("#GLUXZipUpdate", timeout=5000)
+        await page.wait_for_timeout(2500)
+        for sel in ("#GLUXConfirmClose", "input[name='glowDoneButton']", ".a-popover-footer .a-button-input"):
+            try:
+                await page.click(sel, timeout=1500)
+                break
+            except Exception:
+                pass
+        print(f"  [set-loc/{market.code}] 配送地弹窗 → {market.postcode}:✓")
+        return True
+    except Exception as e:
+        print(f"  [set-loc/{market.code}] 配送地弹窗失败: {str(e)[:120]}")
+        return False
 
 
 async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
@@ -248,6 +321,12 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
     m = re.search(r'data-toaster-csrfToken="([^"]+)"', html)
     if not m:
         print(f"  [set-loc/{market.code}] 没找到 CSRF token，Amazon glow 可能改版")
+        ok = await set_amazon_location_via_popup(page, market)
+        if ok:
+            return True
+        if not market.location_required:
+            print(f"  [set-loc/{market.code}] 邮编未确认；该 EUR 市场继续交给搜索页币种 canary 守门")
+            return True
         return False
 
     token = m.group(1)
@@ -282,6 +361,9 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
         f"  [set-loc/{market.code}] 配送地 → {market.postcode}:"
         f"{'✓ isAddressUpdated:1' if ok else '✗ 未生效'} (status={res.get('status')})"
     )
+    if not ok and not market.location_required:
+        print(f"  [set-loc/{market.code}] 邮编未确认；该 EUR 市场继续交给搜索页币种 canary 守门")
+        return True
     return ok
 
 
@@ -450,3 +532,13 @@ class AmazonDeCatalogAdapter(AmazonCatalogAdapter):
 class AmazonGbCatalogAdapter(AmazonCatalogAdapter):
     def __init__(self):
         super().__init__(AMAZON_GB)
+
+
+class AmazonItCatalogAdapter(AmazonCatalogAdapter):
+    def __init__(self):
+        super().__init__(AMAZON_IT)
+
+
+class AmazonEsCatalogAdapter(AmazonCatalogAdapter):
+    def __init__(self):
+        super().__init__(AMAZON_ES)

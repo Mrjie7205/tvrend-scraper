@@ -12,7 +12,12 @@ from __future__ import annotations
 
 from .adapters.boulanger import BoulangerCatalogAdapter
 from .adapters.currys import CurrysCatalogAdapter
-from .adapters.amazon import AmazonDeCatalogAdapter, AmazonGbCatalogAdapter
+from .adapters.amazon import (
+    AmazonDeCatalogAdapter,
+    AmazonEsCatalogAdapter,
+    AmazonGbCatalogAdapter,
+    AmazonItCatalogAdapter,
+)
 from .adapters.elkjop import ElkjopCatalogAdapter
 
 # 注册表
@@ -21,6 +26,8 @@ REGISTRY = {
     CurrysCatalogAdapter.platform_name.lower(): CurrysCatalogAdapter(),
     "amazon_de": AmazonDeCatalogAdapter(),
     "amazon_gb": AmazonGbCatalogAdapter(),
+    "amazon_it": AmazonItCatalogAdapter(),
+    "amazon_es": AmazonEsCatalogAdapter(),
     ElkjopCatalogAdapter.platform_name.lower(): ElkjopCatalogAdapter(),
 }
 

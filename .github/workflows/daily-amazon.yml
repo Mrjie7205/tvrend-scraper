@@ -33,6 +33,12 @@ jobs:
           - market: amazon_gb
             country: gb
             experimental: true
+          - market: amazon_it
+            country: it
+            experimental: true
+          - market: amazon_es
+            country: es
+            experimental: true
     permissions:
       contents: read
     steps:
@@ -105,7 +111,7 @@ jobs:
           git config user.name "tvrend-scraper bot"
           git config user.email "actions@github.com"
           # 每个 Amazon 国家只留最近 14 份 catalog,防 public 仓膨胀(私库 enrich 每天消费最新即可)
-          for c in de gb; do
+          for c in de gb it es; do
             ls catalog/amazon_${c}_*.csv 2>/dev/null | sort | head -n -14 | while read -r f; do
               git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"
             done
