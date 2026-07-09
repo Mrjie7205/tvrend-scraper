@@ -27,6 +27,7 @@ import random
 import re
 from dataclasses import dataclass
 from typing import Sequence
+from urllib.parse import quote_plus
 
 from monitor_prices.core import clean_price
 from monitor_prices.fx import ECB_RATE_DATE, price_to_eur
@@ -40,7 +41,13 @@ BRAND_QUERIES = tuple(
     for q in os.environ.get("AMAZON_BRAND_QUERIES", "samsung,lg,tcl,hisense,sony").split(",")
     if q.strip()
 )
+EXTRA_SERIES_QUERIES = tuple(
+    q.strip().lower()
+    for q in os.environ.get("AMAZON_EXTRA_SERIES_QUERIES", "samsung s95h").split(",")
+    if q.strip()
+)
 MAX_PAGES = int(os.environ.get("AMAZON_MAX_PAGES", "7"))
+EXTRA_MAX_PAGES = int(os.environ.get("AMAZON_EXTRA_MAX_PAGES", "3"))
 EXPAND_VARIANTS = os.environ.get("AMAZON_EXPAND_VARIANTS", "true").lower() != "false"
 MAX_VARIANT_SEEDS = int(os.environ.get("AMAZON_MAX_VARIANT_SEEDS", "32"))
 MAX_VARIANTS_PER_SEED = int(os.environ.get("AMAZON_MAX_VARIANTS_PER_SEED", "6"))
@@ -674,10 +681,14 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         by_asin: dict[str, CatalogItem] = {}
         variant_seeds: list[CatalogItem] = []
         cookie_done = False
-        for q in BRAND_QUERIES:
+        query_plan = [(q, MAX_PAGES) for q in BRAND_QUERIES] + [
+            (q, min(MAX_PAGES, EXTRA_MAX_PAGES)) for q in EXTRA_SERIES_QUERIES
+        ]
+        for q, max_pages in query_plan:
             consecutive_empty = 0
-            for n in range(1, MAX_PAGES + 1):
-                url = f"{market.base_url}/s?k={q}+{market.search_word}&page={n}"
+            for n in range(1, max_pages + 1):
+                search_text = f"{q} {market.search_word}"
+                url = f"{market.base_url}/s?k={quote_plus(search_text)}&page={n}"
                 try:
                     await page.goto(url, wait_until="domcontentloaded", timeout=45000)
                 except Exception as e:
