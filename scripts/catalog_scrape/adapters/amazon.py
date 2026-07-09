@@ -66,24 +66,53 @@ RE_NON_TV = re.compile(
 _JS_EXTRACT = r"""
 () => {
   const out = [];
+  const clean = (s) => (s || '').trim().replace(/\s+/g, ' ');
+  const firstText = (el, selectors) => {
+    for (const sel of selectors) {
+      const node = el.querySelector(sel);
+      const txt = clean(node ? node.textContent : '');
+      if (txt) return txt;
+    }
+    return '';
+  };
   document.querySelectorAll("div[data-component-type='s-search-result']").forEach(el => {
     const asin = el.getAttribute('data-asin') || '';
     if (!asin) return;
+    // Amazon UK/DE 的搜索卡片常把品牌作为标题上方的独立粗体行展示。
+    // 这比从标题或型号里猜品牌可靠，尤其适合 Hisense/TCL 这类标题经常省略品牌的结果。
+    const brand = firstText(el, [
+      "[data-cy='title-recipe'] h2.a-size-mini span.a-size-medium.a-color-base",
+      "[data-cy='title-recipe'] .a-row.a-color-secondary span.a-size-medium.a-color-base",
+      "h2.a-size-mini span.a-size-medium.a-color-base"
+    ]);
     const candidates = [];
-    ["h2 span", "[data-cy='title-recipe'] span", "h2 a span", "img.s-image"].forEach(sel => {
+    [
+      "[data-cy='title-recipe'] h2.a-size-medium.a-spacing-none.a-color-base.a-text-normal span",
+      "[data-cy='title-recipe'] a.a-link-normal.s-line-clamp-2 span",
+      "h2.a-size-medium.a-spacing-none.a-color-base.a-text-normal span",
+      "img.s-image"
+    ].forEach(sel => {
       el.querySelectorAll(sel).forEach(node => {
-        const txt = ((node.textContent || node.getAttribute('alt') || '')).trim().replace(/\s+/g, ' ');
+        const txt = clean(node.textContent || node.getAttribute('alt') || '');
         if (txt) candidates.push(txt);
       });
     });
     candidates.sort((a, b) => b.length - a.length);
-    const title = candidates[0] || '';
+    let title = candidates[0] || '';
+    if (brand && title && !title.toLowerCase().startsWith(brand.toLowerCase())) {
+      title = `${brand} ${title}`;
+    }
     if (!title) return;
     const sponsored = !!el.querySelector(
       "[aria-label*='Gesponsert'], [aria-label*='Sponsored'], .puis-sponsored-label-text, .s-sponsored-label-text, [data-component-type='sp-sponsored-result']");
     const pr = el.querySelector(".a-price .a-offscreen");
     const price = pr ? (pr.textContent || '').trim() : '';
-    out.push({ asin, title, price, sponsored });
+    const cardText = clean(el.textContent);
+    const sizeMatch = cardText.match(
+      /(?:Display Size|Screen Size|Bildschirmgr[oöß]?[sß]e|Displaygr[oöß]?[sß]e|Dimensione schermo|Tama[nñ]o de pantalla)\s*:?\s*(\d{2,3})\s*(?:inches?|Zoll|pollici|pulgadas|["”″])/i
+    );
+    const sizeText = sizeMatch ? `${sizeMatch[1]} inches` : '';
+    out.push({ asin, brand, title, price, sponsored, sizeText });
   });
   return out;
 }
@@ -340,6 +369,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         by_asin: dict[str, CatalogItem] = {}
         cookie_done = False
         for q in BRAND_QUERIES:
+            consecutive_empty = 0
             for n in range(1, MAX_PAGES + 1):
                 url = f"{market.base_url}/s?k={q}+{market.search_word}&page={n}"
                 try:
@@ -358,18 +388,29 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     break
 
                 new_real = 0
+                filtered = {"sponsored": 0, "no_brand": 0, "no_size": 0, "non_tv": 0, "duplicate": 0}
                 for r in rows:
                     if r.get("sponsored"):
+                        filtered["sponsored"] += 1
                         continue
                     asin = (r.get("asin") or "").strip()
                     title = (r.get("title") or "").strip()
-                    if not asin or asin in by_asin or not title:
+                    if not asin or not title:
                         continue
-                    brand = _brand_from_title(title)
-                    size = _size_from_title(title)
+                    if asin in by_asin:
+                        filtered["duplicate"] += 1
+                        continue
+                    card_brand = (r.get("brand") or "").strip()
+                    # 如果搜索卡片明确给了品牌行，以它为准；未知品牌直接丢弃。
+                    # 只有卡片没有品牌行时，才回退到标题识别，避免把 “Samsung Tizen OS”
+                    # 这类功能描述误判成商品品牌。
+                    brand = _brand_from_title(card_brand) if card_brand else _brand_from_title(title)
+                    size = _size_from_title(title) or _size_from_title(r.get("sizeText") or "")
                     if not brand or size is None:
+                        filtered["no_brand" if not brand else "no_size"] += 1
                         continue
                     if RE_NON_TV.search(title):
+                        filtered["non_tv"] += 1
                         continue
                     price_local, currency, price_eur = _price_pair(r.get("price") or "", market.currency)
                     by_asin[asin] = CatalogItem(
@@ -389,10 +430,14 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     new_real += 1
                 print(
                     f"[catalog/Amazon/{market.code}] {q} p{n}: {len(rows)} 结果 / "
-                    f"本页新增真电视 {new_real} / 累计 {len(by_asin)}"
+                    f"本页新增真电视 {new_real} / 累计 {len(by_asin)} / 过滤 {filtered}"
                 )
                 if new_real == 0:
-                    break
+                    consecutive_empty += 1
+                    if consecutive_empty >= 2:
+                        break
+                else:
+                    consecutive_empty = 0
                 await asyncio.sleep(random.uniform(1.0, 2.2))
         return list(by_asin.values())
 
