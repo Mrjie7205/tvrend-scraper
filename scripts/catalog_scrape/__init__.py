@@ -12,14 +12,15 @@ from __future__ import annotations
 
 from .adapters.boulanger import BoulangerCatalogAdapter
 from .adapters.currys import CurrysCatalogAdapter
-from .adapters.amazon import AmazonCatalogAdapter
+from .adapters.amazon import AmazonDeCatalogAdapter, AmazonGbCatalogAdapter
 from .adapters.elkjop import ElkjopCatalogAdapter
 
 # 注册表
 REGISTRY = {
     BoulangerCatalogAdapter.platform_name.lower(): BoulangerCatalogAdapter(),
     CurrysCatalogAdapter.platform_name.lower(): CurrysCatalogAdapter(),
-    AmazonCatalogAdapter.platform_name.lower(): AmazonCatalogAdapter(),
+    "amazon_de": AmazonDeCatalogAdapter(),
+    "amazon_gb": AmazonGbCatalogAdapter(),
     ElkjopCatalogAdapter.platform_name.lower(): ElkjopCatalogAdapter(),
 }
 
@@ -29,4 +30,4 @@ def get_catalog_adapter(platform: str):
 
 
 def supported_catalogs():
-    return [a.platform_name for a in REGISTRY.values()]
+    return [f"{k}:{a.platform_name}/{a.country}" for k, a in REGISTRY.items()]

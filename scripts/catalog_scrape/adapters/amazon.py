@@ -1,22 +1,19 @@
-"""Amazon DE 类目页反向拉:抓 amazon.de 上五大品牌的电视清单。
+"""Amazon 多国家 catalog 抓取。
 
-抓取策略(2026-06 实测确定):
-- 入口 = 按品牌搜索 /s?k=<brand>+fernseher&page=N(比泛搜 "fernseher" 干净,品牌归属准、每品牌更深)。
-- Amazon 是客户端渲染,plain HTTP 只回 ~2KB stub → 必须用 Playwright(run_weekly 已给好 UA+locale+Stealth)。
-- 实测 headless Playwright 直接拿到结果页(28 ASIN/页、无 captcha),单 context 翻页也 OK,无需每页换 context。
-- Cookie 同意框:#sp-cc-accept。
+当前生产策略：
+- DE 继续沿用已验证的德国邮编 + 固定 ASIN canary，保持原有稳定性。
+- GB 先接入 amazon.co.uk，配送邮编使用用户指定的 Warwick 邮编 CV4 7ES。
+  GB 阶段使用「地址设置成功 + 搜索页原生 GBP 合理价格」作为 fail-closed 守门；
+  等 GitHub smoke 跑出稳定样本后，再把 GB 升级为固定 ASIN canary。
 
-DOM 关键点:
-- 每个结果 = div[data-component-type='s-search-result'],data-asin 是稳定唯一 ID。
-- 标题在 h2 span,含品牌+型号+尺寸(如 'Samsung Crystal UHD 4K U7099F 43 Zoll ...')→ 直接当 raw_text 交匹配器。
-- 商品 URL 由 ASIN 直接拼 /dp/<ASIN>(比抓卡片链接稳)。
-- 广告位('Vorgestellte Produkte von Amazon-Marken' / 'Gesponsert')要剔。
-- 搜索页价格随连接的配送地 localize → **fetch_catalog 开头先 set_amazon_de_location(设德国邮编,纯 AJAX、
-  任意 IP)+ canary 守门**,此后搜索页 price_hint_eur 即真·德国 EUR 价。set-loc/canary 失败 → fail-closed
-  返回空(绝不用默认美国地址抓→错国价)。
-- 配件/投影/商显在源头剔(护栏3 RE_NON_TV,与私库 matcher 同口径 + 补 ü/Fußständer/Netzteil/TV-Beine 漏网)。
+输出仍保持 platform=Amazon，用 country 区分市场：
+  catalog/amazon_de_YYYYMMDD.csv
+  catalog/amazon_gb_YYYYMMDD.csv
 
-匹配脏活留给 match_to_truth,这里只交付原始标题 + /dp URL + 价格数字(hint)。
+价格口径：
+- price_local/currency 保存渠道原币；
+- price_eur 保存换算欧元；
+- price_hint_eur 继续给下游 matcher 使用统一 EUR hint。
 """
 from __future__ import annotations
 
@@ -24,47 +21,66 @@ import asyncio
 import os
 import random
 import re
+from dataclasses import dataclass
 from typing import Sequence
+
+from monitor_prices.core import clean_price
+from monitor_prices.fx import ECB_RATE_DATE, price_to_eur
 
 from .base import BaseCatalogAdapter, CatalogItem
 
-BASE = "https://www.amazon.de"
-# 追踪的 5 大品牌(搜索词)。Amazon 搜某品牌仍会混入别牌,品牌以标题为准。
+
+# 追踪的 5 大品牌。Amazon 搜某品牌仍会混入别牌，品牌以标题为准。
 BRAND_QUERIES = ("samsung", "lg", "tcl", "hisense", "sony")
-MAX_PAGES = int(os.environ.get("AMAZON_MAX_PAGES", "7"))   # 每品牌最多翻 7 页(留余量)
+MAX_PAGES = int(os.environ.get("AMAZON_MAX_PAGES", "7"))
 COOKIE_ACCEPT_SELECTOR = "#sp-cc-accept"
 
 _KNOWN_BRANDS = {
-    "SAMSUNG": "Samsung", "HISENSE": "Hisense", "SONY": "Sony", "TCL": "TCL", "LG": "LG",
-    "PHILIPS": "Philips", "PANASONIC": "Panasonic", "TOSHIBA": "Toshiba", "XIAOMI": "Xiaomi",
+    "SAMSUNG": "Samsung",
+    "HISENSE": "Hisense",
+    "SONY": "Sony",
+    "TCL": "TCL",
+    "LG": "LG",
+    "PHILIPS": "Philips",
+    "PANASONIC": "Panasonic",
+    "TOSHIBA": "Toshiba",
+    "XIAOMI": "Xiaomi",
 }
-RE_SIZE = re.compile(r"(\d{2,3})\s*(?:Zoll|[\"”″])", re.IGNORECASE)
 
-# 护栏3:非电视/配件——Amazon 按品牌搜会混入投影/激光电视/便携屏/商显/屏保/支架/电源/遥控。
-# 与私库 matcher RE_NON_TV 同口径,并补其漏网:ü 变体(Standfüße)、Fußständer、Netzteil、TV-Beine、商显。
-# 锚定"TV-配件"措辞(tv-ständer/tv-beine),避免误杀"mit Standfuß"的真电视。在 catalog 源头剔。
-RE_NON_TV = re.compile(
-    r"projektor|projector|projecteur|laser\s*tv|beamer"
-    r"|\bstanbyme\b|\bmonitor\b|moniteur"
-    r"|business\s*display|professional\s*display|signage"
-    r"|displayschutz|bildschirmschutz|schutzfolie|displayfolie|screen\s*protector|panzerglas"
-    r"|wandhalterung|tv[- ]?halterung"
-    r"|fußständer|tv[- ]?ständer|tv[- ]?beine|netzteil|fernbedienung",
+RE_SIZE = re.compile(
+    r"(\d{2,3})\s*(?:[- ]?\s*(?:Zoll|inch(?:es)?|pollici|pulgadas)|[\"'”″])",
     re.IGNORECASE,
 )
 
-# 一次性抓本页全部结果(asin/标题/价格/是否广告)
+# 护栏：Amazon 按品牌搜会混入投影、商显、支架、保护膜、遥控、电源等非电视本体。
+RE_NON_TV = re.compile(
+    r"projektor|projector|projecteur|proiettore|proyector|laser\s*tv|beamer"
+    r"|\bstanbyme\b|\bmonitor\b|moniteur"
+    r"|business\s*display|professional\s*display|signage"
+    r"|displayschutz|bildschirmschutz|schutzfolie|displayfolie|screen\s*protector|panzerglas"
+    r"|wandhalterung|wall\s*mount|tv[- ]?halterung|supporto|soporte"
+    r"|fußständer|tv[- ]?ständer|tv[- ]?stand|tv[- ]?beine|netzteil|fernbedienung|remote\s*control",
+    re.IGNORECASE,
+)
+
 _JS_EXTRACT = r"""
 () => {
   const out = [];
   document.querySelectorAll("div[data-component-type='s-search-result']").forEach(el => {
     const asin = el.getAttribute('data-asin') || '';
     if (!asin) return;
-    const t = el.querySelector("h2 span, [data-cy='title-recipe'] span, h2 a span");
-    const title = t ? (t.textContent || '').trim().replace(/\s+/g, ' ') : '';
+    const candidates = [];
+    ["h2 span", "[data-cy='title-recipe'] span", "h2 a span", "img.s-image"].forEach(sel => {
+      el.querySelectorAll(sel).forEach(node => {
+        const txt = ((node.textContent || node.getAttribute('alt') || '')).trim().replace(/\s+/g, ' ');
+        if (txt) candidates.push(txt);
+      });
+    });
+    candidates.sort((a, b) => b.length - a.length);
+    const title = candidates[0] || '';
     if (!title) return;
     const sponsored = !!el.querySelector(
-      "[aria-label*='Gesponsert'], .puis-sponsored-label-text, .s-sponsored-label-text, [data-component-type='sp-sponsored-result']");
+      "[aria-label*='Gesponsert'], [aria-label*='Sponsored'], .puis-sponsored-label-text, .s-sponsored-label-text, [data-component-type='sp-sponsored-result']");
     const pr = el.querySelector(".a-price .a-offscreen");
     const price = pr ? (pr.textContent || '').trim() : '';
     out.push({ asin, title, price, sponsored });
@@ -72,6 +88,61 @@ _JS_EXTRACT = r"""
   return out;
 }
 """
+
+_AMZ_PRICE_SELECTORS = (
+    "#corePriceDisplay_desktop_feature_div span.priceToPay span.a-offscreen",
+    "#corePriceDisplay_desktop_feature_div .a-offscreen",
+    ".priceToPay .a-offscreen",
+    ".a-price .a-offscreen",
+)
+
+_CANARY_LO, _CANARY_HI = 0.5, 1.5
+
+
+@dataclass(frozen=True)
+class AmazonMarket:
+    code: str
+    base_url: str
+    cookie_domain: str
+    locale: str
+    timezone: str
+    search_word: str
+    postcode: str
+    currency: str
+    language_cookie_name: str
+    language_cookie_value: str
+    de_canary: tuple[tuple[str, float], ...] = ()
+
+
+AMAZON_DE = AmazonMarket(
+    code="DE",
+    base_url="https://www.amazon.de",
+    cookie_domain=".amazon.de",
+    locale="de-DE",
+    timezone="Europe/Berlin",
+    search_word="fernseher",
+    postcode=os.environ.get("AMAZON_DE_ZIP", "26935"),
+    currency="EUR",
+    language_cookie_name="lc-acbde",
+    language_cookie_value="de_DE",
+    de_canary=(
+        ("B0GYZMPVXG", 229.99),  # Hisense 32A5DS
+        ("B0GT9QKMRM", 169.99),  # Hisense 32E4DS
+    ),
+)
+
+AMAZON_GB = AmazonMarket(
+    code="GB",
+    base_url="https://www.amazon.co.uk",
+    cookie_domain=".amazon.co.uk",
+    locale="en-GB",
+    timezone="Europe/London",
+    search_word="tv",
+    postcode=os.environ.get("AMAZON_GB_POSTCODE", "CV4 7ES"),
+    currency="GBP",
+    language_cookie_name="lc-acbuk",
+    language_cookie_value="en_GB",
+)
 
 
 def _brand_from_title(title: str) -> str:
@@ -87,58 +158,203 @@ def _size_from_title(title: str) -> float | None:
     return float(m.group(1)) if m else None
 
 
-def _price_hint(text: str) -> float | None:
-    """从 '1.299,00 €' / '172,70 GBP' 抠数字(德式千分点 + 逗号小数)。仅去重 hint,不分币种。"""
-    m = re.search(r"\d[\d.\s]*,\d{2}", text) or re.search(r"\d[\d.\s]*", text)
-    if not m:
-        return None
-    s = m.group(0).replace(" ", "").replace(".", "").replace(",", ".")
-    try:
-        return round(float(s), 2)
-    except ValueError:
-        return None
+def _price_pair(text: str, expected_currency: str) -> tuple[float | None, str, float | None]:
+    """返回 (本币价, 币种, 欧元价)。币种不符时返回空，避免错国价进入数据。"""
+    parsed = clean_price(text)
+    if not parsed:
+        return None, "", None
+    price, currency = parsed
+    currency = currency.upper()
+    if currency != expected_currency:
+        return None, currency, None
+    return round(price, 2), currency, price_to_eur(price, currency)
 
 
-class AmazonCatalogAdapter(BaseCatalogAdapter):
-    platform_name = "Amazon"
-    country = "DE"
-    locale_override = ("de-DE", "Europe/Berlin")
-
-    async def _accept_cookie(self, page) -> None:
+async def _accept_cookie(page) -> None:
+    for sel in (COOKIE_ACCEPT_SELECTOR, f"{COOKIE_ACCEPT_SELECTOR} input"):
         try:
-            await page.click(COOKIE_ACCEPT_SELECTOR, timeout=2500)
+            await page.click(sel, timeout=2500)
+            return
         except Exception:
             pass
 
+
+async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
+    """用 Amazon glow 地址接口设置配送地。失败必须 fail-closed。"""
+    try:
+        await page.context.add_cookies([
+            {"name": "i18n-prefs", "value": market.currency, "domain": market.cookie_domain, "path": "/"},
+            {
+                "name": market.language_cookie_name,
+                "value": market.language_cookie_value,
+                "domain": market.cookie_domain,
+                "path": "/",
+            },
+        ])
+    except Exception:
+        pass
+
+    try:
+        await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
+    except Exception as e:
+        print(f"  [set-loc/{market.code}] 进首页失败: {e}")
+        return False
+
+    await _accept_cookie(page)
+
+    try:
+        html = await page.evaluate(
+            """async (baseUrl) => {
+                const url = baseUrl + "/portal-migration/hz/glow/get-rendered-toaster"
+                    + "?pageType=Gateway&aisTransitionState=null&rancorLocationSource=IP_GEOLOCATION&isB2B=false";
+                const r = await fetch(url, {credentials: "include"});
+                return await r.text();
+            }""",
+            market.base_url,
+        )
+    except Exception as e:
+        print(f"  [set-loc/{market.code}] 取 CSRF token 失败: {e}")
+        return False
+
+    m = re.search(r'data-toaster-csrfToken="([^"]+)"', html)
+    if not m:
+        print(f"  [set-loc/{market.code}] 没找到 CSRF token，Amazon glow 可能改版")
+        return False
+
+    token = m.group(1)
+    try:
+        res = await page.evaluate(
+            """async ({baseUrl, token, zip}) => {
+                const r = await fetch(baseUrl + "/portal-migration/hz/glow/address-change?actionSource=glow", {
+                    method: "POST",
+                    headers: {"anti-csrftoken-a2z": token, "content-type": "application/json"},
+                    credentials: "include",
+                    body: JSON.stringify({
+                        locationType: "LOCATION_INPUT",
+                        zipCode: zip,
+                        deviceType: "web",
+                        storeContext: "generic",
+                        pageType: "Gateway",
+                        actionSource: "glow"
+                    })
+                });
+                let updated = false;
+                try { updated = (await r.json()).isAddressUpdated === 1; } catch (e) {}
+                return {status: r.status, updated};
+            }""",
+            {"baseUrl": market.base_url, "token": token, "zip": market.postcode},
+        )
+    except Exception as e:
+        print(f"  [set-loc/{market.code}] POST address-change 失败: {e}")
+        return False
+
+    ok = bool(res.get("updated"))
+    print(
+        f"  [set-loc/{market.code}] 配送地 → {market.postcode}:"
+        f"{'✓ isAddressUpdated:1' if ok else '✗ 未生效'} (status={res.get('status')})"
+    )
+    return ok
+
+
+async def verify_amazon_de_canary(page, market: AmazonMarket) -> bool:
+    ok_any = False
+    for asin, known in market.de_canary:
+        try:
+            await page.goto(f"{market.base_url}/dp/{asin}", wait_until="domcontentloaded", timeout=45000)
+            await page.wait_for_timeout(1500)
+            txt = await page.evaluate(
+                """(sels) => {
+                    for (const s of sels) {
+                        const e = document.querySelector(s);
+                        if (e && e.textContent && e.textContent.trim()) return e.textContent.trim();
+                    }
+                    return "";
+                }""",
+                list(_AMZ_PRICE_SELECTORS),
+            )
+        except Exception as e:
+            print(f"  [canary/{market.code}] {asin} 抓取异常: {str(e)[:80]}")
+            continue
+        local_price, currency, _eur = _price_pair(txt, market.currency)
+        lo, hi = _CANARY_LO * known, _CANARY_HI * known
+        if local_price is not None and lo <= local_price <= hi:
+            print(f"  [canary/{market.code}] {asin} {local_price} {currency} ∈ [{lo:.0f},{hi:.0f}] ✓")
+            ok_any = True
+        else:
+            print(
+                f"  [canary/{market.code}] {asin} raw={txt[:24]!r} 不符"
+                f"(要 {market.currency} 且 ∈[{lo:.0f},{hi:.0f}])"
+            )
+    if not ok_any:
+        print(f"  [canary/{market.code}] ✗ 所有锚点不符 → abort")
+    return ok_any
+
+
+async def verify_amazon_search_currency(page, market: AmazonMarket) -> bool:
+    """GB 初期守门：确认设置地址后搜索页给的是原生 GBP，且价格在电视合理区间。"""
+    url = f"{market.base_url}/s?k=hisense+{market.search_word}&page=1"
+    try:
+        await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(2000)
+        rows = await page.evaluate(_JS_EXTRACT)
+    except Exception as e:
+        print(f"  [canary/{market.code}] 搜索页校验失败: {e}")
+        return False
+    for r in rows:
+        if r.get("sponsored"):
+            continue
+        title = (r.get("title") or "").strip()
+        if RE_NON_TV.search(title):
+            continue
+        price, currency, _eur = _price_pair(r.get("price") or "", market.currency)
+        if price is not None and 50 <= price <= 10000:
+            print(f"  [canary/{market.code}] 搜索页 {price} {currency} 合理 ✓")
+            return True
+    print(f"  [canary/{market.code}] 搜索页未找到合理 {market.currency} 电视价 → abort")
+    return False
+
+
+class AmazonCatalogAdapter(BaseCatalogAdapter):
+    """Amazon 单市场 adapter。registry 用 amazon_de / amazon_gb 区分实例。"""
+
+    platform_name = "Amazon"
+
+    def __init__(self, market: AmazonMarket):
+        self.market = market
+        self.country = market.code
+        self.locale_override = (market.locale, market.timezone)
+
     async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
-        from monitor_prices.core import set_amazon_de_location, verify_amazon_de_canary
-        # ★ fail-closed:先把会话配送地设成德国邮编(任意 IP 可用)。失败 → 返回空,绝不用默认美国地址抓(错国价)。
-        if not await set_amazon_de_location(page):
-            print("[catalog/Amazon] ✗ 设德国地区失败 → abort(返回空,不写错国价)")
+        market = self.market
+        if not await set_amazon_market_location(page, market):
+            print(f"[catalog/Amazon/{market.code}] ✗ 设置配送地失败 → abort")
             return []
-        # canary 守门:确认真拿到德国价(防 glow 静默坏掉吐错国价)
-        if not await verify_amazon_de_canary(page):
-            print("[catalog/Amazon] ✗ canary 不过 → abort(返回空)")
+        if market.de_canary:
+            if not await verify_amazon_de_canary(page, market):
+                print(f"[catalog/Amazon/{market.code}] ✗ canary 不过 → abort")
+                return []
+        elif not await verify_amazon_search_currency(page, market):
+            print(f"[catalog/Amazon/{market.code}] ✗ 搜索页币种守门不过 → abort")
             return []
 
-        by_asin: dict[str, CatalogItem] = {}     # 全品牌跨页按 ASIN 去重
-        cookie_done = False                       # set-loc 已点过 cookie,首搜索页再点一次兜底
+        by_asin: dict[str, CatalogItem] = {}
+        cookie_done = False
         for q in BRAND_QUERIES:
             for n in range(1, MAX_PAGES + 1):
-                url = f"{BASE}/s?k={q}+fernseher&page={n}"
+                url = f"{market.base_url}/s?k={q}+{market.search_word}&page={n}"
                 try:
                     await page.goto(url, wait_until="domcontentloaded", timeout=45000)
                 except Exception as e:
-                    print(f"[catalog/Amazon] {q} p{n} goto 失败: {e}")
+                    print(f"[catalog/Amazon/{market.code}] {q} p{n} goto 失败: {e}")
                     break
                 if not cookie_done:
-                    await self._accept_cookie(page)
+                    await _accept_cookie(page)
                     cookie_done = True
                 await page.wait_for_timeout(random.randint(2200, 3200))
                 try:
                     rows = await page.evaluate(_JS_EXTRACT)
                 except Exception as e:
-                    print(f"[catalog/Amazon] {q} p{n} extract 失败: {e}")
+                    print(f"[catalog/Amazon/{market.code}] {q} p{n} extract 失败: {e}")
                     break
 
                 new_real = 0
@@ -151,21 +367,41 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                         continue
                     brand = _brand_from_title(title)
                     size = _size_from_title(title)
-                    if not brand or size is None:      # 要求像「真电视」:有品牌 + 有尺寸
+                    if not brand or size is None:
                         continue
-                    if RE_NON_TV.search(title):        # 护栏3:配件/投影/商显 在源头剔
+                    if RE_NON_TV.search(title):
                         continue
+                    price_local, currency, price_eur = _price_pair(r.get("price") or "", market.currency)
                     by_asin[asin] = CatalogItem(
                         brand_raw=brand,
                         raw_text=title,
-                        url=f"{BASE}/dp/{asin}",
+                        url=f"{market.base_url}/dp/{asin}",
                         size_hint_inch=size,
-                        price_hint_eur=_price_hint(r.get("price") or ""),
-                        extra={"asin": asin},
+                        price_hint_eur=price_eur,
+                        price_local=price_local,
+                        currency=currency,
+                        price_eur=price_eur,
+                        extra={
+                            "asin": asin,
+                            "fx_rate_date": ECB_RATE_DATE if currency and currency != "EUR" else "",
+                        },
                     )
                     new_real += 1
-                print(f"[catalog/Amazon] {q} p{n}: {len(rows)} 结果 / 本页新增真电视 {new_real} / 累计 {len(by_asin)}")
-                if new_real == 0:                       # 本页无新真电视 = 该品牌翻到底
+                print(
+                    f"[catalog/Amazon/{market.code}] {q} p{n}: {len(rows)} 结果 / "
+                    f"本页新增真电视 {new_real} / 累计 {len(by_asin)}"
+                )
+                if new_real == 0:
                     break
                 await asyncio.sleep(random.uniform(1.0, 2.2))
         return list(by_asin.values())
+
+
+class AmazonDeCatalogAdapter(AmazonCatalogAdapter):
+    def __init__(self):
+        super().__init__(AMAZON_DE)
+
+
+class AmazonGbCatalogAdapter(AmazonCatalogAdapter):
+    def __init__(self):
+        super().__init__(AMAZON_GB)

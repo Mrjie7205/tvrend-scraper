@@ -137,17 +137,38 @@ async def run_one_adapter(browser, adapter) -> Path | None:
     return out_path
 
 
+def _matches_adapter(key: str, adapter, wanted: str) -> bool:
+    wanted = (wanted or "").strip().lower()
+    return wanted in {
+        key.lower(),
+        adapter.platform_name.lower(),
+        f"{adapter.platform_name}_{adapter.country}".lower(),
+    }
+
+
+def _in_scope(key: str, adapter, scope: "set[str] | None") -> bool:
+    if scope is None:
+        return True
+    return any(_matches_adapter(key, adapter, wanted) for wanted in scope)
+
+
+def _adapter_label(key: str, adapter) -> str:
+    return f"{key}:{adapter.platform_name}/{adapter.country}"
+
+
 async def run(only: str | None = None) -> int:
     scope = channels_in_scope()
-    selected = REGISTRY.items() if not only else [(k, a) for k, a in REGISTRY.items() if k == only.lower()]
-    targets = [a for k, a in selected if scope is None or k in scope]
+    selected = REGISTRY.items() if not only else [
+        (k, a) for k, a in REGISTRY.items() if _matches_adapter(k, a, only)
+    ]
+    targets = [(k, a) for k, a in selected if _in_scope(k, a, scope)]
     if not targets:
         hint = f"only={only!r} " if only else ""
         scope_hint = f"CHANNELS={sorted(scope)} " if scope else ""
         print(f"[catalog] no adapter for {hint}{scope_hint}- Supported: {supported_catalogs()}")
         return 1
     if scope is not None:
-        print(f"[catalog] CHANNELS={sorted(scope)} → 跑 {[a.platform_name for a in targets]}")
+        print(f"[catalog] CHANNELS={sorted(scope)} → 跑 {[_adapter_label(k, a) for k, a in targets]}")
 
     print(f"[catalog] supported: {supported_catalogs()} · headless={HEADLESS}")
 
@@ -159,9 +180,9 @@ async def run(only: str | None = None) -> int:
         except Exception:
             browser = await p.chromium.launch(headless=HEADLESS, args=list(BROWSER_ARGS))
         results = []
-        for adapter in targets:
+        for key, adapter in targets:
             r = await run_one_adapter(browser, adapter)
-            results.append((adapter.platform_name, r))
+            results.append((_adapter_label(key, adapter), r))
         await browser.close()
 
     print()
