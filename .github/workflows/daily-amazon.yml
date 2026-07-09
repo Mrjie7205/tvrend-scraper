@@ -83,7 +83,9 @@ jobs:
     name: Commit Amazon catalogs
     runs-on: ubuntu-latest
     needs: scrape
-    if: always()
+    # 只有必需市场全部成功时才提交，避免 DE 失败时把 GB 或其他部分产物误提交。
+    # matrix 中 experimental=true 的市场使用 continue-on-error，不会阻断这里。
+    if: needs.scrape.result == 'success'
     permissions:
       contents: write
     steps:
