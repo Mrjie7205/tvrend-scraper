@@ -79,6 +79,13 @@ RE_VARIANT_HINT = re.compile(
     re.IGNORECASE,
 )
 RE_CURRENT_YEAR_HINT = re.compile(r"\b(?:2025|2026)\b")
+RE_CURRENT_SERIES_HINT = re.compile(
+    # Amazon 部分市场不显示 “Options: n sizes”，但标题里有当前年款系列码。
+    # 这些型号优先进详情页 twister 补 sibling，避免 S95H 这类新品只抓到一个尺寸。
+    r"(?:S9[05]H|S8[05]H|QN\d{2,4}H|QN\d{2,4}F|Q\dF|Q\dFA|U\d{4}F"
+    r"|C\d[KL]|P\d[KL]|X11L|QNED\d{2}[AB]|OLED\d{2}[A-Z0-9]*[56]?[A-Z]*)",
+    re.IGNORECASE,
+)
 
 _JS_EXTRACT = r"""
 () => {
@@ -575,6 +582,10 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             return False
         if row.get("variantHint"):
             return True
+        if RE_CURRENT_YEAR_HINT.search(item.raw_text or ""):
+            return True
+        if RE_CURRENT_SERIES_HINT.search(item.raw_text or ""):
+            return True
         # 某些市场/版式没有把 “Options: n sizes” 暴露到稳定节点；
         # 标题里有多尺寸提示时也允许进入详情页，但仍由详情页 twister 限定 sibling ASIN。
         return bool(RE_VARIANT_HINT.search(row.get("title") or item.raw_text))
@@ -583,9 +594,10 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
     def _variant_seed_priority(item: CatalogItem) -> tuple[int, int]:
         """新品优先补全，避免全量 action 被旧款/推荐页拖慢。"""
         text = item.raw_text or ""
-        year_hit = 0 if RE_CURRENT_YEAR_HINT.search(text) else 1
+        s95h_hit = 0 if re.search(r"S95H", text, re.IGNORECASE) else 1
+        current_hit = 0 if (RE_CURRENT_YEAR_HINT.search(text) or RE_CURRENT_SERIES_HINT.search(text)) else 1
         priced = 0 if item.price_local is not None else 1
-        return year_hit, priced
+        return s95h_hit, current_hit, priced
 
     async def _detail_item(self, page, asin: str, fallback_brand: str, fallback_variant_text: str = "") -> CatalogItem | None:
         market = self.market
