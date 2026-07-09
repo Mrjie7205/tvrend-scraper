@@ -35,8 +35,15 @@ from .base import BaseCatalogAdapter, CatalogItem
 
 
 # 追踪的 5 大品牌。Amazon 搜某品牌仍会混入别牌，品牌以标题为准。
-BRAND_QUERIES = ("samsung", "lg", "tcl", "hisense", "sony")
+BRAND_QUERIES = tuple(
+    q.strip().lower()
+    for q in os.environ.get("AMAZON_BRAND_QUERIES", "samsung,lg,tcl,hisense,sony").split(",")
+    if q.strip()
+)
 MAX_PAGES = int(os.environ.get("AMAZON_MAX_PAGES", "7"))
+EXPAND_VARIANTS = os.environ.get("AMAZON_EXPAND_VARIANTS", "true").lower() != "false"
+MAX_VARIANT_SEEDS = int(os.environ.get("AMAZON_MAX_VARIANT_SEEDS", "32"))
+MAX_VARIANTS_PER_SEED = int(os.environ.get("AMAZON_MAX_VARIANTS_PER_SEED", "6"))
 COOKIE_ACCEPT_SELECTOR = "#sp-cc-accept"
 
 _KNOWN_BRANDS = {
@@ -66,6 +73,12 @@ RE_NON_TV = re.compile(
     r"|fußständer|tv[- ]?ständer|tv[- ]?stand|tv[- ]?beine|netzteil|fernbedienung|remote\s*control",
     re.IGNORECASE,
 )
+
+RE_VARIANT_HINT = re.compile(
+    r"\b(?:Options?|Optionen|Opzioni|Opciones)\s*:\s*\d+",
+    re.IGNORECASE,
+)
+RE_CURRENT_YEAR_HINT = re.compile(r"\b(?:2025|2026)\b")
 
 _JS_EXTRACT = r"""
 () => {
@@ -116,9 +129,78 @@ _JS_EXTRACT = r"""
       /(?:Display Size|Screen Size|Bildschirmgr[oöß]?[sß]e|Displaygr[oöß]?[sß]e|Dimensione schermo|Tama[nñ]o de pantalla)\s*:?\s*(\d{2,3})\s*(?:inches?|Zoll|pollici|pulgadas|["”″])/i
     );
     const sizeText = sizeMatch ? `${sizeMatch[1]} inches` : '';
-    out.push({ asin, brand, title, price, sponsored, sizeText });
+    const variantHint = /(?:Options?|Optionen|Opzioni|Opciones)\s*:\s*\d+/i.test(cardText);
+    out.push({ asin, brand, title, price, sponsored, sizeText, variantHint });
   });
   return out;
+}
+"""
+
+_JS_DETAIL = r"""
+(priceSelectors) => {
+  const clean = (s) => (s || '').trim().replace(/\s+/g, ' ');
+  const firstText = (selectors) => {
+    for (const sel of selectors) {
+      const node = document.querySelector(sel);
+      const txt = clean(node ? node.textContent : '');
+      if (txt) return txt;
+    }
+    return '';
+  };
+  let price = '';
+  for (const sel of priceSelectors) {
+    const node = document.querySelector(sel);
+    const txt = clean(node ? node.textContent : '');
+    if (txt) {
+      price = txt;
+      break;
+    }
+  }
+  const variantRefs = [];
+  const seen = new Set();
+  const add = (el) => {
+    const asin = clean(
+      el.getAttribute('data-asin')
+      || el.getAttribute('data-defaultasin')
+      || el.getAttribute('data-csa-c-item-id')
+      || ''
+    ).replace(/^asin\./i, '');
+    const dp = el.getAttribute('data-dp-url') || el.getAttribute('href') || el.getAttribute('value') || '';
+    const m = dp.match(/\/dp\/([A-Z0-9]{10})/i);
+    const finalAsin = (asin && /^[A-Z0-9]{10}$/i.test(asin)) ? asin.toUpperCase() : (m ? m[1].toUpperCase() : '');
+    if (!finalAsin || seen.has(finalAsin)) return;
+    const text = clean(
+      el.textContent
+      || el.getAttribute('title')
+      || el.getAttribute('aria-label')
+      || el.getAttribute('data-a-html-content')
+      || ''
+    );
+    seen.add(finalAsin);
+    variantRefs.push({ asin: finalAsin, text });
+  };
+  document.querySelectorAll([
+    '#twister [data-asin]',
+    '#twister [data-defaultasin]',
+    '#twister [data-dp-url]',
+    '#variation_size_name [data-asin]',
+    '#variation_size_name [data-defaultasin]',
+    '#variation_size_name li',
+    '#variation_size_name option',
+    '.twister-plus-inline-twister-container [data-asin]',
+    '.twister-plus-inline-twister-container [data-defaultasin]',
+    '.inline-twister-swatch[data-asin]',
+    '.inline-twister-swatch[data-defaultasin]',
+    '[class*="twister"][data-asin]',
+    '[class*="twister"][data-defaultasin]',
+    '[class*="swatch"][data-asin]',
+    '[class*="swatch"][data-defaultasin]'
+  ].join(',')).forEach(add);
+  return {
+    title: firstText(['#productTitle', 'span#productTitle']),
+    price,
+    variantRefs,
+  };
 }
 """
 
@@ -127,6 +209,15 @@ _AMZ_PRICE_SELECTORS = (
     "#corePriceDisplay_desktop_feature_div .a-offscreen",
     ".priceToPay .a-offscreen",
     ".a-price .a-offscreen",
+)
+_AMZ_DETAIL_PRICE_SELECTORS = (
+    "#corePriceDisplay_desktop_feature_div span.priceToPay span.a-offscreen",
+    "#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen",
+    "#corePriceDisplay_desktop_feature_div .a-price .a-offscreen",
+    "#corePrice_feature_div .a-price .a-offscreen",
+    "#apex_desktop .a-price .a-offscreen",
+    "#priceblock_ourprice",
+    "#priceblock_dealprice",
 )
 
 _CANARY_LO, _CANARY_HI = 0.5, 1.5
@@ -435,6 +526,126 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         self.country = market.code
         self.locale_override = (market.locale, market.timezone)
 
+    def _build_item(
+        self,
+        asin: str,
+        title: str,
+        brand: str,
+        size: float,
+        price_text: str,
+    ) -> CatalogItem:
+        market = self.market
+        price_local, currency, price_eur = _price_pair(price_text, market.currency)
+        return CatalogItem(
+            brand_raw=brand,
+            raw_text=title,
+            url=f"{market.base_url}/dp/{asin}",
+            size_hint_inch=size,
+            price_hint_eur=price_eur,
+            price_local=price_local,
+            currency=currency,
+            price_eur=price_eur,
+            extra={
+                "asin": asin,
+                "fx_rate_date": ECB_RATE_DATE if currency and currency != "EUR" else "",
+            },
+        )
+
+    def _item_from_search_row(self, row: dict, filtered: dict[str, int]) -> CatalogItem | None:
+        asin = (row.get("asin") or "").strip()
+        title = (row.get("title") or "").strip()
+        if not asin or not title:
+            return None
+        card_brand = (row.get("brand") or "").strip()
+        # 如果搜索卡片明确给了品牌行，以它为准；未知品牌直接丢弃。
+        # 只有卡片没有品牌行时，才回退到标题识别，避免把 “Samsung Tizen OS”
+        # 这类功能描述误判成商品品牌。
+        brand = _brand_from_title(card_brand) if card_brand else _brand_from_title(title)
+        size = _size_from_title(title) or _size_from_title(row.get("sizeText") or "")
+        if not brand or size is None:
+            filtered["no_brand" if not brand else "no_size"] += 1
+            return None
+        if RE_NON_TV.search(title):
+            filtered["non_tv"] += 1
+            return None
+        return self._build_item(asin, title, brand, size, row.get("price") or "")
+
+    def _should_expand_variants(self, row: dict, item: CatalogItem) -> bool:
+        if not EXPAND_VARIANTS:
+            return False
+        if row.get("variantHint"):
+            return True
+        # 某些市场/版式没有把 “Options: n sizes” 暴露到稳定节点；
+        # 标题里有多尺寸提示时也允许进入详情页，但仍由详情页 twister 限定 sibling ASIN。
+        return bool(RE_VARIANT_HINT.search(row.get("title") or item.raw_text))
+
+    @staticmethod
+    def _variant_seed_priority(item: CatalogItem) -> tuple[int, int]:
+        """新品优先补全，避免全量 action 被旧款/推荐页拖慢。"""
+        text = item.raw_text or ""
+        year_hit = 0 if RE_CURRENT_YEAR_HINT.search(text) else 1
+        priced = 0 if item.price_local is not None else 1
+        return year_hit, priced
+
+    async def _detail_item(self, page, asin: str, fallback_brand: str, fallback_variant_text: str = "") -> CatalogItem | None:
+        market = self.market
+        try:
+            await page.goto(f"{market.base_url}/dp/{asin}", wait_until="domcontentloaded", timeout=45000)
+            await page.wait_for_timeout(random.randint(1300, 2200))
+            detail = await page.evaluate(_JS_DETAIL, list(_AMZ_DETAIL_PRICE_SELECTORS))
+        except Exception as e:
+            print(f"[catalog/Amazon/{market.code}] detail {asin} 失败: {str(e)[:100]}")
+            return None
+        title = (detail.get("title") or "").strip()
+        if not title:
+            return None
+        brand = _brand_from_title(title) or fallback_brand
+        size = _size_from_title(title) or _size_from_title(fallback_variant_text)
+        if not brand or size is None:
+            return None
+        if RE_NON_TV.search(title):
+            return None
+        return self._build_item(asin, title, brand, size, detail.get("price") or "")
+
+    async def _expand_variants_from_seed(
+        self,
+        page,
+        seed: CatalogItem,
+        by_asin: dict[str, CatalogItem],
+    ) -> int:
+        """从一个已确认电视卡片进入详情页，只抽 twister 中的同款尺寸 ASIN。
+
+        注意：只读 #twister / #variation_size_name，故不会把详情页广告推荐里的
+        壁挂架、耳机、显示器等 ASIN 当成 sibling。
+        """
+        market = self.market
+        seed_asin = seed.extra.get("asin") or ""
+        if not seed_asin:
+            return 0
+        try:
+            await page.goto(seed.url, wait_until="domcontentloaded", timeout=45000)
+            await page.wait_for_timeout(random.randint(1300, 2200))
+            detail = await page.evaluate(_JS_DETAIL, list(_AMZ_DETAIL_PRICE_SELECTORS))
+        except Exception as e:
+            print(f"[catalog/Amazon/{market.code}] variants {seed_asin} 失败: {str(e)[:100]}")
+            return 0
+
+        refs = detail.get("variantRefs") or []
+        if len(refs) <= 1:
+            return 0
+        added = 0
+        for ref in refs[:MAX_VARIANTS_PER_SEED]:
+            asin = (ref.get("asin") or "").strip().upper()
+            if not asin or asin in by_asin:
+                continue
+            item = await self._detail_item(page, asin, seed.brand_raw, ref.get("text") or "")
+            if item is None:
+                continue
+            by_asin[asin] = item
+            added += 1
+            await asyncio.sleep(random.uniform(0.6, 1.2))
+        return added
+
     async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
         market = self.market
         if not await set_amazon_market_location(page, market):
@@ -449,6 +660,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             return []
 
         by_asin: dict[str, CatalogItem] = {}
+        variant_seeds: list[CatalogItem] = []
         cookie_done = False
         for q in BRAND_QUERIES:
             consecutive_empty = 0
@@ -475,40 +687,16 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     if r.get("sponsored"):
                         filtered["sponsored"] += 1
                         continue
-                    asin = (r.get("asin") or "").strip()
-                    title = (r.get("title") or "").strip()
-                    if not asin or not title:
-                        continue
+                    asin = (r.get("asin") or "").strip().upper()
                     if asin in by_asin:
                         filtered["duplicate"] += 1
                         continue
-                    card_brand = (r.get("brand") or "").strip()
-                    # 如果搜索卡片明确给了品牌行，以它为准；未知品牌直接丢弃。
-                    # 只有卡片没有品牌行时，才回退到标题识别，避免把 “Samsung Tizen OS”
-                    # 这类功能描述误判成商品品牌。
-                    brand = _brand_from_title(card_brand) if card_brand else _brand_from_title(title)
-                    size = _size_from_title(title) or _size_from_title(r.get("sizeText") or "")
-                    if not brand or size is None:
-                        filtered["no_brand" if not brand else "no_size"] += 1
+                    item = self._item_from_search_row(r, filtered)
+                    if item is None:
                         continue
-                    if RE_NON_TV.search(title):
-                        filtered["non_tv"] += 1
-                        continue
-                    price_local, currency, price_eur = _price_pair(r.get("price") or "", market.currency)
-                    by_asin[asin] = CatalogItem(
-                        brand_raw=brand,
-                        raw_text=title,
-                        url=f"{market.base_url}/dp/{asin}",
-                        size_hint_inch=size,
-                        price_hint_eur=price_eur,
-                        price_local=price_local,
-                        currency=currency,
-                        price_eur=price_eur,
-                        extra={
-                            "asin": asin,
-                            "fx_rate_date": ECB_RATE_DATE if currency and currency != "EUR" else "",
-                        },
-                    )
+                    by_asin[asin] = item
+                    if self._should_expand_variants(r, item):
+                        variant_seeds.append(item)
                     new_real += 1
                 print(
                     f"[catalog/Amazon/{market.code}] {q} p{n}: {len(rows)} 结果 / "
@@ -521,6 +709,23 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 else:
                     consecutive_empty = 0
                 await asyncio.sleep(random.uniform(1.0, 2.2))
+        if variant_seeds:
+            added_total = 0
+            variant_seeds = sorted(variant_seeds, key=self._variant_seed_priority)[:MAX_VARIANT_SEEDS]
+            print(
+                f"[catalog/Amazon/{market.code}] 多尺寸补全 seeds={len(variant_seeds)} "
+                f"(max_per_seed={MAX_VARIANTS_PER_SEED})…"
+            )
+            for i, seed in enumerate(variant_seeds, 1):
+                added = await self._expand_variants_from_seed(page, seed, by_asin)
+                added_total += added
+                if added:
+                    print(
+                        f"[catalog/Amazon/{market.code}] variant {i}/{len(variant_seeds)} "
+                        f"{seed.extra.get('asin')} +{added} / 累计 {len(by_asin)}"
+                    )
+                await asyncio.sleep(random.uniform(0.8, 1.5))
+            print(f"[catalog/Amazon/{market.code}] 多尺寸补全新增 {added_total} 条 / 总计 {len(by_asin)}")
         return list(by_asin.values())
 
 
