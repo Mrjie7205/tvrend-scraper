@@ -61,6 +61,7 @@ EXPAND_VARIANTS = os.environ.get("AMAZON_EXPAND_VARIANTS", "true").lower() != "f
 MAX_VARIANT_SEEDS = int(os.environ.get("AMAZON_MAX_VARIANT_SEEDS", "64"))
 MAX_VARIANTS_PER_SEED = int(os.environ.get("AMAZON_MAX_VARIANTS_PER_SEED", "12"))
 MAX_SEEDS_PER_SERIES = int(os.environ.get("AMAZON_MAX_SEEDS_PER_SERIES", "2"))
+SESSION_PREP_ATTEMPTS = int(os.environ.get("AMAZON_SESSION_PREP_ATTEMPTS", "3"))
 COOKIE_ACCEPT_SELECTOR = "#sp-cc-accept"
 
 _KNOWN_BRANDS = {
@@ -591,6 +592,38 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         self.country = market.code
         self.locale_override = (market.locale, market.timezone)
 
+    async def _prepare_market_session(self, page) -> bool:
+        """地址或币种守门遇到 Amazon 短时波动时，重建 cookie 状态后有限重试。"""
+        market = self.market
+        for attempt in range(1, SESSION_PREP_ATTEMPTS + 1):
+            if attempt > 1:
+                try:
+                    await page.context.clear_cookies()
+                    await page.goto("about:blank")
+                except Exception:
+                    pass
+            location_ok = await set_amazon_market_location(page, market)
+            canary_ok = False
+            if location_ok:
+                if market.de_canary:
+                    canary_ok = await verify_amazon_de_canary(page, market)
+                else:
+                    canary_ok = await verify_amazon_search_currency(page, market)
+            if location_ok and canary_ok:
+                if attempt > 1:
+                    print(f"[catalog/Amazon/{market.code}] 会话守门第 {attempt} 次成功 ✓")
+                return True
+            if attempt < SESSION_PREP_ATTEMPTS:
+                print(
+                    f"[catalog/Amazon/{market.code}] 会话守门第 {attempt} 次失败 "
+                    f"(location={location_ok}, canary={canary_ok})，重试…"
+                )
+                await asyncio.sleep(random.uniform(3.0, 6.0))
+        print(
+            f"[catalog/Amazon/{market.code}] ✗ 会话守门连续 {SESSION_PREP_ATTEMPTS} 次失败 → abort"
+        )
+        return False
+
     def _build_item(
         self,
         asin: str,
@@ -786,15 +819,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
 
     async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
         market = self.market
-        if not await set_amazon_market_location(page, market):
-            print(f"[catalog/Amazon/{market.code}] ✗ 设置配送地失败 → abort")
-            return []
-        if market.de_canary:
-            if not await verify_amazon_de_canary(page, market):
-                print(f"[catalog/Amazon/{market.code}] ✗ canary 不过 → abort")
-                return []
-        elif not await verify_amazon_search_currency(page, market):
-            print(f"[catalog/Amazon/{market.code}] ✗ 搜索页币种守门不过 → abort")
+        if not await self._prepare_market_session(page):
             return []
 
         by_asin: dict[str, CatalogItem] = {}

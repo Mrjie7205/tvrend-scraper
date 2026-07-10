@@ -73,6 +73,7 @@ jobs:
           AMAZON_MAX_SERIES_RESCUE_QUERIES: "40"
           AMAZON_MAX_VARIANT_SEEDS: "64"
           AMAZON_MAX_VARIANTS_PER_SEED: "12"
+          AMAZON_SESSION_PREP_ATTEMPTS: "3"
         run: python -m catalog_scrape.run_weekly --only ${{ matrix.market }}
 
       - name: Stage catalog artifact
