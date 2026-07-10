@@ -22,10 +22,12 @@
 from __future__ import annotations
 
 import asyncio
+import csv
 import os
 import random
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Sequence
 from urllib.parse import quote_plus
 
@@ -62,6 +64,8 @@ MAX_VARIANT_SEEDS = int(os.environ.get("AMAZON_MAX_VARIANT_SEEDS", "40"))
 MAX_VARIANTS_PER_SEED = int(os.environ.get("AMAZON_MAX_VARIANTS_PER_SEED", "10"))
 MAX_SEEDS_PER_SERIES = int(os.environ.get("AMAZON_MAX_SEEDS_PER_SERIES", "2"))
 SESSION_PREP_ATTEMPTS = int(os.environ.get("AMAZON_SESSION_PREP_ATTEMPTS", "3"))
+PREVIOUS_CATALOG_LOOKBACK = int(os.environ.get("AMAZON_PREVIOUS_CATALOG_LOOKBACK", "7"))
+MAX_PREVIOUS_RECOVERY_ITEMS = int(os.environ.get("AMAZON_MAX_PREVIOUS_RECOVERY_ITEMS", "40"))
 COOKIE_ACCEPT_SELECTOR = "#sp-cc-accept"
 
 _KNOWN_BRANDS = {
@@ -769,6 +773,87 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     break
         return [f"{brand.lower()} {series.lower()}" for brand, series in ranked]
 
+    def _load_recent_catalog_items(self) -> list[CatalogItem]:
+        """读取公库最近几天的同市场 catalog，给搜索结果抖动提供可验证的回查候选。"""
+        catalog_dir = Path(__file__).resolve().parents[3] / "catalog"
+        paths = sorted(catalog_dir.glob(f"amazon_{self.market.code.lower()}_*.csv"))
+        by_asin: dict[str, CatalogItem] = {}
+        for path in paths[-PREVIOUS_CATALOG_LOOKBACK:]:
+            try:
+                with path.open("r", encoding="utf-8-sig", newline="") as handle:
+                    rows = list(csv.DictReader(handle))
+            except Exception as exc:
+                print(f"[catalog/Amazon/{self.market.code}] 读取历史 catalog {path.name} 失败: {exc}")
+                continue
+            for row in rows:
+                asin = (row.get("asin") or "").strip().upper()
+                title = (row.get("raw_text") or "").strip()
+                brand = (row.get("brand_raw") or "").strip()
+                try:
+                    size = float(row.get("size_hint_inch") or 0)
+                except (TypeError, ValueError):
+                    size = 0
+                if not asin or not title or not brand or not size:
+                    continue
+                item = self._build_item(asin, title, brand, size, row.get("price_local") or "")
+                if not self._series_hint(item):
+                    continue
+                item.extra["history_catalog"] = path.name
+                by_asin[asin] = item
+        return list(by_asin.values())
+
+    @classmethod
+    def _select_previous_recovery_items(
+        cls,
+        historical: Sequence[CatalogItem],
+        current: Sequence[CatalogItem],
+    ) -> list[CatalogItem]:
+        """公平选择今天缺失的历史系列尺寸；优先标题明确为 2026 的系列。"""
+        current_keys = {
+            ((item.brand_raw or "").upper(), cls._series_hint(item), int(item.size_hint_inch or 0))
+            for item in current
+            if cls._series_hint(item)
+        }
+        series_sizes: dict[tuple[str, str], set[int]] = {}
+        candidates: dict[str, list[CatalogItem]] = {}
+        seen_asins: set[str] = set()
+        for item in historical:
+            brand = (item.brand_raw or "").upper()
+            series = cls._series_hint(item)
+            size = int(item.size_hint_inch or 0)
+            asin = (item.extra.get("asin") or "").upper()
+            if not series or not size or not asin or (brand, series, size) in current_keys or asin in seen_asins:
+                continue
+            seen_asins.add(asin)
+            series_sizes.setdefault((brand, series), set()).add(size)
+            candidates.setdefault(brand, []).append(item)
+
+        def priority(item: CatalogItem) -> tuple[int, int, str, int]:
+            brand = (item.brand_raw or "").upper()
+            series = cls._series_hint(item)
+            series_2026 = (
+                (brand == "SAMSUNG" and series.endswith("H"))
+                or (brand == "TCL" and series.endswith("L"))
+                or (brand == "LG" and (series.endswith("6") or series.endswith("B")))
+                or (brand == "HISENSE" and series.endswith("S"))
+            )
+            explicit_2026 = 0 if (re.search(r"\b2026\b", item.raw_text or "") or series_2026) else 1
+            family_width = -len(series_sizes.get((brand, series), set()))
+            return explicit_2026, family_width, series, int(item.size_hint_inch or 0)
+
+        for brand in candidates:
+            candidates[brand].sort(key=priority)
+        brand_order = list(TARGET_BRAND_ORDER) + sorted(set(candidates) - set(TARGET_BRAND_ORDER))
+        selected: list[CatalogItem] = []
+        while len(selected) < MAX_PREVIOUS_RECOVERY_ITEMS and any(candidates.get(b) for b in brand_order):
+            for brand in brand_order:
+                queue = candidates.get(brand) or []
+                if queue:
+                    selected.append(queue.pop(0))
+                if len(selected) >= MAX_PREVIOUS_RECOVERY_ITEMS:
+                    break
+        return selected
+
     async def _detail_item(self, page, asin: str, fallback_brand: str, fallback_variant_text: str = "") -> CatalogItem | None:
         market = self.market
         try:
@@ -942,6 +1027,28 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                         "触发熔断并保留已抓结果"
                     )
                     break
+
+        historical = self._load_recent_catalog_items()
+        recovery_items = self._select_previous_recovery_items(historical, list(by_asin.values()))
+        print(
+            f"[catalog/Amazon/{market.code}] 历史缺尺寸回查 candidates={len(recovery_items)} "
+            f"(lookback={PREVIOUS_CATALOG_LOOKBACK})…"
+        )
+        recovered = 0
+        for previous in recovery_items:
+            asin = (previous.extra.get("asin") or "").upper()
+            if not asin or asin in by_asin:
+                continue
+            item = await self._detail_item(page, asin, previous.brand_raw)
+            if item is None:
+                continue
+            item.extra["recovered_from_history"] = previous.extra.get("history_catalog", "")
+            by_asin[asin] = item
+            if self._should_expand_variants({}, item):
+                variant_seeds[asin] = item
+            recovered += 1
+            await asyncio.sleep(random.uniform(0.4, 0.8))
+        print(f"[catalog/Amazon/{market.code}] 历史缺尺寸回查恢复 {recovered} 条")
 
         if variant_seeds:
             added_total = 0

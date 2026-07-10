@@ -57,6 +57,19 @@ class AmazonCatalogSeriesTest(unittest.TestCase):
         queries = self.adapter._series_rescue_queries(items)
         self.assertEqual("samsung s95h", queries[0])
 
+    def test_history_recovery_only_selects_sizes_missing_today(self) -> None:
+        current = [self.item("Samsung", "Samsung QE48S95HATXXU OLED TV 2026", "B000000001")]
+        current[0].size_hint_inch = 48
+        historical = [
+            self.item("Samsung", "Samsung QE48S95HATXXU OLED TV 2026", "B000000001"),
+            self.item("Samsung", "Samsung QE55S95HATXXU OLED TV 2026", "B000000002"),
+            self.item("Samsung", "Samsung QE65S95HATXXU OLED TV 2026", "B000000003"),
+        ]
+        for item, size in zip(historical, (48, 55, 65)):
+            item.size_hint_inch = size
+        selected = self.adapter._select_previous_recovery_items(historical, current)
+        self.assertEqual({55, 65}, {int(item.size_hint_inch or 0) for item in selected})
+
 
 if __name__ == "__main__":
     unittest.main()
