@@ -54,12 +54,12 @@ TARGET_YEARS = tuple(
 )
 MAX_PAGES = int(os.environ.get("AMAZON_MAX_PAGES", "7"))
 EXTRA_MAX_PAGES = int(os.environ.get("AMAZON_EXTRA_MAX_PAGES", "3"))
-YEAR_MAX_PAGES = int(os.environ.get("AMAZON_YEAR_MAX_PAGES", "2"))
+YEAR_MAX_PAGES = int(os.environ.get("AMAZON_YEAR_MAX_PAGES", "1"))
 SERIES_RESCUE_MAX_PAGES = int(os.environ.get("AMAZON_SERIES_RESCUE_MAX_PAGES", "1"))
-MAX_SERIES_RESCUE_QUERIES = int(os.environ.get("AMAZON_MAX_SERIES_RESCUE_QUERIES", "40"))
+MAX_SERIES_RESCUE_QUERIES = int(os.environ.get("AMAZON_MAX_SERIES_RESCUE_QUERIES", "25"))
 EXPAND_VARIANTS = os.environ.get("AMAZON_EXPAND_VARIANTS", "true").lower() != "false"
-MAX_VARIANT_SEEDS = int(os.environ.get("AMAZON_MAX_VARIANT_SEEDS", "64"))
-MAX_VARIANTS_PER_SEED = int(os.environ.get("AMAZON_MAX_VARIANTS_PER_SEED", "12"))
+MAX_VARIANT_SEEDS = int(os.environ.get("AMAZON_MAX_VARIANT_SEEDS", "40"))
+MAX_VARIANTS_PER_SEED = int(os.environ.get("AMAZON_MAX_VARIANTS_PER_SEED", "10"))
 MAX_SEEDS_PER_SERIES = int(os.environ.get("AMAZON_MAX_SEEDS_PER_SERIES", "2"))
 SESSION_PREP_ATTEMPTS = int(os.environ.get("AMAZON_SESSION_PREP_ATTEMPTS", "3"))
 COOKIE_ACCEPT_SELECTOR = "#sp-cc-accept"
@@ -760,7 +760,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
     async def _detail_item(self, page, asin: str, fallback_brand: str, fallback_variant_text: str = "") -> CatalogItem | None:
         market = self.market
         try:
-            await page.goto(f"{market.base_url}/dp/{asin}", wait_until="domcontentloaded", timeout=45000)
+            await page.goto(f"{market.base_url}/dp/{asin}", wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(random.randint(1300, 2200))
             detail = await page.evaluate(_JS_DETAIL, list(_AMZ_DETAIL_PRICE_SELECTORS))
         except Exception as e:
@@ -793,12 +793,12 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         if not seed_asin:
             return 0
         try:
-            await page.goto(seed.url, wait_until="domcontentloaded", timeout=45000)
+            await page.goto(seed.url, wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(random.randint(1300, 2200))
             detail = await page.evaluate(_JS_DETAIL, list(_AMZ_DETAIL_PRICE_SELECTORS))
         except Exception as e:
             print(f"[catalog/Amazon/{market.code}] variants {seed_asin} 失败: {str(e)[:100]}")
-            return 0
+            return -1
 
         refs = detail.get("variantRefs") or []
         # 某些详情页只渲染一个“另一个尺寸”，不能把这种情况误判为无变体。
@@ -826,17 +826,19 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         variant_seeds: dict[str, CatalogItem] = {}
         cookie_done = False
 
-        async def scrape_query(q: str, max_pages: int, query_kind: str) -> None:
+        async def scrape_query(q: str, max_pages: int, query_kind: str) -> bool:
             nonlocal cookie_done
             consecutive_empty = 0
+            saw_rows = False
             for n in range(1, max_pages + 1):
                 search_text = f"{q} {market.search_word}"
                 url = f"{market.base_url}/s?k={quote_plus(search_text)}&page={n}"
                 try:
-                    await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+                    timeout_ms = 20_000 if query_kind in {"year", "series"} else 45_000
+                    await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
                 except Exception as e:
                     print(f"[catalog/Amazon/{market.code}] {q} p{n} goto 失败: {e}")
-                    break
+                    return False
                 if not cookie_done:
                     await _accept_cookie(page)
                     cookie_done = True
@@ -845,7 +847,8 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     rows = await page.evaluate(_JS_EXTRACT)
                 except Exception as e:
                     print(f"[catalog/Amazon/{market.code}] {q} p{n} extract 失败: {e}")
-                    break
+                    return False
+                saw_rows = saw_rows or bool(rows)
 
                 new_real = 0
                 filtered = {"sponsored": 0, "no_brand": 0, "no_size": 0, "non_tv": 0, "duplicate": 0}
@@ -882,6 +885,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 else:
                     consecutive_empty = 0
                 await asyncio.sleep(random.uniform(1.0, 2.2))
+            return saw_rows
 
         query_plan = (
             [(q, MAX_PAGES, "brand") for q in BRAND_QUERIES]
@@ -910,15 +914,26 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             f"[catalog/Amazon/{market.code}] 系列精确补抓 queries={len(rescue_queries)} "
             f"(max_pages={SERIES_RESCUE_MAX_PAGES})…"
         )
+        consecutive_rescue_failures = 0
         for q in rescue_queries:
             normalized_query = re.sub(r"\s+", " ", q.strip().lower())
             if normalized_query in completed_queries:
                 continue
             completed_queries.add(normalized_query)
-            await scrape_query(q, SERIES_RESCUE_MAX_PAGES, "series")
+            if await scrape_query(q, SERIES_RESCUE_MAX_PAGES, "series"):
+                consecutive_rescue_failures = 0
+            else:
+                consecutive_rescue_failures += 1
+                if consecutive_rescue_failures >= 2:
+                    print(
+                        f"[catalog/Amazon/{market.code}] 系列精确补抓连续失败 2 次，"
+                        "触发熔断并保留已抓结果"
+                    )
+                    break
 
         if variant_seeds:
             added_total = 0
+            consecutive_detail_failures = 0
             selected_seeds = self._select_variant_seeds(list(variant_seeds.values()))
             print(
                 f"[catalog/Amazon/{market.code}] 多尺寸补全 candidates={len(variant_seeds)} / "
@@ -927,6 +942,16 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             )
             for i, seed in enumerate(selected_seeds, 1):
                 added = await self._expand_variants_from_seed(page, seed, by_asin)
+                if added < 0:
+                    consecutive_detail_failures += 1
+                    if consecutive_detail_failures >= 2:
+                        print(
+                            f"[catalog/Amazon/{market.code}] 详情页变体连续失败 2 次，"
+                            "触发熔断并保留已抓结果"
+                        )
+                        break
+                    continue
+                consecutive_detail_failures = 0
                 added_total += added
                 if added:
                     print(

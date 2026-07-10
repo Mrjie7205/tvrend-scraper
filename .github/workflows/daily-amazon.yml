@@ -69,10 +69,10 @@ jobs:
           HEADLESS_MODE: "true"
           AMAZON_MAX_PAGES: ${{ inputs.amazon_max_pages || '15' }}
           AMAZON_TARGET_YEARS: "2025,2026"
-          AMAZON_YEAR_MAX_PAGES: "2"
-          AMAZON_MAX_SERIES_RESCUE_QUERIES: "40"
-          AMAZON_MAX_VARIANT_SEEDS: "64"
-          AMAZON_MAX_VARIANTS_PER_SEED: "12"
+          AMAZON_YEAR_MAX_PAGES: "1"
+          AMAZON_MAX_SERIES_RESCUE_QUERIES: "25"
+          AMAZON_MAX_VARIANT_SEEDS: "40"
+          AMAZON_MAX_VARIANTS_PER_SEED: "10"
           AMAZON_SESSION_PREP_ATTEMPTS: "3"
         run: python -m catalog_scrape.run_weekly --only ${{ matrix.market }}
 
