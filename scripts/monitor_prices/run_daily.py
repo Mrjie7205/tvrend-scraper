@@ -21,6 +21,7 @@ import asyncio
 import os
 import random
 import re
+import statistics
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -67,6 +68,30 @@ def _safe_filename(s: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", s or "unknown")[:64]
 
 
+def _batch_prices_pass_history_guard(adapter, skus: list[dict], prices: dict, hist: dict) -> bool:
+    """用最近一次成功价拦截系统性错位（优惠额、月供被当售价等）。"""
+    ratios: list[float] = []
+    for sku in skus:
+        price_data = prices.get(adapter.batch_price_key(sku["url"]))
+        old = hist.get(f"{sku['product_name']}_{sku['country']}_{sku['platform']}")
+        if not price_data or not old or old <= 0:
+            continue
+        ratios.append(float(price_data[0]) / float(old))
+    if len(ratios) < 20:
+        print(f"[monitor/{adapter.platform_name}] 历史价守门样本 {len(ratios)} 条，不足 20，跳过比对")
+        return True
+
+    median_ratio = statistics.median(ratios)
+    extreme_share = sum(r < 0.4 or r > 2.5 for r in ratios) / len(ratios)
+    passed = 0.75 <= median_ratio <= 1.35 and extreme_share <= 0.05
+    print(
+        f"[monitor/{adapter.platform_name}] 历史价守门: n={len(ratios)} "
+        f"median={median_ratio:.3f}, extreme={extreme_share:.1%}, "
+        f"{'通过' if passed else '拒绝'}"
+    )
+    return passed
+
+
 async def _new_context(browser, adapter, country: str):
     """按渠道地区创建浏览器会话，供单 SKU 或共享会话渠道复用。"""
     locale, tz = adapter.locale_override or locale_for(country)
@@ -88,7 +113,14 @@ async def _new_context(browser, adapter, country: str):
     return ctx
 
 
-async def process_sku(sem, browser, sku: dict, hist: dict, shared_context=None) -> dict:
+async def process_sku(
+    sem,
+    browser,
+    sku: dict,
+    hist: dict,
+    shared_context=None,
+    batch_prices: dict[str, tuple[float, str]] | None = None,
+) -> dict:
     """抓一个 SKU 的价格,返回结果 dict(供 append_prices 写入)。"""
     async with sem:
         url = sku["url"]
@@ -117,6 +149,18 @@ async def process_sku(sem, browser, sku: dict, hist: dict, shared_context=None) 
             return result
 
         print(f"\n→ [{country}] {name} ({platform})")
+
+        # 类目价格快照命中时，无需创建 context 或打开 PDP。
+        batch_key = adapter.batch_price_key(url)
+        if batch_prices and batch_key in batch_prices:
+            new_price, currency = batch_prices[batch_key]
+            result["Price"] = new_price
+            result["Currency"] = currency
+            result["Status"] = "Success"
+            result["Page Title"] = "Batch category snapshot"
+            result["Price_Trend"] = compute_price_trend(name, country, platform, new_price, hist)
+            print(f"  [ok/batch] {currency} {new_price} ({result['Price_Trend']})")
+            return result
 
         ctx = shared_context
         owns_context = shared_context is None
@@ -151,7 +195,23 @@ async def process_sku(sem, browser, sku: dict, hist: dict, shared_context=None) 
                 try:
                     await asyncio.sleep(random.uniform(1.0, 3.0))
                     timeout_ms = 40000 if attempt == 0 else 60000
-                    await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                    wait_until = getattr(adapter, "navigation_wait_until", "domcontentloaded")
+                    response = await page.goto(url, wait_until=wait_until, timeout=timeout_ms)
+                    status = response.status if response else 0
+                    if adapter.is_unavailable_response(status, url, page.url):
+                        result["Status"] = "Failed: Dead Link"
+                        result["Page Title"] = f"HTTP {status} → {page.url}"
+                        print(f"  [{name}] 死链/下架: HTTP {status} → {page.url[:100]}")
+                        break
+                    if wait_until == "commit":
+                        try:
+                            await page.wait_for_load_state(
+                                "domcontentloaded",
+                                timeout=getattr(adapter, "post_commit_timeout_ms", 15000),
+                            )
+                        except Exception:
+                            # HTTP 状态和最终 URL 已拿到；重页面继续由反爬检测和价格选择器判断。
+                            pass
                     passed = await handle_antibot_page(
                         page,
                         name,
@@ -302,6 +362,22 @@ async def run() -> int:
             browser = await p.chromium.launch(headless=HEADLESS, args=list(BROWSER_ARGS))
 
         sem = asyncio.Semaphore(CONCURRENCY)
+        batch_price_maps: dict[str, dict[str, tuple[float, str]]] = {}
+        for platform in sorted({s["platform"] for s in runnable}):
+            adapter = get_adapter(platform)
+            if not getattr(adapter, "batch_price_enabled", False):
+                continue
+            group = [s for s in runnable if s["platform"].lower() == platform.lower()]
+            try:
+                prepared = await adapter.prepare_batch_prices(browser, group)
+                if prepared and not _batch_prices_pass_history_guard(adapter, group, prepared, hist):
+                    print(f"[monitor/{adapter.platform_name}] 批量价格疑似系统性错位，整批回退 PDP")
+                    prepared = {}
+                batch_price_maps[adapter.platform_name.lower()] = prepared
+            except Exception as exc:
+                print(f"[monitor/{adapter.platform_name}] 批量价格准备失败，回退 PDP: {str(exc)[:120]}")
+                batch_price_maps[adapter.platform_name.lower()] = {}
+
         normal = [s for s in runnable if not get_adapter(s["platform"]).shared_context]
         shared: dict[str, list[dict]] = {}
         for sku in runnable:
@@ -309,7 +385,16 @@ async def run() -> int:
             if adapter.shared_context:
                 shared.setdefault(adapter.platform_name.lower(), []).append(sku)
 
-        jobs = [process_sku(sem, browser, s, hist) for s in normal]
+        jobs = [
+            process_sku(
+                sem,
+                browser,
+                s,
+                hist,
+                batch_prices=batch_price_maps.get(get_adapter(s["platform"]).platform_name.lower()),
+            )
+            for s in normal
+        ]
         jobs.extend(
             process_shared_group(browser, get_adapter(name), group, hist)
             for name, group in shared.items()
@@ -335,7 +420,11 @@ async def run() -> int:
 
     n_ok = sum(1 for r in results if r["Status"] == "Success")
     n_fail = len(results) - n_ok
-    print(f"\n[monitor] 完成 · 成功 {n_ok} / 失败 {n_fail} (共 {len(results)})")
+    n_batch = sum(1 for r in results if r["Page Title"] == "Batch category snapshot")
+    print(
+        f"\n[monitor] 完成 · 成功 {n_ok} / 失败 {n_fail} (共 {len(results)})"
+        f" · 类目快照命中 {n_batch}"
+    )
     return 0
 
 

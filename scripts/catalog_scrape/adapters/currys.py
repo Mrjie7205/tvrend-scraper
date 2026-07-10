@@ -1,11 +1,11 @@
 """Currys 类目页反向拉:抓 currys.co.uk 电视分类下全量商品。
 
 抓取策略(2026-06 实测确定):
-- 入口 = /tv-and-audio/televisions/tvs?start=N&sz=20(总 ~494 台, 每页 20, ~25 页)
+- 入口 = /tv-and-audio/televisions/tvs?start=N&sz=50(总 ~500 台, 每页 50, 约 11 页)
 - Currys 是客户端渲染,plain requests 拿不到商品 → 必须用 Playwright
 - 反爬特性:**同一 browser context 翻第 2 页就 403**(会话级限速),
   但每页换一个全新 context 直开 start=N 就 200。所以这里 **每页开新 context**。
-- 翻页 URL 由 Currys 自己生成:?start=0/20/40/...&sz=20。循环到某页无新增或够 total 为止。
+- 翻页 URL 由 Currys 自己生成:?start=0/50/100/...&sz=50。循环到某页无新增或够 total 为止。
 
 DOM 关键点:
 - 商品链接 = a[href*='/products/'],/products/<slug> 是 Currys 商品页规范 URL
@@ -26,9 +26,9 @@ from typing import Sequence
 from .base import BaseCatalogAdapter, CatalogItem
 
 LISTING_URL = "https://www.currys.co.uk/tv-and-audio/televisions/tvs"
-PAGE_SIZE = 20
-# 安全上限:~494/20≈25 页,留余量。测试可用环境变量 CURRYS_MAX_PAGES 调小。
-MAX_PAGES = int(os.environ.get("CURRYS_MAX_PAGES", "30"))
+PAGE_SIZE = 50
+# 安全上限:~500/50≈10 页,留余量。测试可用环境变量 CURRYS_MAX_PAGES 调小。
+MAX_PAGES = int(os.environ.get("CURRYS_MAX_PAGES", "15"))
 COOKIE_ACCEPT_SELECTOR = "#onetrust-accept-btn-handler"
 
 # 品牌识别(取标题第一个词;我们追踪 5 大,其余照样交出去由匹配器判 no_brand)
@@ -51,11 +51,15 @@ _JS_EXTRACT = r"""
     if (!m) return;
     const slug = m[1];
     const title = (a.innerText || '').trim().replace(/\s+/g, ' ');
-    const card = a.closest("article, li, [class*='product'], [data-testid*='product']");
+    // 不使用宽泛的 [class*='product']：它会先命中促销文案容器，把
+    // “Get £30 off” 误当成售价。Currys 的完整商品卡稳定使用以下两层。
+    const card = a.closest(".product-item-element, .product");
     let price = '';
     if (card) {
-      const pm = (card.innerText || '').match(/£[\d.,]+/);
-      if (pm) price = pm[0];
+      const priceEl = card.querySelector(
+        ".price .sales .value, .price .value, .inner-price .sales .value"
+      );
+      if (priceEl) price = (priceEl.textContent || '').trim();
     }
     if (!bySlug[slug]) bySlug[slug] = { slug, title: '', price: '', href: href.split('?')[0] };
     if (title.length > bySlug[slug].title.length) bySlug[slug].title = title;
@@ -160,8 +164,8 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
         finally:
             await ctx.close()
 
-    async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
-        browser = page.context.browser
+    async def fetch_catalog_from_browser(self, browser) -> Sequence[CatalogItem]:
+        """直接从 browser 抓完整类目；供 weekly catalog 与 daily price 共用。"""
         by_slug: dict[str, dict] = {}
         consecutive_fail = 0
 
@@ -199,6 +203,9 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
 
         print(f"[catalog/Currys] 翻页跑完,共 {len(by_slug)} 个商品")
         return self._build_items(by_slug)
+
+    async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
+        return await self.fetch_catalog_from_browser(page.context.browser)
 
     def _build_items(self, by_slug: dict[str, dict]) -> list[CatalogItem]:
         items: list[CatalogItem] = []

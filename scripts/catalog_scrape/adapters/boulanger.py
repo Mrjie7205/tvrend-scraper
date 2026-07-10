@@ -98,10 +98,20 @@ _JS_EXTRACT = r"""
     );
     let price = '';
     if (card) {
-      const priceEl = card.querySelector(
+      // 旧实现直接取第一个 .price__amount，促销卡常会先遇到划线原价。
+      // 与 PDP adapter 对齐：优先 price__main，并排除 crossed/old 与 line-through。
+      const isCurrent = el => {
+        const style = window.getComputedStyle(el);
+        return !style.textDecoration.includes('line-through') &&
+          !el.closest('.price__crossed, .price__old, [class*="crossed"], [class*="old-price"]');
+      };
+      const mainCandidates = [...card.querySelectorAll('.price__main .price__amount')];
+      const fallbackCandidates = [...card.querySelectorAll(
         '.price__amount, [class*="-price__amount"], [class*="price-amount"], ' +
-        '[class*="price__"], span[class*="Price"], [data-test*="price"]'
-      );
+        'span[class*="Price"], [data-test*="price"]'
+      )];
+      const priceEl = mainCandidates.find(isCurrent) ||
+        fallbackCandidates.find(el => isCurrent(el) && el.children.length === 0);
       if (priceEl) price = (priceEl.innerText || '').trim().replace(/\n/g, ' ');
     }
     out.push({href, text, price});
