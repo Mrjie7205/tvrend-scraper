@@ -16,7 +16,7 @@
 
 ```
 scripts/
-  monitor_prices/    每日价格抓取(Playwright + 反爬伪装)
+  monitor_prices/    每日价格抓取(渠道批量快照优先 + 商品详情页兜底)
   catalog_scrape/    每周目录抓取
 mapping/
   channel_links.csv  输入:盯哪些 SKU / 对应链接(由上游私库每周刷新后推入)
@@ -36,7 +36,23 @@ python -m catalog_scrape.run_weekly      # 抓目录
 
 环境变量:`HEADLESS_MODE`(默认 true)、`MONITOR_CONCURRENCY`(默认 3)。
 
+## 每日抓价策略
+
+不同渠道使用适合本站结构的获取方式，而不是强行共用一种爬法：
+
+| 渠道 | 主路径 | 回退路径 |
+|---|---|---|
+| Boulanger | 五大品牌电视 facet 批量价格快照 | 未命中 SKU 打开商品详情页 |
+| Currys | 电视总类目分页快照；每页使用全新浏览器会话 | 未命中 SKU 打开商品详情页 |
+| Elkjop | 站点商品动态接口 | 商品详情页 |
+| Amazon | 独立的多国家 catalog 搜索链路 | 搜索补漏与详情页尺寸变体 |
+
+Boulanger/Currys 的批量快照有两道完整性保护：商品数与跟踪清单覆盖率不足时整批作废；
+价格相对历史数据发生系统性错位时整批作废。作废后自动回到原有详情页抓取，避免为了速度写入错误价格。
+
+关联不依赖标题猜测：Currys 使用 URL 末尾商品 ID，Boulanger 使用 `/ref/<id>`，因此标题改名不会串价。
+
 ## 说明
 
-- 抓取靠伪装成普通访客读公开商品页,**不需要任何账号 / 密钥 / 凭据**。
+- 抓取读取公开分类页、公开商品接口或公开商品页，**不需要任何账号 / 密钥 / 凭据**。
 - `mapping/channel_links.csv` 由上游维护后推入;本仓库不生成它。

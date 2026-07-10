@@ -1,7 +1,7 @@
 """每周一次 catalog 反向拉主入口。
 
 流程:
-  1. 遍历所有已注册的 catalog adapter(目前只有 Boulanger)
+  1. 遍历所有已注册的 catalog adapter(可用 CHANNELS 或 --only 限定渠道)
   2. 每个 adapter 开独立 Playwright context + 随机 UA + Stealth
   3. 调 adapter.fetch_catalog 抓全量列表
   4. 输出 catalog/<platform>_<country>_<YYYYMMDD>.csv
