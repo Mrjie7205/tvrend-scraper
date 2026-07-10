@@ -302,7 +302,7 @@ class AmazonMarket:
     language_cookie_name: str
     language_cookie_value: str
     location_required: bool = True
-    de_canary: tuple[tuple[str, float], ...] = ()
+    detail_canary: tuple[tuple[str, float], ...] = ()
 
 
 AMAZON_DE = AmazonMarket(
@@ -316,7 +316,7 @@ AMAZON_DE = AmazonMarket(
     currency="EUR",
     language_cookie_name="lc-acbde",
     language_cookie_value="de_DE",
-    de_canary=(
+    detail_canary=(
         ("B0GYZMPVXG", 229.99),  # Hisense 32A5DS
         ("B0GT9QKMRM", 169.99),  # Hisense 32E4DS
     ),
@@ -333,6 +333,10 @@ AMAZON_GB = AmazonMarket(
     currency="GBP",
     language_cookie_name="lc-acbuk",
     language_cookie_value="en_GB",
+    detail_canary=(
+        ("B0F7WHLF6M", 149.0),  # Hisense 32A4QTUK
+        ("B0F9PP6BKT", 138.0),  # TCL 32SF560-UK
+    ),
 )
 
 AMAZON_IT = AmazonMarket(
@@ -347,6 +351,10 @@ AMAZON_IT = AmazonMarket(
     language_cookie_name="lc-acbit",
     language_cookie_value="it_IT",
     location_required=False,
+    detail_canary=(
+        ("B0GM1HFTNL", 159.0),  # Hisense 32E4ST
+        ("B0F54B34TH", 159.0),  # TCL 32V4C
+    ),
 )
 
 AMAZON_ES = AmazonMarket(
@@ -361,6 +369,10 @@ AMAZON_ES = AmazonMarket(
     language_cookie_name="lc-acbes",
     language_cookie_value="es_ES",
     location_required=False,
+    detail_canary=(
+        ("B0GJFWX36Y", 154.9),  # Hisense 32A4S
+        ("B0F9PVTQL2", 149.0),  # TCL 32SF560
+    ),
 )
 
 
@@ -524,9 +536,9 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
     return ok
 
 
-async def verify_amazon_de_canary(page, market: AmazonMarket) -> bool:
+async def verify_amazon_detail_canary(page, market: AmazonMarket) -> bool:
     ok_any = False
-    for asin, known in market.de_canary:
+    for asin, known in market.detail_canary:
         try:
             await page.goto(f"{market.base_url}/dp/{asin}", wait_until="domcontentloaded", timeout=45000)
             await page.wait_for_timeout(1500)
@@ -605,8 +617,8 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             location_ok = await set_amazon_market_location(page, market)
             canary_ok = False
             if location_ok:
-                if market.de_canary:
-                    canary_ok = await verify_amazon_de_canary(page, market)
+                if market.detail_canary:
+                    canary_ok = await verify_amazon_detail_canary(page, market)
                 else:
                     canary_ok = await verify_amazon_search_currency(page, market)
             if location_ok and canary_ok:
