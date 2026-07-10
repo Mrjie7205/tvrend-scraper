@@ -22,6 +22,7 @@ jobs:
   scrape:
     name: Scrape ${{ matrix.market }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
@@ -59,11 +60,19 @@ jobs:
       - name: Install Playwright Chromium
         run: python -m playwright install chromium --with-deps
 
+      - name: Run Amazon catalog unit tests
+        run: python -m unittest discover -s tests -v
+
       - name: Scrape Amazon catalog（set address + canary + fail-closed)
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
           AMAZON_MAX_PAGES: ${{ inputs.amazon_max_pages || '15' }}
+          AMAZON_TARGET_YEARS: "2025,2026"
+          AMAZON_YEAR_MAX_PAGES: "2"
+          AMAZON_MAX_SERIES_RESCUE_QUERIES: "40"
+          AMAZON_MAX_VARIANT_SEEDS: "64"
+          AMAZON_MAX_VARIANTS_PER_SEED: "12"
         run: python -m catalog_scrape.run_weekly --only ${{ matrix.market }}
 
       - name: Stage catalog artifact

@@ -41,16 +41,26 @@ BRAND_QUERIES = tuple(
     for q in os.environ.get("AMAZON_BRAND_QUERIES", "samsung,lg,tcl,hisense,sony").split(",")
     if q.strip()
 )
+TARGET_BRAND_ORDER = tuple(q.upper() for q in BRAND_QUERIES)
 EXTRA_SERIES_QUERIES = tuple(
     q.strip().lower()
-    for q in os.environ.get("AMAZON_EXTRA_SERIES_QUERIES", "samsung s95h").split(",")
+    for q in os.environ.get("AMAZON_EXTRA_SERIES_QUERIES", "").split(",")
     if q.strip()
+)
+TARGET_YEARS = tuple(
+    y.strip()
+    for y in os.environ.get("AMAZON_TARGET_YEARS", "2025,2026").split(",")
+    if y.strip()
 )
 MAX_PAGES = int(os.environ.get("AMAZON_MAX_PAGES", "7"))
 EXTRA_MAX_PAGES = int(os.environ.get("AMAZON_EXTRA_MAX_PAGES", "3"))
+YEAR_MAX_PAGES = int(os.environ.get("AMAZON_YEAR_MAX_PAGES", "2"))
+SERIES_RESCUE_MAX_PAGES = int(os.environ.get("AMAZON_SERIES_RESCUE_MAX_PAGES", "1"))
+MAX_SERIES_RESCUE_QUERIES = int(os.environ.get("AMAZON_MAX_SERIES_RESCUE_QUERIES", "40"))
 EXPAND_VARIANTS = os.environ.get("AMAZON_EXPAND_VARIANTS", "true").lower() != "false"
-MAX_VARIANT_SEEDS = int(os.environ.get("AMAZON_MAX_VARIANT_SEEDS", "32"))
-MAX_VARIANTS_PER_SEED = int(os.environ.get("AMAZON_MAX_VARIANTS_PER_SEED", "6"))
+MAX_VARIANT_SEEDS = int(os.environ.get("AMAZON_MAX_VARIANT_SEEDS", "64"))
+MAX_VARIANTS_PER_SEED = int(os.environ.get("AMAZON_MAX_VARIANTS_PER_SEED", "12"))
+MAX_SEEDS_PER_SERIES = int(os.environ.get("AMAZON_MAX_SEEDS_PER_SERIES", "2"))
 COOKIE_ACCEPT_SELECTOR = "#sp-cc-accept"
 
 _KNOWN_BRANDS = {
@@ -93,6 +103,47 @@ RE_CURRENT_SERIES_HINT = re.compile(
     r"|C\d[KL]|P\d[KL]|X11L|QNED\d{2}[AB]|OLED\d{2}[A-Z0-9]*[56]?[A-Z]*)",
     re.IGNORECASE,
 )
+
+# 这里只用于生成“系列精确搜索”以及对详情页种子去重，不承担商品品牌判断或最终型号匹配。
+# 最终品牌仍来自 Amazon 搜索卡片/标题，最终 base_model 仍由私库 matcher 决定。
+_SERIES_PATTERNS = {
+    "SAMSUNG": (
+        re.compile(r"(?:GQ|GU|QE|TQ|TU)?\d{2,3}(S(?:85|90|95|99)[FH])", re.IGNORECASE),
+        re.compile(r"(?:GQ|QE|TQ)?\d{2,3}(QN(?:70|80|85|90|900|990)[FH])", re.IGNORECASE),
+        re.compile(r"\b(S(?:85|90|95|99)[FH]|QN(?:70|80|85|90|900|990)[FH])\b", re.IGNORECASE),
+        re.compile(r"\b(Q[678]F|LS03(?:FW|H)|M[78]0H|R\d{2}H|U\d{4}F)\b", re.IGNORECASE),
+    ),
+    "LG": (
+        re.compile(r"OLED\s*\d{2,3}\s*([BCG][56])", re.IGNORECASE),
+        re.compile(r"(?:^|\D)\d{2,3}(QNED\d{2}[AB]|UA\d{2}|NU\d{2})", re.IGNORECASE),
+        re.compile(r"\b(QNED\d{2}[AB]|UA\d{2}|NU\d{2})\b", re.IGNORECASE),
+        re.compile(r"\b([BCG][56])\b", re.IGNORECASE),
+    ),
+    "TCL": (
+        re.compile(
+            r"(?:^|\D)\d{2,3}(X11L|C\d[KL](?:\s*PRO|S)?|P\d[KL]|Q\dC|T6C|S[45][KL]?|A\d{3}(?:U|W|\s*PRO)?)\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(X11L|C\d[KL](?:\s*PRO|S)?|P\d[KL]|Q\dC|T6C|S[45][KL]?|A\d{3}(?:U|W|\s*PRO)?)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    "HISENSE": (
+        re.compile(
+            r"(?:^|\D)\d{2,3}(A[4567][QS]|E[678][QS](?:\s*PRO)?|U[789][QS](?:\s*(?:PRO|E))?|UR[89]S|S5Q)\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(A[4567][QS]|E[678][QS](?:\s*PRO)?|U[789][QS](?:\s*(?:PRO|E))?|UR[89]S|S5Q)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    "SONY": (
+        re.compile(r"\b(BRAVIA\s*[23589](?:\s*II)?)\b", re.IGNORECASE),
+        re.compile(r"\b(XR\d{2}(?:M2)?)\b", re.IGNORECASE),
+    ),
+}
 
 _JS_EXTRACT = r"""
 () => {
@@ -598,13 +649,80 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         return bool(RE_VARIANT_HINT.search(row.get("title") or item.raw_text))
 
     @staticmethod
-    def _variant_seed_priority(item: CatalogItem) -> tuple[int, int]:
-        """新品优先补全，避免全量 action 被旧款/推荐页拖慢。"""
+    def _series_hint(item: CatalogItem) -> str:
+        """从标题提取系列搜索词，仅用于补抓，不作为最终 matcher 结论。"""
+        brand = (item.brand_raw or "").upper()
         text = item.raw_text or ""
-        s95h_hit = 0 if re.search(r"S95H", text, re.IGNORECASE) else 1
+        for candidate in (text, re.sub(r"\s+", "", text)):
+            for pattern in _SERIES_PATTERNS.get(brand, ()):
+                match = pattern.search(candidate)
+                if match:
+                    return re.sub(r"\s+", "", match.group(1).upper()).strip()
+        return ""
+
+    @classmethod
+    def _variant_seed_priority(cls, item: CatalogItem) -> tuple[int, int, int, int]:
+        """有明确多尺寸入口的新品优先，避免详情页预算被低价值种子占满。"""
+        text = item.raw_text or ""
+        variant_hint = 0 if item.extra.get("variant_hint") else 1
         current_hit = 0 if (RE_CURRENT_YEAR_HINT.search(text) or RE_CURRENT_SERIES_HINT.search(text)) else 1
+        series_hit = 0 if cls._series_hint(item) else 1
         priced = 0 if item.price_local is not None else 1
-        return s95h_hit, current_hit, priced
+        return variant_hint, current_hit, series_hit, priced
+
+    @classmethod
+    def _select_variant_seeds(cls, items: Sequence[CatalogItem]) -> list[CatalogItem]:
+        """每个已识别系列最多保留少量入口，兼顾效率与详情页偶发缺失的回退。"""
+        selected: list[CatalogItem] = []
+        per_series: dict[tuple[str, str], int] = {}
+        queues: dict[str, list[CatalogItem]] = {}
+        for item in sorted(items, key=cls._variant_seed_priority):
+            queues.setdefault((item.brand_raw or "").upper(), []).append(item)
+        brand_order = list(TARGET_BRAND_ORDER) + sorted(set(queues) - set(TARGET_BRAND_ORDER))
+        while len(selected) < MAX_VARIANT_SEEDS and any(queues.get(brand) for brand in brand_order):
+            for brand in brand_order:
+                queue = queues.get(brand) or []
+                while queue:
+                    item = queue.pop(0)
+                    series = cls._series_hint(item)
+                    if series:
+                        key = (brand, series)
+                        used = per_series.get(key, 0)
+                        if used >= MAX_SEEDS_PER_SERIES:
+                            continue
+                        per_series[key] = used + 1
+                    selected.append(item)
+                    break
+                if len(selected) >= MAX_VARIANT_SEEDS:
+                    break
+        return selected
+
+    @classmethod
+    def _series_rescue_queries(cls, items: Sequence[CatalogItem]) -> list[str]:
+        """对宽泛品牌搜索已发现的新品系列再做一次精确搜索，找回独立 ASIN 尺寸。"""
+        stats: dict[tuple[str, str], set[int]] = {}
+        for item in items:
+            series = cls._series_hint(item)
+            if not series:
+                continue
+            size = int(item.size_hint_inch or 0)
+            key = ((item.brand_raw or "").upper(), series)
+            stats.setdefault(key, set()).add(size)
+        queues: dict[str, list[tuple[str, str]]] = {}
+        for key in stats:
+            queues.setdefault(key[0], []).append(key)
+        for brand in queues:
+            queues[brand].sort(key=lambda key: (len(stats[key]), key[1]))
+        brand_order = list(TARGET_BRAND_ORDER) + sorted(set(queues) - set(TARGET_BRAND_ORDER))
+        ranked: list[tuple[str, str]] = []
+        while len(ranked) < MAX_SERIES_RESCUE_QUERIES and any(queues.get(brand) for brand in brand_order):
+            for brand in brand_order:
+                queue = queues.get(brand) or []
+                if queue:
+                    ranked.append(queue.pop(0))
+                if len(ranked) >= MAX_SERIES_RESCUE_QUERIES:
+                    break
+        return [f"{brand.lower()} {series.lower()}" for brand, series in ranked]
 
     async def _detail_item(self, page, asin: str, fallback_brand: str, fallback_variant_text: str = "") -> CatalogItem | None:
         market = self.market
@@ -650,7 +768,8 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             return 0
 
         refs = detail.get("variantRefs") or []
-        if len(refs) <= 1:
+        # 某些详情页只渲染一个“另一个尺寸”，不能把这种情况误判为无变体。
+        if not refs:
             return 0
         added = 0
         for ref in refs[:MAX_VARIANTS_PER_SEED]:
@@ -679,12 +798,11 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             return []
 
         by_asin: dict[str, CatalogItem] = {}
-        variant_seeds: list[CatalogItem] = []
+        variant_seeds: dict[str, CatalogItem] = {}
         cookie_done = False
-        query_plan = [(q, MAX_PAGES) for q in BRAND_QUERIES] + [
-            (q, min(MAX_PAGES, EXTRA_MAX_PAGES)) for q in EXTRA_SERIES_QUERIES
-        ]
-        for q, max_pages in query_plan:
+
+        async def scrape_query(q: str, max_pages: int, query_kind: str) -> None:
+            nonlocal cookie_done
             consecutive_empty = 0
             for n in range(1, max_pages + 1):
                 search_text = f"{q} {market.search_word}"
@@ -713,16 +831,23 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     asin = (r.get("asin") or "").strip().upper()
                     if asin in by_asin:
                         filtered["duplicate"] += 1
+                        existing = by_asin[asin]
+                        if r.get("variantHint"):
+                            existing.extra["variant_hint"] = True
+                        if self._should_expand_variants(r, existing):
+                            variant_seeds[asin] = existing
                         continue
                     item = self._item_from_search_row(r, filtered)
                     if item is None:
                         continue
+                    item.extra["variant_hint"] = bool(r.get("variantHint"))
+                    item.extra["search_kind"] = query_kind
                     by_asin[asin] = item
                     if self._should_expand_variants(r, item):
-                        variant_seeds.append(item)
+                        variant_seeds[asin] = item
                     new_real += 1
                 print(
-                    f"[catalog/Amazon/{market.code}] {q} p{n}: {len(rows)} 结果 / "
+                    f"[catalog/Amazon/{market.code}] {query_kind}:{q} p{n}: {len(rows)} 结果 / "
                     f"本页新增真电视 {new_real} / 累计 {len(by_asin)} / 过滤 {filtered}"
                 )
                 if new_real == 0:
@@ -732,19 +857,55 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 else:
                     consecutive_empty = 0
                 await asyncio.sleep(random.uniform(1.0, 2.2))
+
+        query_plan = (
+            [(q, MAX_PAGES, "brand") for q in BRAND_QUERIES]
+            + [
+                (f"{q} {year}", min(MAX_PAGES, YEAR_MAX_PAGES), "year")
+                for q in BRAND_QUERIES
+                for year in TARGET_YEARS
+            ]
+            + [
+                (q, min(MAX_PAGES, EXTRA_MAX_PAGES), "extra")
+                for q in EXTRA_SERIES_QUERIES
+            ]
+        )
+        completed_queries: set[str] = set()
+        for q, max_pages, query_kind in query_plan:
+            normalized_query = re.sub(r"\s+", " ", q.strip().lower())
+            if not normalized_query or normalized_query in completed_queries:
+                continue
+            completed_queries.add(normalized_query)
+            await scrape_query(q, max_pages, query_kind)
+
+        # Amazon 有些尺寸是完全独立的 ASIN，详情页没有 twister sibling。
+        # 用宽搜中识别出的系列做一页精确搜索，补上这类“页面之间互不相连”的尺寸。
+        rescue_queries = self._series_rescue_queries(list(by_asin.values()))
+        print(
+            f"[catalog/Amazon/{market.code}] 系列精确补抓 queries={len(rescue_queries)} "
+            f"(max_pages={SERIES_RESCUE_MAX_PAGES})…"
+        )
+        for q in rescue_queries:
+            normalized_query = re.sub(r"\s+", " ", q.strip().lower())
+            if normalized_query in completed_queries:
+                continue
+            completed_queries.add(normalized_query)
+            await scrape_query(q, SERIES_RESCUE_MAX_PAGES, "series")
+
         if variant_seeds:
             added_total = 0
-            variant_seeds = sorted(variant_seeds, key=self._variant_seed_priority)[:MAX_VARIANT_SEEDS]
+            selected_seeds = self._select_variant_seeds(list(variant_seeds.values()))
             print(
-                f"[catalog/Amazon/{market.code}] 多尺寸补全 seeds={len(variant_seeds)} "
+                f"[catalog/Amazon/{market.code}] 多尺寸补全 candidates={len(variant_seeds)} / "
+                f"selected={len(selected_seeds)} "
                 f"(max_per_seed={MAX_VARIANTS_PER_SEED})…"
             )
-            for i, seed in enumerate(variant_seeds, 1):
+            for i, seed in enumerate(selected_seeds, 1):
                 added = await self._expand_variants_from_seed(page, seed, by_asin)
                 added_total += added
                 if added:
                     print(
-                        f"[catalog/Amazon/{market.code}] variant {i}/{len(variant_seeds)} "
+                        f"[catalog/Amazon/{market.code}] variant {i}/{len(selected_seeds)} "
                         f"{seed.extra.get('asin')} +{added} / 累计 {len(by_asin)}"
                     )
                 await asyncio.sleep(random.uniform(0.8, 1.5))
