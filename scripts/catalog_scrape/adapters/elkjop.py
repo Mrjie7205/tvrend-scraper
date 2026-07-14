@@ -239,6 +239,9 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
     platform_name = "Elkjop"
     country = "NO"
     locale_override = ("nb-NO", "Europe/Oslo")
+    # Vercel 会联合检查 UA、Client Hints 与平台；随机 Windows/Safari UA 配 Linux
+    # Chromium 反而是明显异常，因此 Elkjop 使用浏览器原生一致身份。
+    native_browser_identity = True
 
     async def _signed_api_key(self, page) -> str:
         """在真实首页会话中取短时效搜索 key。

@@ -75,10 +75,8 @@ def _catalog_dir() -> Path:
 
 async def run_one_adapter(browser, adapter) -> Path | None:
     """跑一个 adapter,产出 catalog/<platform>_<country>_<date>.csv,返回路径。"""
-    ua = random.choice(USER_AGENTS)
     locale, tz = adapter.locale_override or locale_for(adapter.country)
-    ctx = await browser.new_context(
-        user_agent=ua,
+    context_options = dict(
         viewport={
             "width": random.choice(VIEWPORT_WIDTHS),
             "height": random.choice(VIEWPORT_HEIGHTS),
@@ -86,7 +84,14 @@ async def run_one_adapter(browser, adapter) -> Path | None:
         locale=locale,
         timezone_id=tz,
     )
-    await ctx.add_init_script(STEALTH_JS)
+    native_identity = bool(getattr(adapter, "native_browser_identity", False))
+    if not native_identity:
+        context_options["user_agent"] = random.choice(USER_AGENTS)
+    ctx = await browser.new_context(**context_options)
+    if native_identity:
+        print(f"[catalog/{adapter.platform_name}] 使用 Chromium 原生一致浏览器身份")
+    else:
+        await ctx.add_init_script(STEALTH_JS)
     page = await ctx.new_page()
 
     try:

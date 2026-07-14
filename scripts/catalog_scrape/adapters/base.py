@@ -45,6 +45,9 @@ class BaseCatalogAdapter:
     platform_name: str = ""
     country: str = "FR"  # 这个渠道默认服务的国家
     locale_override: tuple[str, str] | None = None
+    # 某些站点会交叉校验 UA、Client Hints、操作系统和语言。设为 True 时保留
+    # Chromium 自己生成的完整浏览器身份，不再套用通用随机 UA/Stealth 脚本。
+    native_browser_identity: bool = False
 
     async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
         """在 Playwright page 上抓全部商品,返回 CatalogItem 列表。"""
