@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from catalog_scrape.adapters.amazon import AmazonDeCatalogAdapter  # noqa: E402
+from catalog_scrape.adapters.amazon import AmazonDeCatalogAdapter, is_non_tv_title  # noqa: E402
 
 
 class AmazonCatalogSeriesTest(unittest.TestCase):
@@ -69,6 +69,24 @@ class AmazonCatalogSeriesTest(unittest.TestCase):
             item.size_hint_inch = size
         selected = self.adapter._select_previous_recovery_items(historical, current)
         self.assertEqual({55, 65}, {int(item.size_hint_inch or 0) for item in selected})
+
+    def test_rejects_remote_and_power_accessories_without_blocking_real_tv(self) -> None:
+        rejected = (
+            'WKOLF Replace Remote suit for TCL 43" 50/55PF650K,50/60/75 T6C TV',
+            'TV Mounting Screws Kit 100pcs - Universal VESA Screws for Samsung TVs',
+            '120W Ladegerät für Sony Bravia TV 55W755C',
+        )
+        for title in rejected:
+            with self.subTest(title=title):
+                self.assertTrue(is_non_tv_title(title))
+
+        accepted = (
+            'LG OLED55C6 Smart TV with AI Magic Remote and Dolby Vision',
+            'Samsung 55S95H OLED TV with One Remote Control',
+        )
+        for title in accepted:
+            with self.subTest(title=title):
+                self.assertFalse(is_non_tv_title(title))
 
 
 if __name__ == "__main__":

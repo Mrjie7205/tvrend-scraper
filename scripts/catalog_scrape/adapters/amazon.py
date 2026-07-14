@@ -92,9 +92,28 @@ RE_NON_TV = re.compile(
     r"|business\s*display|professional\s*display|signage"
     r"|displayschutz|bildschirmschutz|schutzfolie|displayfolie|screen\s*protector|panzerglas"
     r"|wandhalterung|wall\s*mount|tv[- ]?halterung|supporto|soporte"
-    r"|fußständer|tv[- ]?ständer|tv[- ]?stand|tv[- ]?beine|netzteil|fernbedienung|remote\s*control",
+    r"|fußständer|tv[- ]?ständer|tv[- ]?stand|tv[- ]?beine|netzteil|fernbedienung"
+    r"|mounting\s+screws?|vesa\s+screws?|ladegerät|power\s*(?:supply|adapter)|tv\s+power\s+adapter",
     re.IGNORECASE,
 )
+
+# `remote` 不能整体禁用：LG 等电视本体标题会正常出现 "Magic Remote"。
+# 这里只拦截明确描述“替换/兼容遥控器”的短语，补住 Amazon GB 曾把
+# `WKOLF Replace Remote suit for ... T6C ... TV` 当成电视本体的缺口。
+RE_REMOTE_ACCESSORY = re.compile(
+    r"\breplace(?:ment)?\s+remote\b"
+    r"|\bremote\s+(?:suit(?:able)?\s+for|compatible\s+with|for)\b"
+    r"|\buniversal\s+(?:tv\s+)?remote(?:\s+control)?\b"
+    r"|\btelecomando\s+(?:sostitutivo|di\s+ricambio|compatibile)\b"
+    r"|\bmando\s+(?:de\s+reemplazo|sustituto|compatible)\b",
+    re.IGNORECASE,
+)
+
+
+def is_non_tv_title(title: str) -> bool:
+    """判断 Amazon 标题是否明确属于配件/非电视本体。"""
+    text = str(title or "")
+    return bool(RE_NON_TV.search(text) or RE_REMOTE_ACCESSORY.search(text))
 
 RE_VARIANT_HINT = re.compile(
     r"\b(?:Options?|Optionen|Opzioni|Opciones)\s*:\s*\d+",
@@ -588,7 +607,7 @@ async def verify_amazon_search_currency(page, market: AmazonMarket) -> bool:
         if r.get("sponsored"):
             continue
         title = (r.get("title") or "").strip()
-        if RE_NON_TV.search(title):
+        if is_non_tv_title(title):
             continue
         price, currency, _eur = _price_pair(r.get("price") or "", market.currency)
         if price is not None and 50 <= price <= 10000:
@@ -679,7 +698,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         if not brand or size is None:
             filtered["no_brand" if not brand else "no_size"] += 1
             return None
-        if RE_NON_TV.search(title):
+        if is_non_tv_title(title):
             filtered["non_tv"] += 1
             return None
         return self._build_item(asin, title, brand, size, row.get("price") or "")
@@ -870,7 +889,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         size = _size_from_title(title) or _size_from_title(fallback_variant_text)
         if not brand or size is None:
             return None
-        if RE_NON_TV.search(title):
+        if is_non_tv_title(title):
             return None
         return self._build_item(asin, title, brand, size, detail.get("price") or "")
 
