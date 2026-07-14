@@ -11,14 +11,6 @@ on:
         description: "手动 smoke test 输出上限；留空/0 表示完整目录"
         required: false
         default: "0"
-      runner:
-        description: "排障时可切换 GitHub 托管运行器出口；定时任务默认 Ubuntu"
-        required: false
-        type: choice
-        default: "ubuntu-latest"
-        options:
-          - "ubuntu-latest"
-          - "macos-latest"
 
 concurrency:
   group: weekly-catalog-elkjop
@@ -26,12 +18,16 @@ concurrency:
 
 jobs:
   catalog:
-    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: write
     env:
       CATALOG_MAX_ITEMS: ${{ inputs.max_items || '0' }}
+      # GitHub 托管出口无法通过 Elkjop/Vercel Challenge；只把短时搜索 key
+      # 经带鉴权的非 GitHub 中转取得，目录抓取与完整性校验仍在本 job 内完成。
+      ELKJOP_KEY_RELAY_URL: ${{ secrets.ELKJOP_KEY_RELAY_URL }}
+      ELKJOP_KEY_RELAY_TOKEN: ${{ secrets.ELKJOP_KEY_RELAY_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,13 +43,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Playwright Chromium (Linux)
-        if: runner.os == 'Linux'
+      - name: Install Playwright Chromium
         run: python -m playwright install chromium --with-deps
-
-      - name: Install Playwright Chromium (macOS)
-        if: runner.os == 'macOS'
-        run: python -m playwright install chromium
 
       - name: Scrape Elkjop catalog via API
         working-directory: scripts

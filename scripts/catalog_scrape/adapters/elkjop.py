@@ -11,12 +11,15 @@ SKU 数做严格完整性校验。
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 from collections import Counter
 import json
 import os
 import re
+import time
 from typing import Sequence
-from urllib.parse import urlencode, urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qs, urlencode, urljoin, urlsplit, urlunsplit
 
 from .base import BaseCatalogAdapter, CatalogItem
 from monitor_prices.core import clean_price, handle_antibot_page
@@ -30,6 +33,8 @@ ALGOLIA_QUERY_URL = "https://z0fl7r8ubh-dsn.algolia.net/1/indexes/*/queries"
 ALGOLIA_APP_ID = "Z0FL7R8UBH"
 ALGOLIA_INDEX = "commerce_b2c_OCNOELK"
 ALGOLIA_TAXONOMY_FILTER = "productTaxonomy.id:PT351"
+KEY_RELAY_URL = os.environ.get("ELKJOP_KEY_RELAY_URL", "").strip()
+KEY_RELAY_TOKEN = os.environ.get("ELKJOP_KEY_RELAY_TOKEN", "").strip()
 MAX_ITEMS = int(os.environ.get("ELKJOP_MAX_ITEMS", "0"))
 PAGE_SIZE = int(os.environ.get("ELKJOP_PAGE_SIZE", "48"))
 API_ENABLED = os.environ.get("ELKJOP_CATALOG_API", "true").strip().lower() not in {"0", "false", "no"}
@@ -235,6 +240,28 @@ def _api_business_brand(source_brand: str) -> str:
     return "TCL" if source_brand.lower() == "iffalcon" else source_brand
 
 
+def _signed_key_expiry(api_key: str, *, now: int | None = None) -> int | None:
+    """校验 relay 返回的是当前可用、仅限目标 Algolia 索引的短时签名 key。"""
+    try:
+        padding = "=" * (-len(api_key) % 4)
+        decoded = base64.b64decode(api_key + padding, validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        return None
+    if len(decoded) <= 64 or not re.fullmatch(r"[0-9a-f]{64}", decoded[:64]):
+        return None
+    params = parse_qs(decoded[64:], keep_blank_values=True)
+    try:
+        valid_until = int((params.get("validUntil") or [""])[0])
+    except (TypeError, ValueError):
+        return None
+    indices = (params.get("restrictIndices") or [""])[0].split(",")
+    current = int(time.time()) if now is None else int(now)
+    # Elkjop 当前签名约 15 分钟；拒绝即将过期或异常长效的 relay 返回值。
+    if "commerce_*" not in indices or not current + 60 < valid_until <= current + 3600:
+        return None
+    return valid_until
+
+
 class ElkjopCatalogAdapter(BaseCatalogAdapter):
     platform_name = "Elkjop"
     country = "NO"
@@ -243,7 +270,44 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
     # Chromium 反而是明显异常，因此 Elkjop 使用浏览器原生一致身份。
     native_browser_identity = True
 
-    async def _signed_api_key(self, page) -> str:
+    async def _signed_api_key_from_relay(self, request_context) -> str:
+        """从带 Bearer 鉴权的非 GitHub 中转取得短时搜索 key。"""
+        if not KEY_RELAY_URL:
+            raise RuntimeError("ELKJOP_KEY_RELAY_URL 未配置")
+        if not KEY_RELAY_TOKEN:
+            raise RuntimeError("ELKJOP_KEY_RELAY_TOKEN 未配置")
+
+        last_error = ""
+        for attempt in range(1, 4):
+            try:
+                response = await request_context.get(
+                    KEY_RELAY_URL,
+                    headers={
+                        "accept": "application/json",
+                        "authorization": f"Bearer {KEY_RELAY_TOKEN}",
+                    },
+                    timeout=30_000,
+                )
+                if response.ok:
+                    payload = await response.json()
+                    key = str(payload.get("apiKey") or "").strip()
+                    expiry = _signed_key_expiry(key)
+                    if expiry:
+                        print(
+                            "    [Elkjop/api] relay signed key 获取成功，"
+                            f"剩余 {max(0, expiry - int(time.time()))} 秒"
+                        )
+                        return key
+                    last_error = "relay 返回的 signed key 无效或即将过期"
+                else:
+                    last_error = f"HTTP {response.status}"
+            except Exception as exc:
+                last_error = str(exc)[:120]
+            if attempt < 3:
+                await asyncio.sleep(2 ** attempt)
+        raise RuntimeError(f"Elkjop signed key relay 获取失败: {last_error}")
+
+    async def _signed_api_key_from_browser(self, page) -> str:
         """在真实首页会话中取短时效搜索 key。
 
         Vercel 会对 ``APIRequestContext`` 直连接口返回 Security Checkpoint。页面内的
@@ -291,6 +355,12 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
                 # 短时波动时给 Vercel/页面会话留出恢复时间，不连续轰击 key 接口。
                 await asyncio.sleep(2 ** attempt)
         raise RuntimeError(f"Elkjop Algolia signed key 获取失败: {last_error}")
+
+    async def _signed_api_key(self, page) -> str:
+        """GitHub 使用 relay；本地/VPS 无 relay 时使用真实浏览器会话。"""
+        if KEY_RELAY_URL:
+            return await self._signed_api_key_from_relay(page.context.request)
+        return await self._signed_api_key_from_browser(page)
 
     @staticmethod
     def _algolia_payload(year: int, page_index: int) -> dict:
