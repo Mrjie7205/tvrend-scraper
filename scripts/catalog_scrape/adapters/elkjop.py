@@ -1,11 +1,12 @@
 """Elkjøp 挪威电视类目抓取。
 
-GitHub hosted runner 打开类目页会被 Vercel Security Checkpoint 拦住，因此默认
-直接调用 Elkjøp 前端实际使用的 Algolia 搜索接口。接口同样按年份/品牌/类目筛选，
-并用 ``nbHits``、``nbPages`` 和唯一 SKU 数做严格完整性校验。
+Elkjøp 的签名 key 接口会拦截没有真实页面会话的 HTTP 客户端，因此先用 Chromium
+打开首页，再从站内页面环境发起同源请求取得短时效 Algolia key。目录数据仍直接
+调用 Elkjøp 前端实际使用的 Algolia 搜索接口，并用 ``nbHits``、``nbPages`` 和唯一
+SKU 数做严格完整性校验。
 
-旧的浏览器分页实现保留为可选兜底，仅供本地排障；GitHub Action 使用 API-only，
-避免安全检查再次拖住整条每周链路。
+旧的浏览器分页实现保留为可选兜底，仅供本地排障；GitHub Action 的 API-only 是指
+目录翻页走 Algolia，不代表签名 key 可以脱离真实浏览器会话。
 """
 from __future__ import annotations
 
@@ -239,29 +240,53 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
     country = "NO"
     locale_override = ("nb-NO", "Europe/Oslo")
 
-    async def _signed_api_key(self, request_context) -> str:
-        """取短时效搜索 key；不访问网页，因此 GitHub runner 不触发 checkpoint。"""
+    async def _signed_api_key(self, page) -> str:
+        """在真实首页会话中取短时效搜索 key。
+
+        Vercel 会对 ``APIRequestContext`` 直连接口返回 Security Checkpoint。页面内的
+        ``fetch`` 会携带真实 Chromium 指纹、同源 Referer 和站点 Cookie，与 Elkjøp
+        前端自己的调用方式一致。
+        """
+        print("    [Elkjop/api] 预热首页并建立签名 key 会话")
+        if not await self._open_and_pass_checkpoint(page, HOME_URL, "Elkjop key warmup"):
+            raise RuntimeError("Elkjop 首页安全检查未通过，无法获取 Algolia signed key")
+        await self._accept_cookies(page)
+
         last_error = ""
         for attempt in range(1, 4):
             try:
-                response = await request_context.get(
+                result = await page.evaluate(
+                    """async (url) => {
+                        const response = await fetch(url, {
+                            method: "GET",
+                            credentials: "include",
+                            headers: {"accept": "application/json"},
+                        });
+                        const text = await response.text();
+                        let apiKey = "";
+                        try {
+                            const payload = JSON.parse(text);
+                            apiKey = String(payload.apiKey || "").trim();
+                        } catch (_) {}
+                        return {
+                            status: response.status,
+                            apiKey,
+                            checkpoint: text.includes("Vercel Security Checkpoint"),
+                        };
+                    }""",
                     ALGOLIA_KEY_URL,
-                    headers={
-                        "accept": "application/json",
-                        "referer": HOME_URL,
-                    },
-                    timeout=30_000,
                 )
-                if response.ok:
-                    payload = await response.json()
-                    key = str(payload.get("apiKey") or "").strip()
-                    if key:
-                        return key
-                last_error = f"HTTP {response.status}"
+                key = str(result.get("apiKey") or "").strip()
+                if int(result.get("status") or 0) == 200 and key:
+                    print("    [Elkjop/api] signed key 获取成功")
+                    return key
+                suffix = " Vercel Security Checkpoint" if result.get("checkpoint") else ""
+                last_error = f"HTTP {result.get('status')}{suffix}"
             except Exception as exc:
                 last_error = str(exc)[:120]
             if attempt < 3:
-                await asyncio.sleep(attempt)
+                # 短时波动时给 Vercel/页面会话留出恢复时间，不连续轰击 key 接口。
+                await asyncio.sleep(2 ** attempt)
         raise RuntimeError(f"Elkjop Algolia signed key 获取失败: {last_error}")
 
     @staticmethod
@@ -335,8 +360,9 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
             f"Elkjop Algolia {year} page={page_index} 获取失败: {last_error}"
         )
 
-    async def _fetch_catalog_api(self, request_context) -> Sequence[CatalogItem]:
-        api_key = await self._signed_api_key(request_context)
+    async def _fetch_catalog_api(self, page) -> Sequence[CatalogItem]:
+        api_key = await self._signed_api_key(page)
+        request_context = page.context.request
         by_year_sku: dict[int, dict[str, dict]] = {}
         source_brand_counts: Counter[str] = Counter()
         total_with_price = 0
@@ -634,7 +660,7 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
     async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
         if API_ENABLED:
             try:
-                return await self._fetch_catalog_api(page.context.request)
+                return await self._fetch_catalog_api(page)
             except Exception as exc:
                 print(f"[catalog/Elkjop/api] 抓取失败: {str(exc)[:200]}")
                 if not PAGE_FALLBACK_ENABLED:
