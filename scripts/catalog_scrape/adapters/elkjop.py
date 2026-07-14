@@ -276,6 +276,14 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
             raise RuntimeError("ELKJOP_KEY_RELAY_URL 未配置")
         if not KEY_RELAY_TOKEN:
             raise RuntimeError("ELKJOP_KEY_RELAY_TOKEN 未配置")
+        relay_parts = urlsplit(KEY_RELAY_URL)
+        if (
+            relay_parts.scheme.lower() != "https"
+            or not relay_parts.hostname
+            or relay_parts.username
+            or relay_parts.password
+        ):
+            raise RuntimeError("ELKJOP_KEY_RELAY_URL 必须是无 userinfo 的 HTTPS 地址")
 
         last_error = ""
         for attempt in range(1, 4):
@@ -286,7 +294,9 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
                         "accept": "application/json",
                         "authorization": f"Bearer {KEY_RELAY_TOKEN}",
                     },
-                    timeout=30_000,
+                    # Relay 冷缓存时需要启动 Chromium；反向代理 read_timeout 也应不少于 180 秒。
+                    timeout=180_000,
+                    max_redirects=0,
                 )
                 if response.ok:
                     payload = await response.json()
@@ -301,6 +311,8 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
                     last_error = "relay 返回的 signed key 无效或即将过期"
                 else:
                     last_error = f"HTTP {response.status}"
+                    if response.status in {401, 403}:
+                        break
             except Exception as exc:
                 last_error = str(exc)[:120]
             if attempt < 3:

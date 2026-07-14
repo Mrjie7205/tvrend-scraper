@@ -38,32 +38,36 @@ _CACHE: tuple[str, int] | None = None
 async def _fetch_key_in_browser() -> tuple[str, int]:
     """使用与本地 Catalog 相同的真实页面会话取得并校验 key。"""
     async with async_playwright() as playwright:
+        browser = None
+        context = None
         try:
-            browser = await playwright.chromium.launch(
-                headless=True,
-                channel="chrome",
-                args=list(BROWSER_ARGS),
+            try:
+                browser = await playwright.chromium.launch(
+                    headless=True,
+                    channel="chrome",
+                    args=list(BROWSER_ARGS),
+                )
+            except Exception:
+                browser = await playwright.chromium.launch(
+                    headless=True,
+                    args=list(BROWSER_ARGS),
+                )
+            context = await browser.new_context(
+                locale="nb-NO",
+                timezone_id="Europe/Oslo",
+                viewport={"width": 1440, "height": 900},
             )
-        except Exception:
-            browser = await playwright.chromium.launch(
-                headless=True,
-                args=list(BROWSER_ARGS),
-            )
-        context = await browser.new_context(
-            locale="nb-NO",
-            timezone_id="Europe/Oslo",
-            viewport={"width": 1440, "height": 900},
-        )
-        page = await context.new_page()
-        try:
+            page = await context.new_page()
             key = await ElkjopCatalogAdapter()._signed_api_key_from_browser(page)
             expiry = _signed_key_expiry(key)
             if not expiry:
                 raise RuntimeError("Elkjop 返回的 signed key 未通过范围/有效期校验")
             return key, expiry
         finally:
-            await context.close()
-            await browser.close()
+            if context is not None:
+                await context.close()
+            if browser is not None:
+                await browser.close()
 
 
 def _get_key() -> tuple[str, int]:

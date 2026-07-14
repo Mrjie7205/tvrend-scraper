@@ -24,10 +24,6 @@ jobs:
       contents: write
     env:
       CATALOG_MAX_ITEMS: ${{ inputs.max_items || '0' }}
-      # GitHub 托管出口无法通过 Elkjop/Vercel Challenge；只把短时搜索 key
-      # 经带鉴权的非 GitHub 中转取得，目录抓取与完整性校验仍在本 job 内完成。
-      ELKJOP_KEY_RELAY_URL: ${{ secrets.ELKJOP_KEY_RELAY_URL }}
-      ELKJOP_KEY_RELAY_TOKEN: ${{ secrets.ELKJOP_KEY_RELAY_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,6 +45,9 @@ jobs:
       - name: Scrape Elkjop catalog via API
         working-directory: scripts
         env:
+          # Secret 只注入实际抓取步骤，安装依赖和提交步骤均不可见。
+          ELKJOP_KEY_RELAY_URL: ${{ secrets.ELKJOP_KEY_RELAY_URL }}
+          ELKJOP_KEY_RELAY_TOKEN: ${{ secrets.ELKJOP_KEY_RELAY_TOKEN }}
           HEADLESS_MODE: "true"
           PYTHONUNBUFFERED: "1"
           CHANNELS: "Elkjop"

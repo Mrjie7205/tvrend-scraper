@@ -53,6 +53,19 @@ class ElkjopSignedKeyTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.signed_key(1600), key)
         headers = request_context.get.await_args.kwargs["headers"]
         self.assertEqual("Bearer relay-token", headers["authorization"])
+        self.assertEqual(0, request_context.get.await_args.kwargs["max_redirects"])
+        self.assertEqual(180_000, request_context.get.await_args.kwargs["timeout"])
+
+    async def test_relay_rejects_plain_http_before_sending_token(self) -> None:
+        adapter = ElkjopCatalogAdapter()
+        request_context = AsyncMock()
+        with (
+            patch("catalog_scrape.adapters.elkjop.KEY_RELAY_URL", "http://relay.test/key"),
+            patch("catalog_scrape.adapters.elkjop.KEY_RELAY_TOKEN", "relay-token"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "必须是无 userinfo 的 HTTPS"):
+                await adapter._signed_api_key_from_relay(request_context)
+        request_context.get.assert_not_awaited()
 
     async def test_signed_key_uses_browser_page_fetch(self) -> None:
         adapter = ElkjopCatalogAdapter()
