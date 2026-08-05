@@ -1,0 +1,79 @@
+{
+  "createdAt": "2026-08-05T11:15:15+08:00",
+  "method": "github_action_stdout_exact_batch_pair_only",
+  "targetDates": [
+    "2026-08-01",
+    "2026-08-02",
+    "2026-08-03",
+    "2026-08-04"
+  ],
+  "recoveredRows": 3180,
+  "excludedAmbiguousPdpRows": 14,
+  "countsByDatePlatform": {
+    "2026-08-01|Boulanger": 374,
+    "2026-08-01|Currys": 421,
+    "2026-08-02|Boulanger": 373,
+    "2026-08-02|Currys": 421,
+    "2026-08-03|Boulanger": 375,
+    "2026-08-03|Currys": 408,
+    "2026-08-04|Boulanger": 382,
+    "2026-08-04|Currys": 426
+  },
+  "sourceRuns": [
+    {
+      "date": "2026-08-01",
+      "run_id": "30690114835",
+      "head": "e48ae90e204919a1d1752a2485987e551e472ef4",
+      "expected": {
+        "Boulanger": 374,
+        "Currys": 421
+      },
+      "log": {
+        "sha256": "2b62934c559559145501ea123dffe5921471f3c9d68a9474481aea02f91d2465",
+        "lineCount": 2999
+      }
+    },
+    {
+      "date": "2026-08-02",
+      "run_id": "30738270556",
+      "head": "06bfcf871f3bb28e93f5d4ee79fd299110d82295",
+      "expected": {
+        "Boulanger": 373,
+        "Currys": 421
+      },
+      "log": {
+        "sha256": "9a78c6f55b4cf9f6f50c6a7367fb8fcea35fc650c17a7854f124d7f0806df382",
+        "lineCount": 2992
+      }
+    },
+    {
+      "date": "2026-08-03",
+      "run_id": "30798390218",
+      "head": "00bb29ba17e508a11ad5c496c4bd9b1945b7b96d",
+      "expected": {
+        "Boulanger": 375,
+        "Currys": 408
+      },
+      "log": {
+        "sha256": "df59fb673c30ddd5d4854ed86bc035d6ef30e0d117f201e819471862a0ec0c1c",
+        "lineCount": 3073
+      }
+    },
+    {
+      "date": "2026-08-04",
+      "run_id": "30889236108",
+      "head": "8bc3c94030ae0b0caccf6bf40c306d30d07f46f3",
+      "expected": {
+        "Boulanger": 382,
+        "Currys": 426
+      },
+      "log": {
+        "sha256": "31a23a2b33255ea331c9ef151304110fc63a55ecb576630de3ea42c9f3bc1afe",
+        "lineCount": 3044
+      }
+    }
+  ],
+  "auditCsvSha256": "8c082c32211cfccf1c90d21fe3e4cab9ee02c9a37f83ae5e6bc7d7f5beb94b38",
+  "excludedCsvSha256": "e3374182f2d696c5f78f6bab3c1853f4da10c88871a92300c8d78c47d4dde582",
+  "trendPolicy": "按日期顺序，以恢复日前最近成功价为基线；同日记录均对比前一日基线"
+}
