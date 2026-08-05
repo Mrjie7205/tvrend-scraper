@@ -24,6 +24,7 @@ import re
 from typing import Sequence
 
 from .base import BaseCatalogAdapter, CatalogItem
+from monitor_prices.core import close_playwright_resource
 
 LISTING_URL = "https://www.currys.co.uk/tv-and-audio/televisions/tvs"
 PAGE_SIZE = 50
@@ -162,7 +163,7 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
             print(f"    [Currys] start={start} 异常: {str(e)[:90]}")
             return 0, []
         finally:
-            await ctx.close()
+            await close_playwright_resource(ctx, f"Currys catalog page {start} context")
 
     async def fetch_catalog_from_browser(self, browser) -> Sequence[CatalogItem]:
         """直接从 browser 抓完整类目；供 weekly catalog 与 daily price 共用。"""

@@ -11,6 +11,42 @@ import os
 import re
 
 
+async def close_playwright_resource(resource, label: str, timeout_seconds: float | None = None) -> bool:
+    """限时关闭 Playwright 资源，避免 close() 卡住整轮无人值守任务。
+
+    Playwright/Chromium 在浏览器异常退出或连接半断开时，page/context/browser.close()
+    偶尔会一直等待。关闭属于清理动作，不能反过来阻塞已经抓到的数据落盘，因此这里
+    超时或报错只记录日志，不继续向外抛异常。
+    """
+    if resource is None:
+        return True
+    if timeout_seconds is None:
+        try:
+            timeout_seconds = float(os.environ.get("PLAYWRIGHT_CLOSE_TIMEOUT_SECONDS", "10"))
+        except (TypeError, ValueError):
+            timeout_seconds = 10.0
+    task = asyncio.create_task(resource.close())
+    done, _ = await asyncio.wait({task}, timeout=max(0.01, timeout_seconds))
+    if not done:
+        task.cancel()
+
+        def _consume_late_result(late_task):
+            try:
+                late_task.exception()
+            except (asyncio.CancelledError, Exception):
+                pass
+
+        task.add_done_callback(_consume_late_result)
+        print(f"  [cleanup] {label}.close() 超过 {timeout_seconds:g}s，放弃等待")
+        return False
+    try:
+        task.result()
+        return True
+    except Exception as exc:
+        print(f"  [cleanup] {label}.close() 异常，已忽略: {str(exc)[:100]}")
+    return False
+
+
 # ============================================================
 # 渠道作用域过滤(CHANNELS 环境变量:逗号分隔的渠道白名单)
 # ============================================================

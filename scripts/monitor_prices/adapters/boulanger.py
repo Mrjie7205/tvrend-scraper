@@ -22,6 +22,7 @@ from ..core import (
     VIEWPORT_HEIGHTS,
     VIEWPORT_WIDTHS,
     clean_price,
+    close_playwright_resource,
     get_price_from_schema,
 )
 
@@ -58,7 +59,7 @@ class BoulangerAdapter(BaseAdapter):
         try:
             items = await BoulangerCatalogAdapter().fetch_catalog(page)
         finally:
-            await ctx.close()
+            await close_playwright_resource(ctx, "Boulanger batch context")
 
         price_map: dict[str, tuple[float, str]] = {}
         for item in items:

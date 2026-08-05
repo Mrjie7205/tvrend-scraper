@@ -36,10 +36,12 @@ from monitor_prices.core import (  # noqa: E402
     VIEWPORT_HEIGHTS,
     VIEWPORT_WIDTHS,
     channels_in_scope,
+    close_playwright_resource,
     handle_antibot_page,
     locale_for,
     platform_in_scope,
 )
+from monitor_prices.checkpoint import reset_checkpoint, write_checkpoint  # noqa: E402
 from monitor_prices.prices_io import (  # noqa: E402
     append_prices,
     compute_price_trend,
@@ -52,6 +54,7 @@ from monitor_prices.adapters import get_adapter, supported_platforms  # noqa: E4
 CONCURRENCY = int(os.environ.get("MONITOR_CONCURRENCY", "3"))
 HEADLESS = os.environ.get("HEADLESS_MODE", "true").lower() != "false"
 MAX_SKUS = int(os.environ.get("MONITOR_MAX_SKUS", "0") or "0")
+SKU_TIMEOUT_SECONDS = float(os.environ.get("MONITOR_SKU_TIMEOUT_SECONDS", "120") or "120")
 
 # Playwright 启动参数(降低指纹)
 BROWSER_ARGS = (
@@ -274,17 +277,55 @@ async def process_sku(
             result["Status"] = f"Failed: Critical {str(e)[:50]}"
         finally:
             if page:
-                try:
-                    await page.close()
-                except Exception:
-                    pass
+                await close_playwright_resource(page, f"{name} page")
             if owns_context and ctx:
-                try:
-                    await ctx.close()
-                except Exception:
-                    pass
+                await close_playwright_resource(ctx, f"{name} context")
 
         return result
+
+
+async def process_sku_bounded(
+    sem,
+    browser,
+    sku: dict,
+    hist: dict,
+    shared_context=None,
+    batch_prices: dict[str, tuple[float, str]] | None = None,
+) -> dict:
+    """等待并发位后，再给单个 SKU 的完整抓取设置硬时限。
+
+    时限不包含排队时间，避免 SKU 数量多时还没轮到执行就被误判超时。
+    内层传入独立 semaphore，是为了复用原有 process_sku 逻辑而不二次占用并发位。
+    """
+    async with sem:
+        try:
+            return await asyncio.wait_for(
+                process_sku(
+                    asyncio.Semaphore(1),
+                    browser,
+                    sku,
+                    hist,
+                    shared_context=shared_context,
+                    batch_prices=batch_prices,
+                ),
+                timeout=max(0.01, SKU_TIMEOUT_SECONDS),
+            )
+        except asyncio.TimeoutError:
+            print(
+                f"  [{sku['product_name']}] 单 SKU 总耗时超过 "
+                f"{SKU_TIMEOUT_SECONDS:g}s，释放并发位并继续"
+            )
+            return {
+                "Brand": sku["brand"],
+                "Product Name": sku["product_name"],
+                "Country": sku["country"],
+                "Platform": sku["platform"],
+                "Price": None,
+                "Currency": None,
+                "Page Title": "",
+                "Status": "Failed: SKU Timeout",
+                "Price_Trend": "-",
+            }
 
 
 async def process_shared_group(browser, adapter, skus: list[dict], hist: dict) -> list[dict]:
@@ -308,19 +349,23 @@ async def process_shared_group(browser, adapter, skus: list[dict], hist: dict) -
                 if not passed:
                     print(f"[monitor/{adapter.platform_name}] 预热验证未通过，仍继续商品页测试")
             finally:
-                await page.close()
+                await close_playwright_resource(page, f"{adapter.platform_name} warmup page")
 
         serial_sem = asyncio.Semaphore(1)
         results = []
         for sku in skus:
-            results.append(await process_sku(serial_sem, browser, sku, hist, shared_context=ctx))
+            results.append(
+                await process_sku_bounded(serial_sem, browser, sku, hist, shared_context=ctx)
+            )
         return results
     finally:
-        await ctx.close()
+        await close_playwright_resource(ctx, f"{adapter.platform_name} shared context")
 
 
 async def run() -> int:
+    checkpoint_path = reset_checkpoint()
     print(f"[monitor] supported adapters: {supported_platforms()}")
+    print(f"[monitor] 增量检查点: {checkpoint_path}")
     skus = load_active_skus()
     if not skus:
         print("[monitor] 无 active SKU,退出")
@@ -386,7 +431,7 @@ async def run() -> int:
                 shared.setdefault(adapter.platform_name.lower(), []).append(sku)
 
         jobs = [
-            process_sku(
+            process_sku_bounded(
                 sem,
                 browser,
                 s,
@@ -399,19 +444,35 @@ async def run() -> int:
             process_shared_group(browser, get_adapter(name), group, hist)
             for name, group in shared.items()
         )
-        batches = await asyncio.gather(*jobs)
         results = []
-        for batch in batches:
-            results.extend(batch if isinstance(batch, list) else [batch])
-        await browser.close()
+        completed = 0
+        fatal_errors: list[str] = []
+        tasks = [asyncio.create_task(job) for job in jobs]
+        try:
+            for future in asyncio.as_completed(tasks):
+                try:
+                    batch = await future
+                except Exception as exc:
+                    message = f"未预期的任务异常: {type(exc).__name__}: {str(exc)[:160]}"
+                    print(f"[monitor] {message}")
+                    fatal_errors.append(message)
+                    continue
+                batch_rows = batch if isinstance(batch, list) else [batch]
+                now = datetime.now()
+                for row in batch_rows:
+                    row["Date"] = now.strftime("%Y-%m-%d")
+                    row["Time"] = now.strftime("%H:%M:%S")
+                results.extend(batch_rows)
+                completed += len(batch_rows)
+                write_checkpoint(results, checkpoint_path)
+                print(f"[monitor] 检查点已更新: {completed}/{len(runnable)} 条完成")
+        finally:
+            await close_playwright_resource(browser, "browser")
+        if fatal_errors:
+            raise RuntimeError("；".join(fatal_errors))
 
     # 批量追加进 prices.csv(给每行打时间戳)
-    now = datetime.now()
-    date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H:%M:%S")
-    for r in results:
-        r["Date"] = date_str
-        r["Time"] = time_str
+    # 每行在完成时已经写入时间戳和检查点；整轮成功后才合入主 CSV。
     # 只把成功行写进 prices.csv:失败行有 stdout 日志 + debug 截图可查,后端也只读 Success;
     # 失败空价行进库会污染近窗,并可能在 trim 把唯一 Success 滚出窗口后误判"新上线"。
     append_prices([r for r in results if r["Status"] == "Success"])

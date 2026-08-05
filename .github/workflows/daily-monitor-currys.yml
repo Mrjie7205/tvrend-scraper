@@ -1,12 +1,9 @@
-name: Daily Price Monitor - Boulanger
+name: Daily Price Monitor - Currys
 
-# 每天抓 mapping/channel_links.csv 里所有 active SKU 的价格 → 追加 raw/prices.csv。
+# Currys 与 Boulanger 分开运行：任一渠道反爬或浏览器异常，不再阻塞另一渠道落盘。
 on:
-  # ↓↓↓ 仓库转 public 后，取消下面 schedule 注释即可启用每日定时。
-  #     private 期间定时抓取会消耗免费 Actions 分钟，故先只保留手动触发(workflow_dispatch)。
-  #     注:GitHub 定时任务实际会迟到 2-6 小时，cron 仅为大致时间。
   schedule:
-    - cron: "15 5 * * *"
+    - cron: "45 5 * * *"
   workflow_dispatch:
     inputs:
       max_skus:
@@ -41,7 +38,7 @@ jobs:
       - name: Install Playwright Chromium
         run: python -m playwright install chromium --with-deps
 
-      - name: Run daily monitor
+      - name: Run Currys daily monitor
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
@@ -50,14 +47,14 @@ jobs:
           MONITOR_SKU_TIMEOUT_SECONDS: "120"
           PLAYWRIGHT_CLOSE_TIMEOUT_SECONDS: "10"
           MONITOR_MAX_SKUS: ${{ env.MONITOR_INPUT_MAX_SKUS }}
-          CHANNELS: "Boulanger"
+          CHANNELS: "Currys"
         run: python -m monitor_prices.run_daily
 
       - name: Upload checkpoint and debug evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: monitor-boulanger-${{ github.run_id }}
+          name: monitor-currys-${{ github.run_id }}
           path: |
             scripts/monitor_artifacts/
             scripts/debug_screenshots/
@@ -78,7 +75,7 @@ jobs:
             echo "无新数据，跳过提交。"
             exit 0
           fi
-          git commit -m "chore: daily boulanger prices ${{ github.run_id }} [skip ci]"
+          git commit -m "chore: daily currys prices ${{ github.run_id }} [skip ci]"
           BR="${{ github.ref_name }}"
           for i in 1 2 3 4 5; do
             if git pull --rebase -X theirs origin "$BR" && git push origin "HEAD:$BR"; then
@@ -91,5 +88,5 @@ jobs:
           exit 1
 
 concurrency:
-  group: daily-price-boulanger
+  group: daily-price-currys
   cancel-in-progress: false

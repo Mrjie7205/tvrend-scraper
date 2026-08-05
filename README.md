@@ -34,7 +34,9 @@ python -m monitor_prices.run_daily      # 抓价格
 python -m catalog_scrape.run_weekly      # 抓目录
 ```
 
-环境变量:`HEADLESS_MODE`(默认 true)、`MONITOR_CONCURRENCY`(默认 3)。
+环境变量:`HEADLESS_MODE`(默认 true)、`MONITOR_CONCURRENCY`(默认 3)、
+`MONITOR_SKU_TIMEOUT_SECONDS`(单商品总时限，默认 120 秒)、
+`PLAYWRIGHT_CLOSE_TIMEOUT_SECONDS`(浏览器资源关闭时限，默认 10 秒)。
 
 ## 每日抓价策略
 
@@ -51,6 +53,10 @@ Boulanger/Currys 的批量快照有两道完整性保护：商品数与跟踪清
 价格相对历史数据发生系统性错位时整批作废。作废后自动回到原有详情页抓取，避免为了速度写入错误价格。
 
 关联不依赖标题猜测：Currys 使用 URL 末尾商品 ID，Boulanger 使用 `/ref/<id>`，因此标题改名不会串价。
+
+每日定时任务中，Boulanger 与 Currys 分开运行、错峰提交；一个渠道异常不会阻塞另一个渠道。
+抓取过程中每完成一条就更新 `scripts/monitor_artifacts/partial_prices.csv`，Action 无论成功或失败
+都会上传该检查点和调试证据，便于中断后的审计与恢复。主表 `raw/prices.csv` 仍只在整轮成功后提交。
 
 ## 说明
 
