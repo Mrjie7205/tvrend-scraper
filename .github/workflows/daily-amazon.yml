@@ -101,9 +101,9 @@ jobs:
     name: Commit Amazon catalogs
     runs-on: ubuntu-latest
     needs: scrape
-    # 只有必需市场全部成功时才提交，避免 DE 失败时把 GB 或其他部分产物误提交。
-    # matrix 中 experimental=true 的市场使用 continue-on-error，不会阻断这里。
-    if: needs.scrape.result == 'success'
+    # 单个市场失败时，仍提交其他已成功市场的 artifact，避免一个站点阻断四国更新。
+    # 如果四个市场全部失败，download-artifact 会因无可用文件而失败，仍保持 fail-closed。
+    if: ${{ always() && !cancelled() }}
     permissions:
       contents: write
     steps:
