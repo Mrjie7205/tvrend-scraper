@@ -23,8 +23,10 @@ import csv
 import os
 import random
 import sys
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TextIO
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -69,12 +71,54 @@ OUTPUT_COLUMNS = (
 )
 
 
+@dataclass(frozen=True)
+class AdapterRunResult:
+    """单个 catalog adapter 的结果，失败时保留原始业务原因。"""
+
+    path: Path | None
+    failure_reason: str | None = None
+
+
+def _configure_console_output() -> None:
+    """入口统一输出 UTF-8；不支持 reconfigure 时由 _console_print 兜底。"""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if not callable(reconfigure):
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+        except (AttributeError, OSError, ValueError):
+            # pytest/StringIO、已关闭流或部分嵌入式运行器可能不允许重配。
+            pass
+
+
+def _console_safe_text(value: object, stream: TextIO) -> str:
+    """把当前输出流无法编码的字符转成可读转义，避免二次异常覆盖业务错误。"""
+    text = str(value)
+    encoding = getattr(stream, "encoding", None) or "utf-8"
+    try:
+        text.encode(encoding)
+        return text
+    except (LookupError, UnicodeEncodeError):
+        try:
+            return text.encode(encoding, errors="backslashreplace").decode(encoding)
+        except (LookupError, UnicodeError):
+            return text.encode("ascii", errors="backslashreplace").decode("ascii")
+
+
+def _console_print(*values: object, sep: str = " ", end: str = "\n") -> None:
+    """按当前 stdout 编码安全输出；状态标记本身始终使用 ASCII。"""
+    stream = sys.stdout
+    text = sep.join(str(value) for value in values)
+    print(_console_safe_text(text, stream), end=end, file=stream)
+
+
 def _catalog_dir() -> Path:
     return Path(__file__).resolve().parents[2] / "catalog"
 
 
-async def run_one_adapter(browser, adapter) -> Path | None:
-    """跑一个 adapter,产出 catalog/<platform>_<country>_<date>.csv,返回路径。"""
+async def run_one_adapter(browser, adapter) -> AdapterRunResult:
+    """跑一个 adapter，产出 CSV；失败时返回不会丢失的具体原因。"""
     locale, tz = adapter.locale_override or locale_for(adapter.country)
     context_options = dict(
         viewport={
@@ -89,7 +133,7 @@ async def run_one_adapter(browser, adapter) -> Path | None:
         context_options["user_agent"] = random.choice(USER_AGENTS)
     ctx = await browser.new_context(**context_options)
     if native_identity:
-        print(f"[catalog/{adapter.platform_name}] 使用 Chromium 原生一致浏览器身份")
+        _console_print(f"[catalog/{adapter.platform_name}] 使用 Chromium 原生一致浏览器身份")
     else:
         await ctx.add_init_script(STEALTH_JS)
     page = await ctx.new_page()
@@ -97,15 +141,16 @@ async def run_one_adapter(browser, adapter) -> Path | None:
     try:
         items = await adapter.fetch_catalog(page)
     except Exception as e:
-        print(f"[catalog/{adapter.platform_name}] 抓取异常: {e}")
-        await ctx.close()
-        return None
+        reason = f"抓取异常 {type(e).__name__}: {e}"
+        _console_print(f"[catalog/{adapter.platform_name}] {reason}")
+        return AdapterRunResult(path=None, failure_reason=reason)
     finally:
         await ctx.close()
 
     if not items:
-        print(f"[catalog/{adapter.platform_name}] 0 条记录,不写文件")
-        return None
+        reason = "0 条记录，不写文件"
+        _console_print(f"[catalog/{adapter.platform_name}] {reason}")
+        return AdapterRunResult(path=None, failure_reason=reason)
 
     now = datetime.now(UTC)
     date_tag = now.strftime("%Y%m%d")
@@ -138,8 +183,11 @@ async def run_one_adapter(browser, adapter) -> Path | None:
                 "source_brand": it.extra.get("source_brand", ""),
                 "fx_rate_date": it.extra.get("fx_rate_date", ""),
             })
-    print(f"[catalog/{adapter.platform_name}] → {out_path.relative_to(_catalog_dir().parent.parent)}")
-    return out_path
+    _console_print(
+        f"[catalog/{adapter.platform_name}] -> "
+        f"{out_path.relative_to(_catalog_dir().parent.parent)}"
+    )
+    return AdapterRunResult(path=out_path)
 
 
 def _matches_adapter(key: str, adapter, wanted: str) -> bool:
@@ -170,12 +218,15 @@ async def run(only: str | None = None) -> int:
     if not targets:
         hint = f"only={only!r} " if only else ""
         scope_hint = f"CHANNELS={sorted(scope)} " if scope else ""
-        print(f"[catalog] no adapter for {hint}{scope_hint}- Supported: {supported_catalogs()}")
+        _console_print(f"[catalog] no adapter for {hint}{scope_hint}- Supported: {supported_catalogs()}")
         return 1
     if scope is not None:
-        print(f"[catalog] CHANNELS={sorted(scope)} → 跑 {[_adapter_label(k, a) for k, a in targets]}")
+        _console_print(
+            f"[catalog] CHANNELS={sorted(scope)} -> 跑 "
+            f"{[_adapter_label(k, a) for k, a in targets]}"
+        )
 
-    print(f"[catalog] supported: {supported_catalogs()} · headless={HEADLESS}")
+    _console_print(f"[catalog] supported: {supported_catalogs()} | headless={HEADLESS}")
 
     from playwright.async_api import async_playwright
 
@@ -186,25 +237,32 @@ async def run(only: str | None = None) -> int:
             browser = await p.chromium.launch(headless=HEADLESS, args=list(BROWSER_ARGS))
         results = []
         for key, adapter in targets:
-            r = await run_one_adapter(browser, adapter)
-            results.append((_adapter_label(key, adapter), r))
+            result = await run_one_adapter(browser, adapter)
+            results.append((_adapter_label(key, adapter), result))
         await browser.close()
 
-    print()
+    return _summarize_results(results)
+
+
+def _summarize_results(results: list[tuple[str, AdapterRunResult]]) -> int:
+    """输出最终汇总，并把真实失败原因放在日志尾部供工作台读取。"""
+    _console_print()
     failed = []
-    for name, path in results:
-        if path:
-            print(f"  ✓ {name}: {path.name}")
+    for name, result in results:
+        if result.path:
+            _console_print(f"  [OK] {name}: {result.path.name}")
         else:
-            print(f"  ✗ {name}: failed")
+            reason = result.failure_reason or "未知失败"
+            _console_print(f"  [FAIL] {name}: {reason}")
             failed.append(name)
     if failed:
-        print(f"[catalog] 失败渠道: {failed}，返回非零状态，拒绝假成功")
+        _console_print(f"[catalog] 失败渠道: {failed}，返回非零状态，拒绝假成功")
         return 1
     return 0
 
 
 def main() -> int:
+    _configure_console_output()
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", help="只跑指定 platform(如 Boulanger)")
     args = ap.parse_args()
