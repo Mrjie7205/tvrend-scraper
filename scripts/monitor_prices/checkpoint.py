@@ -6,6 +6,8 @@ artifact 上传。这样即使 runner 被取消，已完成的真实结果仍可
 from __future__ import annotations
 
 import csv
+import os
+import time
 from pathlib import Path
 from typing import Iterable
 
@@ -38,4 +40,15 @@ def _write_atomic(rows: list[dict], target: Path) -> None:
         writer.writeheader()
         for row in rows:
             writer.writerow({column: row.get(column, "") for column in PRICES_COLUMNS})
-    tmp.replace(target)
+    # Windows Defender、文件索引器或 artifact 读取可能极短暂占用目标文件。
+    # 检查点是恢复辅助文件，不应因一次瞬时锁定让整轮真实价格抓取失败。
+    last_error: PermissionError | None = None
+    for attempt in range(6):
+        try:
+            os.replace(tmp, target)
+            return
+        except PermissionError as exc:
+            last_error = exc
+            time.sleep(0.05 * (attempt + 1))
+    assert last_error is not None
+    raise last_error

@@ -10,7 +10,14 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 from monitor_prices.adapters.currys import CurrysAdapter  # noqa: E402
 from monitor_prices.adapters.boulanger import BoulangerAdapter  # noqa: E402
-from monitor_prices.run_daily import _batch_prices_pass_history_guard  # noqa: E402
+from catalog_scrape.adapters.boulanger import (  # noqa: E402
+    BoulangerCatalogAdapter,
+    _JS_EXTRACT,
+)
+from monitor_prices.run_daily import (  # noqa: E402
+    _batch_price_outlier_keys,
+    _batch_prices_pass_history_guard,
+)
 
 
 def test_currys_batch_key_uses_stable_product_id() -> None:
@@ -46,6 +53,43 @@ def test_boulanger_batch_key_uses_ref_id() -> None:
 
     assert adapter.batch_price_key("https://www.boulanger.com/ref/1240577") == "1240577"
     assert adapter.batch_price_key("https://www.boulanger.com/ref/1240577#avis") == "1240577"
+
+
+def test_boulanger_catalog_extracts_one_primary_product_per_card() -> None:
+    assert "article.product-list__product" in _JS_EXTRACT
+    assert "product-list__product-image-link" in _JS_EXTRACT
+    assert "document.querySelectorAll('a[href*=\"/ref/\"]')" not in _JS_EXTRACT
+
+
+def test_boulanger_duplicate_price_tie_does_not_choose_false_low() -> None:
+    entries = [
+        ("TV Mini LED TCL 75X11L (2026)", "3299,00 €"),
+        ("TV Mini LED TCL 75X11L (2026)", "749,00 €"),
+    ]
+
+    assert BoulangerCatalogAdapter._pick_price_eur(entries) == 3299.0
+
+
+def test_batch_single_outlier_is_sent_to_pdp_without_rejecting_batch() -> None:
+    adapter = BoulangerAdapter()
+    skus = [
+        {
+            "url": "https://www.boulanger.com/ref/1238818",
+            "product_name": "75X11L",
+            "country": "FR",
+            "platform": "Boulanger",
+        },
+        {
+            "url": "https://www.boulanger.com/ref/1240585",
+            "product_name": "55C6KPRO",
+            "country": "FR",
+            "platform": "Boulanger",
+        },
+    ]
+    prices = {"1238818": (749.0, "EUR"), "1240585": (749.0, "EUR")}
+    hist = {"75X11L_FR_Boulanger": 3599.0, "55C6KPRO_FR_Boulanger": 749.0}
+
+    assert _batch_price_outlier_keys(adapter, skus, prices, hist) == {"1238818"}
 
 
 def test_history_guard_rejects_systematic_discount_amounts() -> None:

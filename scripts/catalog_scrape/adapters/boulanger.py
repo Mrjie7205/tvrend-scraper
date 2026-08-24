@@ -8,10 +8,10 @@
 - 每页内先滚到底触发懒加载,再用一段 JS 一次性抓 (href, 商品名文本, 价格)
 
 DOM 关键点:
-- 商品链接 = `a[href*='/ref/']`,/ref/<id> 是 Boulanger 商品页规范 URL
-- 同一商品有多个 <a/ref/>:图片(空 text)、标题(商品名)、评分(#avis 锚点,"4,6/5 (16)")
-  → 按 URL 去 fragment 合并,从候选文本里挑"最像商品名"的(TV 开头优先)
-- 价格在父 product card 里,JS 用 closest() 找
+- 只遍历正式商品卡 `article.product-list__product`，每张卡只交付一个主商品 URL。
+- Boulanger 会在商品卡中嵌入其他尺寸、替代型号、赠品和对比链接；这些链接不得
+  继承外层卡片价格。主 URL 优先取图片轮播中出现次数最多的 ref，再回退到标题链接。
+- 价格只从该正式商品卡内取当前价，排除划线原价和分期金额。
 
 匹配的脏活留给 下游匹配环节,这里只交付原始文本 + URL + 价格。
 """
@@ -84,36 +84,87 @@ def _extract_size_inch(text: str) -> float | None:
     return None
 
 
-# 同一 product card 一次性抓 (href, text, price) 的 JS
+# 同一正式 product card 一次性抓主 (href, text, price) 的 JS。
+# 不能回退到“全页遍历所有 /ref/ 链接”：这会让嵌套的其他尺寸/替代型号
+# 误用外层卡片价格，并在后续取最低价时覆盖真实价。
 _JS_EXTRACT = r"""
 () => {
   const out = [];
-  document.querySelectorAll('a[href*="/ref/"]').forEach(a => {
-    if (a.offsetParent === null) return;
-    const href = a.getAttribute('href');
-    const text = (a.innerText || '').trim().replace(/\n/g, ' ');
-    const card = a.closest(
-      'article, [class*="product-card"], [class*="ProductCard"], ' +
-      '[data-test*="product"], [class*="product-item"], li[class*="product"]'
-    );
-    let price = '';
-    if (card) {
-      // 旧实现直接取第一个 .price__amount，促销卡常会先遇到划线原价。
-      // 与 PDP adapter 对齐：优先 price__main，并排除 crossed/old 与 line-through。
-      const isCurrent = el => {
-        const style = window.getComputedStyle(el);
-        return !style.textDecoration.includes('line-through') &&
-          !el.closest('.price__crossed, .price__old, [class*="crossed"], [class*="old-price"]');
-      };
-      const mainCandidates = [...card.querySelectorAll('.price__main .price__amount')];
-      const fallbackCandidates = [...card.querySelectorAll(
-        '.price__amount, [class*="-price__amount"], [class*="price-amount"], ' +
-        'span[class*="Price"], [data-test*="price"]'
-      )];
-      const priceEl = mainCandidates.find(isCurrent) ||
-        fallbackCandidates.find(el => isCurrent(el) && el.children.length === 0);
-      if (priceEl) price = (priceEl.innerText || '').trim().replace(/\n/g, ' ');
+  const canonicalRef = href => {
+    if (!href) return '';
+    try {
+      const parsed = new URL(href, window.location.origin);
+      if (parsed.hostname !== window.location.hostname) return '';
+      const match = parsed.pathname.match(/^\/ref\/(\d+)/i);
+      if (!match) return '';
+      return `${parsed.origin}/ref/${match[1]}${parsed.search || ''}`;
+    } catch (_) {
+      return '';
     }
+  };
+  const cards = [...new Set([
+    ...document.querySelectorAll('.product-list__item-original > article.product-list__product'),
+    ...document.querySelectorAll('article.product-list__product')
+  ])];
+
+  cards.forEach(card => {
+    if (card.offsetParent === null) return;
+    const links = [...card.querySelectorAll('a[href*="/ref/"]')]
+      .filter(a => a.offsetParent !== null)
+      .map(a => ({a, href: canonicalRef(a.getAttribute('href'))}))
+      .filter(item => item.href);
+    if (!links.length) return;
+
+    // 图片轮播里的 ref 最稳定，且主商品通常会因多张图重复出现。
+    const imageCounts = new Map();
+    links
+      .filter(item => item.a.matches('.product-list__product-image-link'))
+      .forEach(item => imageCounts.set(item.href, (imageCounts.get(item.href) || 0) + 1));
+    let href = '';
+    if (imageCounts.size) {
+      href = [...imageCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    }
+
+    // 少数卡片没有图片链接，再用“最像标题”的链接兜底。
+    const titleCandidates = links
+      .filter(item => !item.a.closest(
+        '.flap, .product-list-stickers, [class*="option"], [class*="variant"], ' +
+        '[class*="recommend"], [class*="accessor"], [class*="compare"]'
+      ))
+      .map(item => {
+        const text = (item.a.innerText || '').trim().replace(/\n/g, ' ');
+        let score = 0;
+        if (/\bTV\b/i.test(text.slice(0, 30))) score += 100;
+        if (/[A-Z]\d|\d[A-Z]/i.test(text)) score += 40;
+        if (item.a.closest('.product-list__product-area-2')) score += 30;
+        if (item.a.classList.contains('analytic-track-origin')) score += 10;
+        score += imageCounts.get(item.href) || 0;
+        return {...item, text, score};
+      })
+      .filter(item => item.text.length >= 8 && item.text.length <= 200)
+      .sort((a, b) => b.score - a.score);
+    if (!href && titleCandidates.length) href = titleCandidates[0].href;
+    if (!href) return;
+
+    const title = titleCandidates.find(item => item.href === href);
+    const text = title ? title.text : '';
+    let price = '';
+    const isCurrent = el => {
+      const style = window.getComputedStyle(el);
+      return !style.textDecoration.includes('line-through') &&
+        !el.closest('.price__crossed, .price__old, [class*="crossed"], [class*="old-price"], ' +
+          '[class*="installment"]');
+    };
+    const mainCandidates = [...card.querySelectorAll(
+      '.product-list__product-price-main .price__amount, .price__main .price__amount'
+    )];
+    const fallbackCandidates = [...card.querySelectorAll(
+      '.price__amount, [class*="-price__amount"], [class*="price-amount"], ' +
+      'span[class*="Price"], [data-test*="price"]'
+    )];
+    const priceEl = mainCandidates.find(isCurrent) ||
+      fallbackCandidates.find(el => isCurrent(el) && el.children.length === 0);
+    if (priceEl) price = (priceEl.innerText || '').trim().replace(/\n/g, ' ');
     out.push({href, text, price});
   });
   return out;
@@ -243,8 +294,12 @@ class BoulangerCatalogAdapter(BaseCatalogAdapter):
                 pass
         if not prices:
             return None
-        # 同一 card 里通常有划线原价 + 现价,取最小(现价)
-        return min(prices)
+        # JS 已经在单张正式商品卡里排除划线价。同一 URL 若因分页/入口
+        # 重复出现，取出现次数最多的价格；并列时保留首次观测，不再让偶发低价胜出。
+        counts = Counter(prices)
+        max_count = max(counts.values())
+        winners = {price for price, count in counts.items() if count == max_count}
+        return next(price for price in prices if price in winners)
 
     def _build_items(self, by_url: dict[str, list[tuple[str, str]]]) -> list[CatalogItem]:
         items: list[CatalogItem] = []

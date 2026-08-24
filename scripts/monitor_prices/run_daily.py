@@ -95,6 +95,33 @@ def _batch_prices_pass_history_guard(adapter, skus: list[dict], prices: dict, hi
     return passed
 
 
+def _batch_price_outlier_keys(adapter, skus: list[dict], prices: dict, hist: dict) -> set[str]:
+    """找出需要改走商品详情页复核的单品。
+
+    整批守门只能发现大面积错位；少数其他尺寸/替代型号串价可能不超过
+    5% 占比。这里不删除真实大促，只把跳幅过大的 batch 价从快速映射中移除，
+    后续流程会自动打开该 SKU 详情页，以 JSON-LD/主价格复核。
+    """
+    lower = float(os.environ.get("BATCH_SINGLE_LOWER_RATIO", "0.65"))
+    upper = float(os.environ.get("BATCH_SINGLE_UPPER_RATIO", "1.75"))
+    outliers: set[str] = set()
+    for sku in skus:
+        key = adapter.batch_price_key(sku["url"])
+        price_data = prices.get(key)
+        old = hist.get(f"{sku['product_name']}_{sku['country']}_{sku['platform']}")
+        if not key or not price_data or not old or old <= 0:
+            continue
+        ratio = float(price_data[0]) / float(old)
+        if ratio < lower or ratio > upper:
+            outliers.add(key)
+            print(
+                f"[monitor/{adapter.platform_name}] 单品价格跳变转 PDP 复核: "
+                f"{sku['product_name']} old={old:g}, batch={float(price_data[0]):g}, "
+                f"ratio={ratio:.3f}"
+            )
+    return outliers
+
+
 async def _new_context(browser, adapter, country: str):
     """按渠道地区创建浏览器会话，供单 SKU 或共享会话渠道复用。"""
     locale, tz = adapter.locale_override or locale_for(country)
@@ -418,6 +445,15 @@ async def run() -> int:
                 if prepared and not _batch_prices_pass_history_guard(adapter, group, prepared, hist):
                     print(f"[monitor/{adapter.platform_name}] 批量价格疑似系统性错位，整批回退 PDP")
                     prepared = {}
+                if prepared:
+                    outlier_keys = _batch_price_outlier_keys(adapter, group, prepared, hist)
+                    for key in outlier_keys:
+                        prepared.pop(key, None)
+                    if outlier_keys:
+                        print(
+                            f"[monitor/{adapter.platform_name}] {len(outlier_keys)} 个异常跳变 SKU "
+                            "已从 batch 价移除，后续走 PDP 真值复核"
+                        )
                 batch_price_maps[adapter.platform_name.lower()] = prepared
             except Exception as exc:
                 print(f"[monitor/{adapter.platform_name}] 批量价格准备失败，回退 PDP: {str(exc)[:120]}")
@@ -464,8 +500,15 @@ async def run() -> int:
                     row["Time"] = now.strftime("%H:%M:%S")
                 results.extend(batch_rows)
                 completed += len(batch_rows)
-                write_checkpoint(results, checkpoint_path)
-                print(f"[monitor] 检查点已更新: {completed}/{len(runnable)} 条完成")
+                try:
+                    write_checkpoint(results, checkpoint_path)
+                    print(f"[monitor] 检查点已更新: {completed}/{len(runnable)} 条完成")
+                except OSError as exc:
+                    # 检查点只是中断恢复辅助文件；不能反过来关闭浏览器并毁掉主抓取。
+                    print(
+                        f"[monitor] 检查点暂时无法写入，继续主抓取: "
+                        f"{type(exc).__name__}: {str(exc)[:120]}"
+                    )
         finally:
             await close_playwright_resource(browser, "browser")
         if fatal_errors:
