@@ -15,12 +15,27 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 from catalog_scrape.run_weekly import (  # noqa: E402
     AdapterRunResult,
+    _amazon_catalog_size_failure,
     _summarize_results,
     run_one_adapter,
 )
 
 
 class CatalogRunnerOutputTest(unittest.TestCase):
+    def test_amazon_size_guard_rejects_partial_history_recovery(self) -> None:
+        failure = _amazon_catalog_size_failure(21, [755, 769, 770, 761, 758])
+        self.assertIsNotNone(failure)
+        self.assertIn("21 <", failure or "")
+
+    def test_amazon_size_guard_accepts_normal_daily_variation(self) -> None:
+        self.assertIsNone(
+            _amazon_catalog_size_failure(669, [634, 646, 656, 669, 670])
+        )
+
+    def test_amazon_size_guard_has_absolute_floor_without_history(self) -> None:
+        failure = _amazon_catalog_size_failure(40, [])
+        self.assertIn("绝对下限", failure or "")
+
     def test_summary_uses_ascii_status_markers(self) -> None:
         output = io.StringIO()
         with patch("catalog_scrape.run_weekly.sys.stdout", output):

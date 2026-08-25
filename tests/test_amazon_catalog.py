@@ -5,12 +5,18 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from catalog_scrape.adapters.amazon import AmazonDeCatalogAdapter, is_non_tv_title  # noqa: E402
+from catalog_scrape.adapters.amazon import (  # noqa: E402
+    AMAZON_GB,
+    AmazonDeCatalogAdapter,
+    is_non_tv_title,
+    set_amazon_market_location,
+)
 
 
 class AmazonCatalogSeriesTest(unittest.TestCase):
@@ -87,6 +93,27 @@ class AmazonCatalogSeriesTest(unittest.TestCase):
         for title in accepted:
             with self.subTest(title=title):
                 self.assertFalse(is_non_tv_title(title))
+
+
+class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
+    async def test_post_updated_false_uses_visible_popup_fallback(self) -> None:
+        page = AsyncMock()
+        page.context = AsyncMock()
+        page.evaluate.side_effect = [
+            'data-toaster-csrfToken="token-value"',
+            {"status": 200, "updated": False},
+        ]
+        with patch(
+            "catalog_scrape.adapters.amazon._accept_cookie",
+            new=AsyncMock(),
+        ), patch(
+            "catalog_scrape.adapters.amazon.set_amazon_location_via_popup",
+            new=AsyncMock(return_value=True),
+        ) as popup:
+            result = await set_amazon_market_location(page, AMAZON_GB)
+
+        self.assertTrue(result)
+        popup.assert_awaited_once_with(page, AMAZON_GB)
 
 
 if __name__ == "__main__":

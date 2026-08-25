@@ -22,6 +22,7 @@ import asyncio
 import csv
 import os
 import random
+import statistics
 import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -117,6 +118,60 @@ def _catalog_dir() -> Path:
     return Path(__file__).resolve().parents[2] / "catalog"
 
 
+def _csv_data_row_count(path: Path) -> int:
+    """只统计 catalog 数据行；损坏或无法读取的历史文件不参与基线。"""
+    try:
+        with path.open("r", encoding="utf-8-sig", newline="") as handle:
+            reader = csv.reader(handle)
+            next(reader, None)
+            return sum(1 for row in reader if any(str(value).strip() for value in row))
+    except (OSError, UnicodeError, csv.Error):
+        return 0
+
+
+def _amazon_catalog_size_failure(
+    current_count: int,
+    previous_counts: list[int],
+    *,
+    absolute_minimum: int = 100,
+    minimum_ratio: float = 0.70,
+) -> str | None:
+    """Amazon 搜索页异常为空时 fail-closed，避免历史回查的少量结果冒充完整目录。"""
+    usable = [value for value in previous_counts if value >= absolute_minimum]
+    baseline = int(statistics.median(usable)) if usable else 0
+    required = absolute_minimum
+    if baseline:
+        required = max(required, int(baseline * minimum_ratio))
+    if current_count >= required:
+        return None
+    if baseline:
+        return (
+            f"Amazon catalog 行数异常: {current_count} < {required} "
+            f"(最近历史中位数 {baseline} × {minimum_ratio:.0%})，不写文件"
+        )
+    return f"Amazon catalog 行数异常: {current_count} < 绝对下限 {absolute_minimum}，不写文件"
+
+
+def _validate_amazon_catalog_size(adapter, items, date_tag: str) -> str | None:
+    if str(getattr(adapter, "platform_name", "")).lower() != "amazon":
+        return None
+    out_dir = _catalog_dir()
+    current_path = out_dir / f"amazon_{str(adapter.country).lower()}_{date_tag}.csv"
+    paths = [
+        path
+        for path in sorted(out_dir.glob(f"amazon_{str(adapter.country).lower()}_*.csv"))
+        if path != current_path
+    ]
+    lookback = max(1, int(os.environ.get("AMAZON_CATALOG_SIZE_LOOKBACK", "7")))
+    previous_counts = [_csv_data_row_count(path) for path in paths[-lookback:]]
+    return _amazon_catalog_size_failure(
+        len(items),
+        previous_counts,
+        absolute_minimum=max(1, int(os.environ.get("AMAZON_MIN_CATALOG_ROWS", "100"))),
+        minimum_ratio=float(os.environ.get("AMAZON_MIN_PREVIOUS_RATIO", "0.70")),
+    )
+
+
 async def run_one_adapter(browser, adapter) -> AdapterRunResult:
     """跑一个 adapter，产出 CSV；失败时返回不会丢失的具体原因。"""
     locale, tz = adapter.locale_override or locale_for(adapter.country)
@@ -155,6 +210,11 @@ async def run_one_adapter(browser, adapter) -> AdapterRunResult:
     now = datetime.now(UTC)
     date_tag = now.strftime("%Y%m%d")
     scraped_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    size_failure = _validate_amazon_catalog_size(adapter, items, date_tag)
+    if size_failure:
+        _console_print(f"[catalog/{adapter.platform_name}/{adapter.country}] {size_failure}")
+        return AdapterRunResult(path=None, failure_reason=size_failure)
 
     out_dir = _catalog_dir()
     out_dir.mkdir(parents=True, exist_ok=True)

@@ -76,6 +76,8 @@ jobs:
           AMAZON_SESSION_PREP_ATTEMPTS: "3"
           AMAZON_PREVIOUS_CATALOG_LOOKBACK: "7"
           AMAZON_MAX_PREVIOUS_RECOVERY_ITEMS: "40"
+          AMAZON_MIN_CATALOG_ROWS: "100"
+          AMAZON_MIN_PREVIOUS_RATIO: "0.70"
         run: python -m catalog_scrape.run_weekly --only ${{ matrix.market }}
 
       - name: Stage catalog artifact
@@ -122,6 +124,20 @@ jobs:
           set -e
           git config user.name "tvrend-scraper bot"
           git config user.email "actions@github.com"
+          today="$(date -u +%Y%m%d)"
+          missing=""
+          invalid=""
+          for c in de gb it es; do
+            file="catalog/amazon_${c}_${today}.csv"
+            if [ ! -f "$file" ]; then
+              missing="$missing $c"
+              continue
+            fi
+            rows="$(tail -n +2 "$file" | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
+            if [ "$rows" -lt 100 ]; then
+              invalid="$invalid $c($rows)"
+            fi
+          done
           # 每个 Amazon 国家只留最近 14 份 catalog,防 public 仓膨胀(私库 enrich 每天消费最新即可)
           for c in de gb it es; do
             ls catalog/amazon_${c}_*.csv 2>/dev/null | sort | head -n -14 | while read -r f; do
@@ -131,16 +147,24 @@ jobs:
           git add -A -- catalog/
           if git diff --cached --quiet; then
             echo "无新目录（canary/fail-closed 可能 abort 了，或同日已抓），跳过提交。"
-            exit 0
-          fi
-          git commit -m "chore: daily amazon catalog ${{ github.run_id }} [skip ci]"
-          BR="${{ github.ref_name }}"
-          for i in 1 2 3 4 5; do
-            if git pull --rebase -X theirs origin "$BR" && git push origin "HEAD:$BR"; then
-              exit 0
+          else
+            git commit -m "chore: daily amazon catalog ${{ github.run_id }} [skip ci]"
+            BR="${{ github.ref_name }}"
+            pushed=false
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin "$BR" && git push origin "HEAD:$BR"; then
+                pushed=true
+                break
+              fi
+              git rebase --abort 2>/dev/null || true
+              sleep $((i * 3))
+            done
+            if [ "$pushed" != "true" ]; then
+              echo "::error::推送失败。"
+              exit 1
             fi
-            git rebase --abort 2>/dev/null || true
-            sleep $((i * 3))
-          done
-          echo "::error::推送失败。"
-          exit 1
+          fi
+          if [ -n "$missing" ] || [ -n "$invalid" ]; then
+            echo "::error::Amazon 当日目录不完整，缺少市场:$missing；行数异常:$invalid。已保存其他成功市场，但任务标记失败。"
+            exit 1
+          fi

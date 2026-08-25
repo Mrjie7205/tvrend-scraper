@@ -451,14 +451,66 @@ async def set_amazon_location_via_popup(page, market: AmazonMarket) -> bool:
     try:
         await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
         await _accept_cookie(page)
-        await page.click("#nav-global-location-popover-link, #glow-ingress-block", timeout=8000)
-        await page.wait_for_timeout(1500)
-        inp = page.locator("#GLUXZipUpdateInput").first
+        location_entry = page.locator(
+            "#nav-global-location-popover-link, #glow-ingress-block, "
+            "#glow-ingress-line1, #glow-ingress-line2"
+        ).first
+        try:
+            await location_entry.click(timeout=8000)
+        except Exception:
+            # Amazon 新版顶部入口在无障碍树中是 button，部分页面不再保留旧 id。
+            await page.get_by_role(
+                "button",
+                name=re.compile(r"deliver to|entregar en|invia a|enviar a|location", re.I),
+            ).first.click(timeout=8000)
+        await page.wait_for_timeout(1200)
+
+        # Cookie 弹窗有时在首次点击配送地后才延迟出现，会遮住地址弹窗。
+        await _accept_cookie(page)
+        inp = page.locator(
+            "#GLUXZipUpdateInput, [data-action='GLUXPostalInputAction'], "
+            "input[autocomplete='postal-code']"
+        ).first
+        if await inp.count() == 0:
+            # 新版先显示“当前配送到其他国家”的中间提示，需要再点 Change Address。
+            try:
+                await page.get_by_role(
+                    "button",
+                    name=re.compile(r"change address|change location|cambiar dirección", re.I),
+                ).first.click(timeout=2500)
+                await page.wait_for_timeout(800)
+            except Exception:
+                pass
+            inp = page.locator(
+                "#GLUXZipUpdateInput, [data-action='GLUXPostalInputAction'], "
+                "input[autocomplete='postal-code']"
+            ).first
+        if await inp.count() == 0:
+            # Cookie 层关闭后，原始点击可能没有真正打开地址弹窗；再尝试一次。
+            try:
+                await location_entry.click(timeout=3000)
+                await page.wait_for_timeout(800)
+            except Exception:
+                pass
+            inp = page.locator(
+                "#GLUXZipUpdateInput, [data-action='GLUXPostalInputAction'], "
+                "input[autocomplete='postal-code']"
+            ).first
         if await inp.count() == 0:
             print(f"  [set-loc/{market.code}] 弹窗未出现邮编输入框")
             return False
         await inp.fill(market.postcode, timeout=5000)
-        await page.click("#GLUXZipUpdate", timeout=5000)
+        submit = page.locator(
+            "#GLUXZipUpdate, input[aria-labelledby='GLUXZipUpdate-announce'], "
+            "[data-action='GLUXPostalUpdateAction']"
+        ).first
+        if await submit.count():
+            await submit.click(timeout=5000)
+        else:
+            await page.get_by_role(
+                "button",
+                name=re.compile(r"apply|aplicar|usa questo indirizzo|utiliser", re.I),
+            ).first.click(timeout=5000)
         await page.wait_for_timeout(2500)
         for sel in ("#GLUXConfirmClose", "input[name='glowDoneButton']", ".a-popover-footer .a-button-input"):
             try:
@@ -466,7 +518,7 @@ async def set_amazon_location_via_popup(page, market: AmazonMarket) -> bool:
                 break
             except Exception:
                 pass
-        print(f"  [set-loc/{market.code}] 配送地弹窗 → {market.postcode}:✓")
+        print(f"  [set-loc/{market.code}] 配送地弹窗 -> {market.postcode}: OK")
         return True
     except Exception as e:
         print(f"  [set-loc/{market.code}] 配送地弹窗失败: {str(e)[:120]}")
@@ -550,9 +602,15 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
 
     ok = bool(res.get("updated"))
     print(
-        f"  [set-loc/{market.code}] 配送地 → {market.postcode}:"
-        f"{'✓ isAddressUpdated:1' if ok else '✗ 未生效'} (status={res.get('status')})"
+        f"  [set-loc/{market.code}] 配送地 -> {market.postcode}:"
+        f"{'OK isAddressUpdated:1' if ok else 'FAIL 未生效'} (status={res.get('status')})"
     )
+    if not ok:
+        # glow POST 经常返回 200 但 isAddressUpdated=0。此时仍应尝试可见弹窗，
+        # 特别是 GB 必须设置本地邮编后才能验证原生 GBP。
+        popup_ok = await set_amazon_location_via_popup(page, market)
+        if popup_ok:
+            return True
     if not ok and not market.location_required:
         print(f"  [set-loc/{market.code}] 邮编未确认；该 EUR 市场继续交给搜索页币种 canary 守门")
         return True
@@ -581,7 +639,7 @@ async def verify_amazon_detail_canary(page, market: AmazonMarket) -> bool:
         local_price, currency, _eur = _price_pair(txt, market.currency)
         lo, hi = _CANARY_LO * known, _CANARY_HI * known
         if local_price is not None and lo <= local_price <= hi:
-            print(f"  [canary/{market.code}] {asin} {local_price} {currency} ∈ [{lo:.0f},{hi:.0f}] ✓")
+            print(f"  [canary/{market.code}] {asin} {local_price} {currency} in [{lo:.0f},{hi:.0f}] OK")
             ok_any = True
         else:
             print(
@@ -589,7 +647,7 @@ async def verify_amazon_detail_canary(page, market: AmazonMarket) -> bool:
                 f"(要 {market.currency} 且 ∈[{lo:.0f},{hi:.0f}])"
             )
     if not ok_any:
-        print(f"  [canary/{market.code}] ✗ 所有锚点不符 → abort")
+        print(f"  [canary/{market.code}] FAIL 所有锚点不符 -> abort")
     return ok_any
 
 
@@ -611,9 +669,9 @@ async def verify_amazon_search_currency(page, market: AmazonMarket) -> bool:
             continue
         price, currency, _eur = _price_pair(r.get("price") or "", market.currency)
         if price is not None and 50 <= price <= 10000:
-            print(f"  [canary/{market.code}] 搜索页 {price} {currency} 合理 ✓")
+            print(f"  [canary/{market.code}] 搜索页 {price} {currency} 合理 OK")
             return True
-    print(f"  [canary/{market.code}] 搜索页未找到合理 {market.currency} 电视价 → abort")
+    print(f"  [canary/{market.code}] 搜索页未找到合理 {market.currency} 电视价 -> abort")
     return False
 
 
@@ -646,7 +704,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     canary_ok = await verify_amazon_search_currency(page, market)
             if location_ok and canary_ok:
                 if attempt > 1:
-                    print(f"[catalog/Amazon/{market.code}] 会话守门第 {attempt} 次成功 ✓")
+                    print(f"[catalog/Amazon/{market.code}] 会话守门第 {attempt} 次成功 OK")
                 return True
             if attempt < SESSION_PREP_ATTEMPTS:
                 print(
@@ -655,7 +713,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 )
                 await asyncio.sleep(random.uniform(3.0, 6.0))
         print(
-            f"[catalog/Amazon/{market.code}] ✗ 会话守门连续 {SESSION_PREP_ATTEMPTS} 次失败 → abort"
+            f"[catalog/Amazon/{market.code}] FAIL 会话守门连续 {SESSION_PREP_ATTEMPTS} 次失败 -> abort"
         )
         return False
 
