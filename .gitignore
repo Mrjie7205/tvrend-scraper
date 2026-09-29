@@ -5,4 +5,6 @@ __pycache__/
 venv/
 scripts/debug_screenshots/
 scripts/monitor_artifacts/
+scripts/catalog_artifacts/
+outputs/
 .DS_Store

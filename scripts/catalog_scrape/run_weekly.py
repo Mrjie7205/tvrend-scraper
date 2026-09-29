@@ -172,6 +172,12 @@ def _validate_amazon_catalog_size(adapter, items, date_tag: str) -> str | None:
     )
 
 
+def _finish_diagnostics(adapter, status: str, reason: str | None = None, path: Path | None = None) -> None:
+    diagnostics = getattr(adapter, 'diagnostics', None)
+    if diagnostics is not None:
+        diagnostics.finish(status=status, reason=reason, catalog_file=path.name if path else None)
+
+
 async def run_one_adapter(browser, adapter) -> AdapterRunResult:
     """跑一个 adapter，产出 CSV；失败时返回不会丢失的具体原因。"""
     locale, tz = adapter.locale_override or locale_for(adapter.country)
@@ -197,13 +203,16 @@ async def run_one_adapter(browser, adapter) -> AdapterRunResult:
         items = await adapter.fetch_catalog(page)
     except Exception as e:
         reason = f"抓取异常 {type(e).__name__}: {e}"
+        _finish_diagnostics(adapter, 'failed', reason)
         _console_print(f"[catalog/{adapter.platform_name}] {reason}")
         return AdapterRunResult(path=None, failure_reason=reason)
     finally:
         await ctx.close()
 
     if not items:
-        reason = "0 条记录，不写文件"
+        diagnostics = getattr(adapter, 'diagnostics', None)
+        reason = (diagnostics.report.get('failureReason') if diagnostics else None) or "0 条记录，不写文件"
+        _finish_diagnostics(adapter, 'rejected', reason)
         _console_print(f"[catalog/{adapter.platform_name}] {reason}")
         return AdapterRunResult(path=None, failure_reason=reason)
 
@@ -213,6 +222,7 @@ async def run_one_adapter(browser, adapter) -> AdapterRunResult:
 
     size_failure = _validate_amazon_catalog_size(adapter, items, date_tag)
     if size_failure:
+        _finish_diagnostics(adapter, 'rejected', size_failure)
         _console_print(f"[catalog/{adapter.platform_name}/{adapter.country}] {size_failure}")
         return AdapterRunResult(path=None, failure_reason=size_failure)
 
@@ -247,6 +257,7 @@ async def run_one_adapter(browser, adapter) -> AdapterRunResult:
         f"[catalog/{adapter.platform_name}] -> "
         f"{out_path.relative_to(_catalog_dir().parent.parent)}"
     )
+    _finish_diagnostics(adapter, 'validated', path=out_path)
     return AdapterRunResult(path=out_path)
 
 

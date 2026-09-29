@@ -80,6 +80,15 @@ jobs:
           AMAZON_MIN_PREVIOUS_RATIO: "0.70"
         run: python -m catalog_scrape.run_weekly --only ${{ matrix.market }}
 
+      - name: Upload Amazon diagnostic candidates（无论成功或失败，均与正式目录隔离）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amazon-diagnostics-${{ matrix.country }}
+          path: scripts/catalog_artifacts/amazon_${{ matrix.country }}/
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Stage catalog artifact
         run: |
           set -e
