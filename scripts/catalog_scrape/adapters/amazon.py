@@ -236,6 +236,43 @@ _JS_SEARCH_STATE = r"""() => {
   };
 }"""
 
+_JS_CONTINUE_PAGE_INSPECTION = r"""() => {
+  const visible = el => {
+    if (!el) return false;
+    const box = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    return box.width > 0 && box.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+  };
+  const clean = s => (s || '').trim().replace(/\s+/g, ' ');
+  const destination = raw => {
+    if (!raw) return null;
+    try { const u = new URL(raw, location.href); return {origin: u.origin, path: u.pathname}; }
+    catch { return {invalid: true}; }
+  };
+  const text = clean(document.body?.innerText || '');
+  const controls = Array.from(document.querySelectorAll('button, input[type=submit], input[type=button], a[role=button]'))
+    .filter(visible).map(el => ({
+      tag: el.tagName.toLowerCase(), type: el.getAttribute('type') || '',
+      label: clean(el.textContent || el.getAttribute('value') || el.getAttribute('aria-label')),
+      href: destination(el.getAttribute('href')),
+      formMethod: el.form?.method || '',
+      formAction: destination(el.getAttribute('formaction') || el.form?.getAttribute('action')),
+    }));
+  return {
+    current: {origin: location.origin, path: location.pathname},
+    normalPage: Array.from(document.querySelectorAll('#nav-main, #glow-ingress-block, #productTitle, [data-component-type=s-search-result]')).some(visible),
+    visibleChallengeControls: Array.from(document.querySelectorAll('input[name*=captcha i], input[id*=captcha i], input[type=checkbox], iframe[src*=captcha i], [class*=g-recaptcha], [class*=h-captcha]')).some(visible),
+    challengeLanguage: /captcha|robot|unusual traffic|automated access|access denied|accesso negato|verify you are human|security check/i.test(text),
+    continueShoppingInstruction: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfläche unten, um mit dem Einkaufen fortzufahren/i.test(text),
+    controls,
+  };
+}"""
+
+
+async def inspect_amazon_continue_page(page) -> dict:
+    """只读核对中间页的导航目标；不读取隐藏字段、不点击、不保存会话值。"""
+    return await page.evaluate(_JS_CONTINUE_PAGE_INSPECTION)
+
 _JS_DETAIL = r"""
 (priceSelectors) => {
   const clean = (s) => (s || '').trim().replace(/\s+/g, ' ');

@@ -12,7 +12,7 @@ from pathlib import Path
 
 from catalog_scrape.adapters.amazon import (
     AMAZON_DE, AMAZON_ES, AMAZON_GB, AMAZON_IT,
-    AmazonCatalogAdapter, _JS_EXTRACT,
+    AmazonCatalogAdapter, _JS_EXTRACT, inspect_amazon_continue_page,
 )
 from catalog_scrape.run_weekly import BROWSER_ARGS
 from monitor_prices.core import STEALTH_JS, USER_AGENTS
@@ -93,6 +93,7 @@ async def run(args: argparse.Namespace) -> int:
             summary['sessionPrepared'] = await adapter._prepare_market_session(page)
             if not summary['sessionPrepared']:
                 summary['sessionFailureState'] = await page.evaluate(PAGE_STATE)
+                summary['continuePageInspection'] = await inspect_amazon_continue_page(page)
                 await page.screenshot(path=str(args.output / 'session-failed.png'))
                 (args.output / 'session-failed.html').write_text(await page.evaluate(SANITIZED_DOM), encoding='utf-8')
                 return 1
