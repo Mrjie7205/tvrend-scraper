@@ -2,7 +2,7 @@ name: Daily Amazon Catalog
 
 # 每天抓 Amazon 多市场五品牌电视清单+价(catalog-driven Option C)。
 # DE: 已验证固定 canary；GB: 邮编 CV4 7ES，先用地址成功 + GBP 搜索价守门。
-# 各市场分 job 跑并汇总提交，避免 GB 初期波动影响 DE 已稳定链路。
+# 各市场分 job 跑并保存成功结果；任一国家失败必须使整轮失败，不能借用同日旧目录。
 on:
   schedule:
     - cron: "0 4 * * *"   # 每天 04:00 UTC(GitHub 实际迟到 2-6h → 约 06-10 UTC,赶在私库 enrich 12 UTC 前)
@@ -23,23 +23,18 @@ jobs:
     name: Scrape ${{ matrix.market }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - market: amazon_de
             country: de
-            experimental: false
           - market: amazon_gb
             country: gb
-            experimental: true
           - market: amazon_it
             country: it
-            experimental: true
           - market: amazon_es
             country: es
-            experimental: true
     permissions:
       contents: read
     steps:
@@ -63,7 +58,11 @@ jobs:
       - name: Run Amazon catalog unit tests
         run: python -m unittest discover -s tests -v
 
+      - name: Record current scrape identity
+        run: python scripts/amazon_artifact_gate.py prepare --country ${{ matrix.country }} --context _amazon_run.json --catalog catalog
+
       - name: Scrape Amazon catalog（set address + canary + fail-closed)
+        id: scrape
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
@@ -89,23 +88,20 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Stage catalog artifact
-        run: |
-          set -e
-          mkdir -p _amazon_out
-          today="$(date -u +%Y%m%d)"
-          f="catalog/amazon_${{ matrix.country }}_${today}.csv"
-          if [ ! -f "$f" ]; then
-            echo "::error::Expected catalog not found: $f"
-            exit 1
-          fi
-          cp "$f" _amazon_out/
+      - name: Stage current result（失败只交接状态，不上传 checkout 的旧目录）
+        if: always()
+        run: >-
+          python scripts/amazon_artifact_gate.py stage
+          --context _amazon_run.json --catalog catalog
+          --out _amazon_out/${{ matrix.country }}
+          --outcome "${{ steps.scrape.outcome }}"
 
-      - name: Upload catalog artifact
+      - name: Upload current result
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: amazon-catalog-${{ matrix.country }}
-          path: _amazon_out/*.csv
+          name: amazon-result-${{ matrix.country }}
+          path: _amazon_out/${{ matrix.country }}/
           if-no-files-found: error
 
   commit:
@@ -113,7 +109,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: scrape
     # 单个市场失败时，仍提交其他已成功市场的 artifact，避免一个站点阻断四国更新。
-    # 如果四个市场全部失败，download-artifact 会因无可用文件而失败，仍保持 fail-closed。
+    # 失败状态也交接；独立 staging 防止 checkout 中已有同日文件被算作本轮产物。
     if: ${{ always() && !cancelled() }}
     permissions:
       contents: write
@@ -126,41 +122,41 @@ jobs:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
 
-      - name: Download successful catalog artifacts
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download current result artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: amazon-catalog-*
-          path: catalog
-          merge-multiple: true
+          pattern: amazon-result-*
+          path: _amazon_download
+          merge-multiple: false
+
+      - name: Validate current artifacts and import successful markets
+        id: collect
+        run: >-
+          python scripts/amazon_artifact_gate.py collect
+          --artifacts _amazon_download --catalog catalog --report _amazon_validation
+          --scrape-result "${{ needs.scrape.result }}"
 
       - name: Commit catalog（清理旧份 + rebase 重试，防并发）
         run: |
           set -e
           git config user.name "tvrend-scraper bot"
           git config user.email "actions@github.com"
-          today="$(date -u +%Y%m%d)"
-          missing=""
-          invalid=""
-          for c in de gb it es; do
-            file="catalog/amazon_${c}_${today}.csv"
-            if [ ! -f "$file" ]; then
-              missing="$missing $c"
-              continue
-            fi
-            rows="$(tail -n +2 "$file" | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
-            if [ "$rows" -lt 100 ]; then
-              invalid="$invalid $c($rows)"
-            fi
-          done
-          # 每个 Amazon 国家只留最近 14 份 catalog,防 public 仓膨胀(私库 enrich 每天消费最新即可)
-          for c in de gb it es; do
+          # 仅整理本轮成功国家；失败国家旧数据保持原样，但不计作成功。
+          while IFS= read -r c; do
             ls catalog/amazon_${c}_*.csv 2>/dev/null | sort | head -n -14 | while read -r f; do
               git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"
             done
-          done
-          git add -A -- catalog/
+          done < _amazon_validation/publish-countries.txt
+          while IFS= read -r f; do
+            git add -- "catalog/$f"
+          done < _amazon_validation/publish-files.txt
           if git diff --cached --quiet; then
-            echo "无新目录（canary/fail-closed 可能 abort 了，或同日已抓），跳过提交。"
+            echo "本轮无通过验收的数据变化，跳过提交；最终状态由独立门禁判定。"
           else
             git commit -m "chore: daily amazon catalog ${{ github.run_id }} [skip ci]"
             BR="${{ github.ref_name }}"
@@ -178,7 +174,7 @@ jobs:
               exit 1
             fi
           fi
-          if [ -n "$missing" ] || [ -n "$invalid" ]; then
-            echo "::error::Amazon 当日目录不完整，缺少市场:$missing；行数异常:$invalid。已保存其他成功市场，但任务标记失败。"
-            exit 1
-          fi
+
+      - name: Require all four current markets to succeed
+        if: ${{ always() && steps.collect.outcome == 'success' }}
+        run: python scripts/amazon_artifact_gate.py gate --report _amazon_validation/report.json

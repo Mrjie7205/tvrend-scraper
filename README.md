@@ -10,7 +10,7 @@
 | 价格监控 `monitor_prices` | 每天 | `raw/prices.csv`(跟踪 SKU 的当日价格) |
 | 目录反向拉 `catalog_scrape` | 每周 | `catalog/*.csv`(在售商品列表快照) |
 
-渠道:Boulanger(FR)、Currys(GB)、Elkjop(NO)。Amazon(DE) 走独立 daily catalog 链路。每个渠道一个 adapter,新增渠道只需加一个 adapter。
+渠道:Boulanger(FR)、Currys(GB)、Elkjop(NO)。Amazon(DE/GB/IT/ES) 走独立 daily catalog 链路。每个渠道一个 adapter,新增渠道只需加一个 adapter。
 
 ## 目录
 
@@ -57,6 +57,16 @@ Boulanger/Currys 的批量快照有两道完整性保护：商品数与跟踪清
 每日定时任务中，Boulanger 与 Currys 分开运行、错峰提交；一个渠道异常不会阻塞另一个渠道。
 抓取过程中每完成一条就更新 `scripts/monitor_artifacts/partial_prices.csv`，Action 无论成功或失败
 都会上传该检查点和调试证据，便于中断后的审计与恢复。主表 `raw/prices.csv` 仍只在整轮成功后提交。
+
+## Amazon 本轮目录验收
+
+- 四国分别采集，某国失败时仍保存其他国家成功产物，但整轮必须标记失败。
+- 每国 artifact 包含本次运行 ID、尝试号、代码 SHA、时间窗和目录哈希；汇总阶段只接收本轮经过验证的产物。仓库里已有的同日文件不计作本轮成功，也不补充缺失国家。
+- 配送栏临时缺失时短等一次；仍无法确认本地邮编时最多恢复一次地址，再回到原商品或搜索页面复核。仅恢复分支新增严格页面身份检查，正常页沿用既有行为。
+- 恢复后重新提取当前页面；邮编、页面身份仍不匹配或出现访问挑战、继续购物中间页时，拒绝本轮结果。历史目录仅供发现待查商品，不把缓存价格写成新观测。
+- 若同一天已有成功目录而后续采集失败，旧目录可继续保留使用，但失败的后续运行必须如实报告。目录日期与执行次数是两个不同的验收维度。
+
+本地可使用 `python -m catalog_scrape.run_weekly --only amazon_it` 单独验证意大利；Elkjop 使用 `--only Elkjop`。完整目录应通过原有行数、分页、品牌及价格检查，不能用缩小采集范围的调试结果冒充全量快照。
 
 ## 说明
 

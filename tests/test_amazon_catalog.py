@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import sys
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import AsyncMock, Mock, patch
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,6 +16,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from catalog_scrape.adapters.amazon import (  # noqa: E402
     AMAZON_GB,
+    AMAZON_DE,
     AMAZON_IT,
     AMAZON_ES,
     AmazonCatalogAdapter,
@@ -24,6 +28,10 @@ from catalog_scrape.adapters.amazon import (  # noqa: E402
     verify_amazon_delivery_location,
     verify_amazon_detail_canary,
     AmazonCatalogIncomplete,
+    ensure_amazon_page_delivery,
+    _JS_SEARCH_STATE,
+    _JS_DETAIL,
+    _JS_EXTRACT,
 )
 
 
@@ -121,7 +129,7 @@ class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
         for market in (AMAZON_IT, AMAZON_ES):
             with self.subTest(country=market.code):
                 page = AsyncMock()
-                page.evaluate.return_value = ''
+                page.evaluate.side_effect = [{}, '']
                 with patch('catalog_scrape.adapters.amazon._accept_cookie', new=AsyncMock()), patch(
                     'catalog_scrape.adapters.amazon.set_amazon_location_via_popup',
                     new=AsyncMock(return_value=False),
@@ -131,8 +139,10 @@ class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
     async def test_api_updated_true_is_not_enough_without_delivery_header(self) -> None:
         page = AsyncMock()
         page.evaluate.side_effect = [
+            {},
             'data-toaster-csrfToken="token-value"',
             {'status': 200, 'updated': True},
+            {'deliveryText': 'Hong Kong'},
             {'deliveryText': 'Hong Kong'},
         ]
         with patch('catalog_scrape.adapters.amazon._accept_cookie', new=AsyncMock()), patch(
@@ -144,6 +154,7 @@ class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_popup_click_success_does_not_prove_postcode_changed(self) -> None:
         page = AsyncMock()
+        page.evaluate.return_value = {}
         element = Mock()
         element.first = element
         element.count = AsyncMock(return_value=1)
@@ -168,6 +179,7 @@ class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_popup_propagates_explicit_challenge(self) -> None:
         page = AsyncMock()
+        page.evaluate.return_value = {}
         element = Mock()
         element.first = element
         element.count = AsyncMock(return_value=1)
@@ -207,6 +219,7 @@ class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
         page = AsyncMock()
         page.context = AsyncMock()
         page.evaluate.side_effect = [
+            {},
             'data-toaster-csrfToken="token-value"',
             {"status": 200, "updated": False},
         ]
@@ -221,6 +234,250 @@ class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result)
         popup.assert_awaited_once_with(page, AMAZON_GB)
+
+
+class AmazonDeliveryRecoveryTest(unittest.IsolatedAsyncioTestCase):
+    """模拟短时配送栏缺失；任何页面/配送/挑战校验失败都不能输出价格。"""
+
+    ASIN = 'B000000001'
+
+    def state(self, delivery='', *, market=AMAZON_IT, **extra):
+        return {
+            'currentUrl': f'{market.base_url}/dp/{self.ASIN}',
+            'productAsin': self.ASIN,
+            'deliveryText': delivery,
+            **extra,
+        }
+
+    async def test_healthy_market_headers_do_not_reset_session(self):
+        for market in (AMAZON_DE, AMAZON_GB, AMAZON_IT, AMAZON_ES):
+            with self.subTest(market=market.code):
+                page = AsyncMock()
+                state = self.state(market.postcode, market=market)
+                page.evaluate.return_value = state
+                with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock()) as reset:
+                    result = await ensure_amazon_page_delivery(page, market, state['currentUrl'], asin=self.ASIN)
+                self.assertEqual(state, result)
+                reset.assert_not_awaited()
+                page.goto.assert_not_awaited()
+                page.wait_for_timeout.assert_not_awaited()
+
+    async def test_delayed_header_only_waits_without_address_reset(self):
+        page = AsyncMock()
+        state = self.state('Milano 20121')
+        page.evaluate.side_effect = [self.state(), state]
+        with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock()) as reset:
+            self.assertEqual(state, await ensure_amazon_page_delivery(page, AMAZON_IT, state['currentUrl'], asin=self.ASIN))
+        reset.assert_not_awaited()
+        page.goto.assert_not_awaited()
+        page.wait_for_timeout.assert_awaited_once_with(1500)
+
+    async def test_one_reset_reopens_original_asin_and_revalidates(self):
+        page = AsyncMock()
+        page.goto.return_value = SimpleNamespace(status=200)
+        good = self.state('Milano 20121')
+        page.evaluate.side_effect = [self.state(), self.state(), good, good]
+        with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock(return_value=True)) as reset:
+            self.assertEqual(good, await ensure_amazon_page_delivery(page, AMAZON_IT, good['currentUrl'], asin=self.ASIN))
+        reset.assert_awaited_once_with(page, AMAZON_IT)
+        page.goto.assert_awaited_once_with(good['currentUrl'], wait_until='domcontentloaded', timeout=30000)
+        page.context.clear_cookies.assert_not_awaited()
+
+    async def test_unconfirmed_restored_header_rejects_without_second_reset(self):
+        page = AsyncMock()
+        page.goto.return_value = SimpleNamespace(status=200)
+        page.evaluate.return_value = self.state('Hong Kong')
+        with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock(return_value=True)) as reset:
+            with self.assertRaisesRegex(AmazonCatalogIncomplete, '恢复后配送地仍未确认'):
+                await ensure_amazon_page_delivery(page, AMAZON_IT, self.state()['currentUrl'], asin=self.ASIN)
+        reset.assert_awaited_once()
+        page.goto.assert_awaited_once()
+
+    async def test_failed_address_reset_rejects_without_reopening_detail(self):
+        page = AsyncMock()
+        page.evaluate.return_value = self.state()
+        with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock(return_value=False)) as reset:
+            with self.assertRaisesRegex(AmazonCatalogIncomplete, '配送地址恢复失败'):
+                await ensure_amazon_page_delivery(page, AMAZON_IT, self.state()['currentUrl'], asin=self.ASIN)
+        reset.assert_awaited_once()
+        page.goto.assert_not_awaited()
+
+    async def test_challenge_interstitial_and_http_error_never_trigger_recovery(self):
+        for state_extra, status in (({'captcha': True}, 200), ({'robotCheck': True}, 200),
+                                    ({'continueShopping': True}, 200), ({}, 503)):
+            with self.subTest(state_extra=state_extra, status=status):
+                page = AsyncMock()
+                page.evaluate.return_value = self.state(**state_extra)
+                with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock()) as reset:
+                    with self.assertRaises(AmazonCatalogIncomplete):
+                        await ensure_amazon_page_delivery(page, AMAZON_IT, self.state()['currentUrl'], asin=self.ASIN, http_status=status)
+                reset.assert_not_awaited()
+                page.goto.assert_not_awaited()
+                page.wait_for_timeout.assert_not_awaited()
+
+    async def test_challenge_during_wait_is_not_treated_as_lost_postcode(self):
+        page = AsyncMock()
+        page.evaluate.side_effect = [self.state(), self.state(robotCheck=True)]
+        with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock()) as reset:
+            with self.assertRaises(AmazonCatalogIncomplete):
+                await ensure_amazon_page_delivery(page, AMAZON_IT, self.state()['currentUrl'], asin=self.ASIN)
+        reset.assert_not_awaited()
+
+    async def test_reopened_error_or_challenge_cannot_pass_on_good_postcode(self):
+        for extra, status in (({'captcha': True}, 200), ({'continueShopping': True}, 200), ({}, 429)):
+            with self.subTest(extra=extra, status=status):
+                page = AsyncMock()
+                page.goto.return_value = SimpleNamespace(status=status)
+                page.evaluate.side_effect = [self.state(), self.state(), self.state('Milano 20121', **extra)]
+                with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock(return_value=True)) as reset:
+                    with self.assertRaises(AmazonCatalogIncomplete):
+                        await ensure_amazon_page_delivery(page, AMAZON_IT, self.state()['currentUrl'], asin=self.ASIN)
+                reset.assert_awaited_once()
+                page.goto.assert_awaited_once()
+                page.wait_for_timeout.assert_awaited_once()
+
+    async def test_recovery_rejects_wrong_country_asin_and_old_dom(self):
+        bad_pages = [
+            self.state('Milano 20121', currentUrl=f'{AMAZON_DE.base_url}/dp/{self.ASIN}'),
+            self.state('Milano 20121', currentUrl=f'{AMAZON_IT.base_url}/dp/B000000002'),
+            self.state('Milano 20121', productAsin='B000000002'),
+            self.state('Milano 20121', productAsin=''),
+        ]
+        for bad in bad_pages:
+            with self.subTest(bad=bad):
+                page = AsyncMock()
+                page.goto.return_value = SimpleNamespace(status=200)
+                page.evaluate.side_effect = [self.state(), self.state(), bad, bad]
+                with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock(return_value=True)) as reset:
+                    with self.assertRaisesRegex(AmazonCatalogIncomplete, '恢复后页面身份不符'):
+                        await ensure_amazon_page_delivery(page, AMAZON_IT, self.state()['currentUrl'], asin=self.ASIN)
+                reset.assert_awaited_once()
+
+    async def test_search_recovery_requires_original_query_and_page(self):
+        target = f'{AMAZON_IT.base_url}/s?k=tcl+televisore&page=2'
+        blank = {'currentUrl': target, 'deliveryText': ''}
+        wrong = {'currentUrl': target.replace('page=2', 'page=1'), 'deliveryText': 'Milano 20121'}
+        page = AsyncMock()
+        page.goto.return_value = SimpleNamespace(status=200)
+        page.evaluate.side_effect = [blank, blank, wrong, wrong]
+        with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock(return_value=True)):
+            with self.assertRaisesRegex(AmazonCatalogIncomplete, '恢复后页面身份不符'):
+                await ensure_amazon_page_delivery(page, AMAZON_IT, target)
+
+    async def test_detail_and_variant_extract_only_after_return_to_original_page(self):
+        for kind in ('detail', 'variant'):
+            with self.subTest(kind=kind):
+                adapter = AmazonCatalogAdapter(AMAZON_IT)
+                page = AsyncMock()
+                restored = False
+                detail_calls = 0
+
+                async def reset(*args):
+                    nonlocal restored
+                    restored = True
+                    return True
+
+                async def evaluate(script, *args):
+                    nonlocal detail_calls
+                    if script == _JS_SEARCH_STATE:
+                        return self.state('Milano 20121' if restored else '')
+                    if script == _JS_DETAIL:
+                        self.assertTrue(restored, '不能读取配送恢复前页面的价格或尺寸')
+                        self.assertEqual(2, page.goto.await_count)
+                        detail_calls += 1
+                        return {'title': 'TCL 55 pollici TV', 'price': '499,00 €', 'variantRefs': []}
+                    raise AssertionError('unexpected evaluate')
+
+                page.goto.return_value = SimpleNamespace(status=200)
+                page.evaluate.side_effect = evaluate
+                with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock(side_effect=reset)):
+                    if kind == 'detail':
+                        item = await adapter._detail_item(page, self.ASIN, 'TCL')
+                        self.assertEqual(499.0, item.price_eur)
+                    else:
+                        seed = adapter._build_item(self.ASIN, 'TCL 55 pollici TV', 'TCL', 55, '399,00 €')
+                        self.assertEqual(0, await adapter._expand_variants_from_seed(page, seed, {}))
+                self.assertEqual(1, detail_calls)
+
+    async def test_location_home_challenge_stops_before_popup_or_address_api(self):
+        for setter in (set_amazon_market_location, set_amazon_location_via_popup):
+            with self.subTest(setter=setter.__name__):
+                page = AsyncMock()
+                page.goto.return_value = SimpleNamespace(status=200)
+                page.evaluate.return_value = self.state(continueShopping=True)
+                with patch('catalog_scrape.adapters.amazon._accept_cookie', new=AsyncMock()) as cookie:
+                    with self.assertRaises(AmazonCatalogIncomplete):
+                        await setter(page, AMAZON_IT)
+                cookie.assert_not_awaited()
+                page.evaluate.assert_awaited_once()
+
+    async def test_search_extracts_fresh_cards_only_after_delivery_recovery(self):
+        adapter = AmazonCatalogAdapter(AMAZON_IT)
+        adapter._prepare_market_session = AsyncMock(return_value=True)
+        page = AsyncMock()
+        current_url = ''
+        restored = False
+        extractions = 0
+
+        async def goto(url, **kwargs):
+            nonlocal current_url
+            current_url = url
+            return SimpleNamespace(status=200)
+
+        async def reset(*args):
+            nonlocal restored
+            restored = True
+            return True
+
+        async def evaluate(script, *args):
+            nonlocal extractions
+            if script == _JS_SEARCH_STATE:
+                return {'currentUrl': current_url, 'deliveryText': 'Milano 20121' if restored else ''}
+            if script == _JS_EXTRACT:
+                self.assertTrue(restored, '不能保存恢复前搜索页报价')
+                self.assertEqual(2, page.goto.await_count)
+                extractions += 1
+                return [{'asin': self.ASIN, 'title': 'TCL 55 pollici TV', 'price': '499,00 €'}]
+            raise AssertionError('unexpected evaluate')
+
+        page.goto.side_effect = goto
+        page.evaluate.side_effect = evaluate
+        with TemporaryDirectory() as temporary, ExitStack() as stack:
+            stack.enter_context(patch.dict('os.environ', {'AMAZON_DIAGNOSTICS_DIR': temporary}))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon.BRAND_QUERIES', ('tcl',)))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon.TARGET_YEARS', ()))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon.EXTRA_SERIES_QUERIES', ()))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon.MAX_PAGES', 1))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon.EXPAND_VARIANTS', False))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon._accept_cookie', new=AsyncMock()))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon.asyncio.sleep', new=AsyncMock()))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock(side_effect=reset)))
+            stack.enter_context(patch.object(adapter, '_series_rescue_queries', return_value=[]))
+            stack.enter_context(patch.object(adapter, '_load_recent_catalog_items', return_value=[]))
+            items = await adapter.fetch_catalog(page)
+        self.assertEqual(1, extractions)
+        self.assertEqual([499.0], [item.price_eur for item in items])
+
+    async def test_optional_detail_404_remains_no_quote_without_address_recovery(self):
+        adapter = AmazonCatalogAdapter(AMAZON_IT)
+        page = AsyncMock()
+        page.goto.return_value = SimpleNamespace(status=404)
+        page.evaluate.return_value = self.state()
+        with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock()) as reset:
+            self.assertIsNone(await adapter._detail_item(page, self.ASIN, 'TCL'))
+        reset.assert_not_awaited()
+        page.evaluate.assert_awaited_once_with(_JS_SEARCH_STATE)
+
+    async def test_address_api_http_error_stops_without_popup_retry(self):
+        page = AsyncMock()
+        page.goto.return_value = SimpleNamespace(status=200)
+        page.evaluate.side_effect = [{}, 'data-toaster-csrfToken="test"', {'status': 503, 'updated': False}]
+        with patch('catalog_scrape.adapters.amazon._accept_cookie', new=AsyncMock()), patch(
+            'catalog_scrape.adapters.amazon.set_amazon_location_via_popup', new=AsyncMock(),
+        ) as popup:
+            with self.assertRaisesRegex(AmazonCatalogIncomplete, 'http_503'):
+                await set_amazon_market_location(page, AMAZON_IT)
+        popup.assert_not_awaited()
 
 
 if __name__ == "__main__":

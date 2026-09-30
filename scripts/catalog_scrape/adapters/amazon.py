@@ -26,7 +26,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
-from urllib.parse import quote_plus
+from urllib.parse import parse_qs, quote_plus, urlparse
 
 from monitor_prices.core import clean_price
 from monitor_prices.fx import ECB_RATE_DATE, price_to_eur
@@ -226,13 +226,17 @@ _JS_EXTRACT = r"""
 _JS_SEARCH_STATE = r"""() => {
   const text = document.body?.innerText || '';
   return {
+    currentUrl: location.href,
+    productAsin: (document.querySelector('#ASIN')?.value
+      || document.querySelector('input[name="ASIN"]')?.value || '').trim().toUpperCase(),
     cardCount: document.querySelectorAll("div[data-component-type='s-search-result']").length,
     nextPresent: !!document.querySelector('a.s-pagination-next'),
     nextDisabled: !!document.querySelector('.s-pagination-next.s-pagination-disabled'),
     deliveryText: (document.querySelector('#glow-ingress-line2')?.textContent
       || document.querySelector('#glow-ingress-block')?.textContent || '').trim().replace(/\s+/g, ' '),
     captcha: /captcha|enter the characters you see below|api-services-support@amazon.com/i.test(text),
-    robotCheck: /robot check|not a robot|automated access|unusual traffic/i.test(text)
+    robotCheck: /robot check|not a robot|automated access|unusual traffic|access denied|accesso negato|verify you are human|security check/i.test(text),
+    continueShopping: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfläche unten, um mit dem Einkaufen fortzufahren/i.test(text)
   };
 }"""
 
@@ -507,16 +511,95 @@ class AmazonCatalogIncomplete(RuntimeError):
 def _page_rejection_reason(http_status: int | None, state: dict) -> str | None:
     if state.get('captcha') or state.get('robotCheck'):
         return 'access_challenge'
+    if state.get('continueShopping'):
+        return 'continue_shopping_interstitial'
     if isinstance(http_status, int) and http_status >= 400:
         return f'http_{http_status}'
     return None
 
 
+async def _checked_page_state(page, market: AmazonMarket, http_status: int | None = None) -> dict:
+    """恢复配送会话前后都先排除错误页，不通过重试绕过访问验证。"""
+    state = await page.evaluate(_JS_SEARCH_STATE)
+    if not isinstance(state, dict):
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 无法读取页面状态，停止采集')
+    reason = _page_rejection_reason(http_status, state)
+    if reason:
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 页面不可用于配送恢复 ({reason})')
+    return state
+
+
+def _recovery_page_matches(state: dict, target_url: str, *, asin: str = '', require_asin: bool = True) -> bool:
+    """地址设置会离开商品页；必须回到原站点和原商品/搜索条件才准许取价。"""
+    actual = urlparse(str(state.get('currentUrl') or ''))
+    expected = urlparse(target_url)
+    if actual.scheme != 'https' or actual.netloc != expected.netloc:
+        return False
+    if asin:
+        match = re.search(r'/(?:dp|gp/product)/([A-Z0-9]{10})(?:/|$)', actual.path, re.I)
+        if not match or match.group(1).upper() != asin.upper():
+            return False
+        observed = str(state.get('productAsin') or '').upper()
+        return observed == asin.upper() if require_asin or observed else True
+    actual_query, expected_query = parse_qs(actual.query), parse_qs(expected.query)
+    return actual.path == expected.path and all(
+        actual_query.get(key) == expected_query.get(key) for key in ('k', 'page')
+    )
+
+
+async def ensure_amazon_page_delivery(
+    page, market: AmazonMarket, target_url: str, *, asin: str = '',
+    http_status: int | None = None, state: dict | None = None,
+) -> dict:
+    """配送栏迟到时短等一次；仍不符只重设一次地址，失败则整轮拒绝。
+
+    此处不清 cookie、不切换 IP、不点击继续购物页。地址恢复成功后重新
+    导航并核对目标页面，调用方只能抽取返回后页面，不能复用旧行或旧价格。
+    """
+    state = state if state is not None else await _checked_page_state(page, market, http_status)
+    reason = _page_rejection_reason(http_status, state)
+    if reason:
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 页面不可用于配送恢复 ({reason})')
+    if _delivery_postcode_matches(state.get('deliveryText', ''), market):
+        return state
+    if not _recovery_page_matches(state, target_url, asin=asin, require_asin=False):
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 配送复核页面身份不符，停止采集')
+    print(f'[catalog/Amazon/{market.code}] 配送栏未确认，等待后重新核对原页面')
+    await page.wait_for_timeout(1500)
+    state = await _checked_page_state(page, market, http_status)
+    if not _recovery_page_matches(state, target_url, asin=asin):
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 等待后页面身份不符，停止采集')
+    if _delivery_postcode_matches(state.get('deliveryText', ''), market):
+        return state
+    print(f'[catalog/Amazon/{market.code}] 配送栏仍未确认，仅恢复一次本地配送地址')
+    if not await set_amazon_market_location(page, market):
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 配送地址恢复失败，拒绝本轮目录')
+    try:
+        response = await page.goto(target_url, wait_until='domcontentloaded', timeout=30000)
+        status = response.status if response else None
+        await _checked_page_state(page, market, status)
+        await page.wait_for_timeout(1500)
+        state = await _checked_page_state(page, market, status)
+    except AmazonCatalogIncomplete:
+        raise
+    except Exception as exc:
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 恢复后原页面加载失败，拒绝本轮目录') from exc
+    if not _recovery_page_matches(state, target_url, asin=asin):
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 恢复后页面身份不符，停止采集')
+    if not _delivery_postcode_matches(state.get('deliveryText', ''), market):
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 恢复后配送地仍未确认，拒绝混入境外配送价格')
+    print(f'[catalog/Amazon/{market.code}] 原页面配送恢复成功，重新抽取当前数据')
+    return state
+
+
 async def verify_amazon_delivery_location(page, market: AmazonMarket, *, refresh: bool = False) -> bool:
     if refresh:
         try:
-            await page.goto(f'{market.base_url}/', wait_until='domcontentloaded', timeout=45000)
+            response = await page.goto(f'{market.base_url}/', wait_until='domcontentloaded', timeout=45000)
+            await _checked_page_state(page, market, response.status if response else None)
             await page.wait_for_timeout(1200)
+        except AmazonCatalogIncomplete:
+            raise
         except Exception as exc:
             print(f'  [set-loc/{market.code}] 配送地复核加载失败: {type(exc).__name__}')
             return False
@@ -536,7 +619,8 @@ async def verify_amazon_delivery_location(page, market: AmazonMarket, *, refresh
 async def set_amazon_location_via_popup(page, market: AmazonMarket) -> bool:
     """旧 glow toaster 接口为空时，用顶部配送地弹窗填邮编作为 fallback。"""
     try:
-        await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
+        response = await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
+        await _checked_page_state(page, market, response.status if response else None)
         await _accept_cookie(page)
         location_entry = page.locator(
             "#nav-global-location-popover-link, #glow-ingress-block, "
@@ -629,7 +713,10 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
         pass
 
     try:
-        await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
+        response = await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
+        await _checked_page_state(page, market, response.status if response else None)
+    except AmazonCatalogIncomplete:
+        raise
     except Exception as e:
         print(f"  [set-loc/{market.code}] 进首页失败: {e}")
         return False
@@ -685,6 +772,9 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
         print(f"  [set-loc/{market.code}] POST address-change 失败: {e}")
         return False
 
+    failure = _page_rejection_reason(res.get('status'), {})
+    if failure:
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 地址设置请求失败 ({failure})')
     ok = bool(res.get("updated"))
     print(
         f"  [set-loc/{market.code}] 配送地 -> {market.postcode}:"
@@ -1038,8 +1128,10 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     self.diagnostics.record_page({'queryKind': 'detail', 'asin': asin, 'reason': failure})
                 return None
             await page.wait_for_timeout(random.randint(1300, 2200))
-            if not await verify_amazon_delivery_location(page, market):
-                raise AmazonCatalogIncomplete(f'Amazon {market.code} 详情页配送地未确认，拒绝混入境外配送价格')
+            await ensure_amazon_page_delivery(
+                page, market, f'{market.base_url}/dp/{asin}', asin=asin,
+                http_status=response.status if response else None,
+            )
             detail = await page.evaluate(_JS_DETAIL, list(_AMZ_DETAIL_PRICE_SELECTORS))
         except AmazonCatalogIncomplete:
             raise
@@ -1083,8 +1175,10 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     self.diagnostics.record_page({'queryKind': 'variant', 'asin': seed_asin, 'reason': failure})
                 return -1
             await page.wait_for_timeout(random.randint(1300, 2200))
-            if not await verify_amazon_delivery_location(page, market):
-                raise AmazonCatalogIncomplete(f'Amazon {market.code} 变体页配送地未确认，拒绝混入境外配送价格')
+            await ensure_amazon_page_delivery(
+                page, market, seed.url, asin=seed_asin,
+                http_status=response.status if response else None,
+            )
             detail = await page.evaluate(_JS_DETAIL, list(_AMZ_DETAIL_PRICE_SELECTORS))
         except AmazonCatalogIncomplete:
             raise
@@ -1155,6 +1249,18 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                         page_info['reason'] = failure
                         self.diagnostics.record_page(page_info)
                         raise AmazonCatalogIncomplete(f'Amazon {market.code} 搜索页访问受阻 ({failure})')
+                    if not _delivery_postcode_matches(page_info.get('deliveryText', ''), market):
+                        page_info['deliveryRecoveryAttempted'] = True
+                        try:
+                            restored = await ensure_amazon_page_delivery(
+                                page, market, url, http_status=page_info.get('httpStatus'), state=page_info,
+                            )
+                        except AmazonCatalogIncomplete:
+                            page_info['reason'] = 'delivery_recovery_rejected'
+                            self.diagnostics.record_page(page_info)
+                            raise
+                        page_info.update(restored)
+                    # 地址恢复可能重载页面；只读取复核成功后的当前搜索卡片。
                     rows = await page.evaluate(_JS_EXTRACT)
                 except AmazonCatalogIncomplete:
                     raise

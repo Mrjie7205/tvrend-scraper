@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import csv
+import fnmatch
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -135,8 +137,19 @@ class AmazonDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
     def test_diagnostic_artifacts_are_not_downloaded_as_formal_catalogs(self):
         workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/daily-amazon.yml').read_text(encoding='utf-8')
         self.assertIn('name: amazon-diagnostics-', workflow)
-        self.assertIn('pattern: amazon-catalog-*', workflow)
-        self.assertIn('if: always()', workflow)
+        steps = re.split(r'\n(?=      - name:)', workflow)
+        downloads = [step for step in steps if 'uses: actions/download-artifact@' in step]
+        self.assertEqual(1, len(downloads))
+        download = downloads[0]
+        pattern = re.search(r'^\s+pattern:\s*(\S+)\s*$', download, re.MULTILINE).group(1)
+        for country in ('de', 'gb', 'it', 'es'):
+            self.assertTrue(fnmatch.fnmatch(f'amazon-result-{country}', pattern))
+            self.assertFalse(fnmatch.fnmatch(f'amazon-diagnostics-{country}', pattern))
+        self.assertIn('path: _amazon_download', download)
+        self.assertIn('merge-multiple: false', download)
+        # 正式目录必须先通过受限 manifest 与 CSV 内容门禁，不能直接下载到 catalog。
+        self.assertIn('amazon_artifact_gate.py collect', workflow)
+        self.assertIn('--artifacts _amazon_download --catalog catalog', workflow)
 
 
 if __name__ == '__main__':
