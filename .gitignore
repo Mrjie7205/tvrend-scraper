@@ -7,5 +7,6 @@ scripts/debug_screenshots/
 scripts/monitor_artifacts/
 scripts/catalog_artifacts/
 scripts/failure_artifacts/
+scripts/price_artifacts/
 outputs/
 .DS_Store

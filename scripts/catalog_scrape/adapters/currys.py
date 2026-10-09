@@ -3,8 +3,7 @@
 抓取策略(2026-06 实测确定):
 - 入口 = /tv-and-audio/televisions/tvs?start=N&sz=50(总 ~500 台, 每页 50, 约 11 页)
 - Currys 是客户端渲染,plain requests 拿不到商品 → 必须用 Playwright
-- 反爬特性:**同一 browser context 翻第 2 页就 403**(会话级限速),
-  但每页换一个全新 context 直开 start=N 就 200。所以这里 **每页开新 context**。
+- 整轮使用同一真实市场会话；遇到 403/访问校验停止，暂错缺页只有限补抓一次。
 - 翻页 URL 由 Currys 自己生成:?start=0/50/100/...&sz=50。循环到某页无新增或够 total 为止。
 
 DOM 关键点:
@@ -18,20 +17,37 @@ DOM 关键点:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
-import random
 import re
+from datetime import UTC, datetime
+from pathlib import Path
+from uuid import uuid4
 from typing import Sequence
 
 from .base import BaseCatalogAdapter, CatalogItem
 from catalog_scrape.diagnostics import capture_catalog_failure
-from monitor_prices.core import close_playwright_resource
+from monitor_prices.core import close_playwright_resource, new_scraper_context
 
 LISTING_URL = "https://www.currys.co.uk/tv-and-audio/televisions/tvs"
 PAGE_SIZE = 50
 # 安全上限:~500/50≈10 页,留余量。测试可用环境变量 CURRYS_MAX_PAGES 调小。
 MAX_PAGES = int(os.environ.get("CURRYS_MAX_PAGES", "15"))
 COOKIE_ACCEPT_SELECTOR = "#onetrust-accept-btn-handler"
+
+_JS_PAGE_STATUS = r"""() => {
+  const title = (document.title || '').toLowerCase();
+  const text = (document.body?.innerText || '').toLowerCase();
+  const controls = [...document.querySelectorAll('input[name*="captcha" i],iframe[src*="captcha" i]')]
+    .some(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+  return {challenge: controls ||
+    /access denied|just a moment|security checkpoint|robot check|captcha/.test(title) ||
+    /access denied|verify you are human|security checkpoint|unusual traffic|robot check|complete (?:the )?captcha|enter the characters/.test(text)};
+}"""
+
+
+class CurrysCatalogIncomplete(RuntimeError):
+    """分页缺口或访问拒绝只能保留观测，不代表完整周目录。"""
 
 # 品牌识别(取标题第一个词;我们追踪 5 大,其余照样交出去由匹配器判 no_brand)
 _KNOWN_BRANDS = {
@@ -128,96 +144,189 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
     locale_override = ("en-GB", "Europe/London")
 
     async def _new_context(self, browser):
-        """每页一个全新 context(干净 cookies/指纹)以规避 Currys 会话级 403。"""
-        # 复用项目的 stealth + UA 池;懒导入避免 import 期依赖 sys.path
-        from monitor_prices.core import STEALTH_JS, USER_AGENTS, VIEWPORT_HEIGHTS, VIEWPORT_WIDTHS
-        ctx = await browser.new_context(
-            user_agent=random.choice(USER_AGENTS),
-            viewport={"width": random.choice(VIEWPORT_WIDTHS), "height": random.choice(VIEWPORT_HEIGHTS)},
-            locale="en-GB",
-            timezone_id="Europe/London",
-        )
-        await ctx.add_init_script(STEALTH_JS)
-        return ctx
+        """整轮分页复用真实市场会话，不在 403 后重置身份。"""
+        return await new_scraper_context(browser, country=self.country, locale_override=self.locale_override)
 
     async def _scrape_page(self, browser, start: int) -> tuple[int, list[dict]]:
-        """开新 context 抓一页;返回 (http_status, [card dict])。"""
+        """返回 HTTP/逻辑状态及卡片；留证发生在真正分页页面关闭之前。"""
         url = f"{LISTING_URL}?start={start}&sz={PAGE_SIZE}"
-        ctx = await self._new_context(browser)
-        page = await ctx.new_page()
+        ctx = getattr(self, '_catalog_context', None)
+        owns_context = ctx is None
+        page = None
+        self._last_page_info = {'http_status': None, 'blocked': False, 'retryable': False}
         try:
+            if owns_context:
+                ctx = await self._new_context(browser)
+            page = await ctx.new_page()
             resp = await page.goto(url, wait_until="domcontentloaded", timeout=50000)
             status = resp.status if resp else 0
+            self._last_page_info['http_status'] = status
+            if status != 200:
+                blocked = status in {401, 403, 429}
+                reason = 'rate_limited' if status == 429 else 'access_challenge' if blocked else 'http_error'
+                self._last_page_info.update(blocked=blocked, reason=reason,
+                                            retryable=(status == 0 or status == 408 or status >= 500))
+                await capture_catalog_failure(
+                    page, platform=self.platform_name, country=self.country,
+                    stage='catalog_page', reason=reason, url=url,
+                    http_status=status, adapter=self,
+                )
+                return status, []
             await page.wait_for_timeout(2800)
-            # cookie 弹窗(OneTrust);失败无所谓
+            state = await page.evaluate(_JS_PAGE_STATUS)
+            blocked = status in {401, 403, 429} or (isinstance(state, dict) and state.get('challenge') is True)
+            if blocked:
+                self._last_page_info.update(blocked=True, reason='access_challenge' if status != 429 else 'rate_limited')
+                await capture_catalog_failure(
+                    page, platform=self.platform_name, country=self.country,
+                    stage='catalog_page', reason=self._last_page_info['reason'],
+                    url=url, http_status=status, adapter=self,
+                )
+                return status if status in {401, 403, 429} else 403, []
             try:
                 if await page.is_visible(COOKIE_ACCEPT_SELECTOR, timeout=1200):
                     await page.click(COOKIE_ACCEPT_SELECTOR)
                     await page.wait_for_timeout(500)
             except Exception:
                 pass
-            if status != 200:
-                await capture_catalog_failure(
-                    page, platform=self.platform_name, country=self.country,
-                    stage='catalog_page', reason='http_error', url=url,
-                    http_status=status, adapter=self,
-                )
-                return status, []
             cards = await page.evaluate(_JS_EXTRACT)
+            if not cards:
+                # 正常页一次短等只处理渲染延迟，不导航或清会话。
+                await page.wait_for_timeout(1200)
+                cards = await page.evaluate(_JS_EXTRACT)
             return status, cards or []
-        except Exception as e:
+        except Exception as error:
+            self._last_page_info.update(reason='navigation_or_extraction_error',
+                                        error_type=type(error).__name__, retryable=isinstance(error, TimeoutError) or 'Timeout' in type(error).__name__)
+            # 网络连接异常同样允许最终补抓一次；程序/解析错误不盲目重试。
+            if 'net::ERR_' in str(error):
+                self._last_page_info['retryable'] = True
             await capture_catalog_failure(
                 page, platform=self.platform_name, country=self.country,
                 stage='catalog_page', reason='navigation_or_extraction_error',
-                url=url, error=e, adapter=self,
+                url=url, error=error, adapter=self,
             )
-            print(f"    [Currys] start={start} 异常: {str(e)[:90]}")
+            print(f"    [Currys] start={start} 异常: {type(error).__name__}")
             return 0, []
         finally:
-            await close_playwright_resource(ctx, f"Currys catalog page {start} context")
+            if owns_context:
+                await close_playwright_resource(ctx, f"Currys catalog page {start} context")
+            else:
+                await close_playwright_resource(page, f"Currys catalog page {start}")
+
+    def _save_catalog_report(self):
+        """分页账本隔离保存，不进入正式目录和价格历史。"""
+        try:
+            self._catalog_report_path.parent.mkdir(parents=True, exist_ok=True)
+            temp = self._catalog_report_path.with_suffix('.tmp')
+            temp.write_text(json.dumps(self.catalog_report, ensure_ascii=False, indent=2), encoding='utf-8')
+            temp.replace(self._catalog_report_path)
+        except OSError:
+            pass
 
     async def fetch_catalog_from_browser(self, browser) -> Sequence[CatalogItem]:
-        """直接从 browser 抓完整类目；供 weekly catalog 与 daily price 共用。"""
-        by_slug: dict[str, dict] = {}
-        consecutive_fail = 0
+        """返回明确商品观测；日价仍须自己的数量/历史门禁，周目录另验 complete。"""
+        by_slug = {}
+        now = datetime.now(UTC)
+        root = Path(os.environ.get('CURRYS_CATALOG_DIAGNOSTICS_DIR',
+                                  str(Path(__file__).resolve().parents[2] / 'catalog_artifacts')))
+        run_name = now.strftime('%Y%m%dT%H%M%SZ') + '-' + uuid4().hex[:8]
+        self._catalog_report_path = root / 'currys_gb' / run_name / 'report.json'
+        self.catalog_report = {
+            'schema_version': 1, 'platform': self.platform_name, 'country': self.country,
+            'started_at': now.isoformat(), 'complete': False, 'blocked': False,
+            'pages': {}, 'missing_pages': [], 'end_observed': False,
+            'notice': '明确商品观测不等于完整目录；失败/缺页数据不得冒充完整周目录。',
+        }
+        self._save_catalog_report()
 
-        for pi in range(MAX_PAGES):
-            start = pi * PAGE_SIZE
+        async def attempt(start, recovery=False):
+            self._last_page_info = {}
             status, cards = await self._scrape_page(browser, start)
-            # crash / 瞬时失败 → 重试一次(Chromium 偶发 "Page crashed")
-            if status != 200:
-                await asyncio.sleep(2.5)
-                status, cards = await self._scrape_page(browser, start)
+            info = dict(self._last_page_info)
+            blocked = bool(info.get('blocked')) or status in {401, 403, 429}
+            retryable = bool(info.get('retryable')) if info else (status in {0, 408} or status >= 500)
+            event = {'attempt': 2 if recovery else 1, 'status': status,
+                     'http_status': info.get('http_status', status), 'card_count': len(cards),
+                     'blocked': blocked, 'retryable': retryable, 'reason': info.get('reason'),
+                     'error_type': info.get('error_type'), 'observed_at': datetime.now(UTC).isoformat()}
+            row = self.catalog_report['pages'].setdefault(str(start), {'start': start, 'attempts': []})
+            row['attempts'].append(event)
+            row.update(status=status, missing=status != 200, retryable=retryable)
+            for card in cards:
+                slug = card.get('slug')
+                if slug and len((card.get('title') or '').strip()) >= 8 and slug not in by_slug:
+                    by_slug[slug] = card
+            if blocked:
+                self.catalog_report['blocked'] = True
+            self._save_catalog_report()
+            return status, cards, blocked
 
-            new = 0
-            for c in cards:
-                slug = c.get("slug")
-                if not slug or slug in by_slug:
-                    continue
-                if len((c.get("title") or "").strip()) < 8:  # 纯图片链接,无标题
-                    continue
-                by_slug[slug] = c
-                new += 1
-            print(f"    [Currys] start={start}: status={status} 新增 {new}(累计 {len(by_slug)})")
-
-            if status != 200:
-                # 容忍单页失败(跳过试下一页);连续 2 页失败才认为到底/被封
-                consecutive_fail += 1
-                if consecutive_fail >= 2:
+        self._catalog_context = None
+        try:
+            self._catalog_context = await self._new_context(browser)
+            consecutive_transient = 0
+            for index in range(MAX_PAGES):
+                start = index * PAGE_SIZE
+                status, cards, blocked = await attempt(start)
+                if blocked:
+                    self.catalog_report['termination'] = 'blocked'
                     break
-                await asyncio.sleep(random.uniform(1.5, 3.0))
-                continue
-            consecutive_fail = 0
-            if new == 0 and pi > 0:
-                break  # 翻到底
-            # 礼貌延时,降低 IP 级限速风险
-            await asyncio.sleep(random.uniform(1.2, 2.6))
+                if status == 200:
+                    consecutive_transient = 0
+                    if not cards:
+                        self.catalog_report['end_observed'] = start > 0
+                        self.catalog_report['termination'] = 'empty_page_after_bounded_wait'
+                        break
+                else:
+                    consecutive_transient += 1
+                    if consecutive_transient >= 2:
+                        self.catalog_report['termination'] = 'consecutive_failed_pages'
+                        break
+                await asyncio.sleep(1.5)
 
-        print(f"[catalog/Currys] 翻页跑完,共 {len(by_slug)} 个商品")
+            # 先完成首次扫描，再按账本逐一补抓暂错缺页；访问拒绝后不再请求。
+            if not self.catalog_report['blocked']:
+                missing = [row['start'] for row in self.catalog_report['pages'].values()
+                           if row['missing'] and row['retryable']]
+                for start in missing:
+                    await asyncio.sleep(3.0)
+                    _, _, blocked = await attempt(start, recovery=True)
+                    if blocked:
+                        self.catalog_report['termination'] = 'blocked'
+                        break
+        finally:
+            await close_playwright_resource(self._catalog_context, 'Currys catalog shared context')
+            self._catalog_context = None
+            self.catalog_report['missing_pages'] = sorted(
+                row['start'] for row in self.catalog_report['pages'].values() if row['missing']
+            )
+            self.catalog_report['complete'] = bool(
+                self.catalog_report['end_observed'] and not self.catalog_report['missing_pages']
+                and not self.catalog_report['blocked']
+            )
+            self.catalog_report['finished_at'] = datetime.now(UTC).isoformat()
+            self.catalog_report['observed_items'] = len(by_slug)
+            self._save_catalog_report()
         return self._build_items(by_slug)
 
     async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
-        return await self.fetch_catalog_from_browser(page.context.browser)
+        items = await self.fetch_catalog_from_browser(page.context.browser)
+        if not self.catalog_report['complete']:
+            error = CurrysCatalogIncomplete(
+                f"Currys 目录不完整: missing_pages={self.catalog_report['missing_pages']}, "
+                f"blocked={self.catalog_report['blocked']}, end_observed={self.catalog_report['end_observed']}"
+            )
+            previous = getattr(self, '_failure_evidence_path', None)
+            if previous is not None:
+                error._catalog_evidence_path = previous
+            else:
+                await capture_catalog_failure(
+                    None, platform=self.platform_name, country=self.country,
+                    stage='catalog_completeness', reason='incomplete_catalog', error=error, adapter=self,
+                )
+            raise error
+        return items
 
     def _build_items(self, by_slug: dict[str, dict]) -> list[CatalogItem]:
         items: list[CatalogItem] = []

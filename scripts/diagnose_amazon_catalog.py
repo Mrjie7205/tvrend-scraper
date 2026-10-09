@@ -5,7 +5,6 @@ import argparse
 import asyncio
 import json
 import os
-import random
 import re
 from collections import Counter
 from datetime import UTC, datetime
@@ -17,9 +16,8 @@ from catalog_scrape.adapters.amazon import (
     AmazonCatalogAdapter, AmazonCatalogIncomplete, _JS_EXTRACT, _page_rejection_reason,
 )
 from catalog_scrape.diagnostics import capture_catalog_failure
-from catalog_scrape.run_weekly import BROWSER_ARGS
 from failure_evidence import redact_text, sanitize_url
-from monitor_prices.core import STEALTH_JS, USER_AGENTS, close_playwright_resource
+from monitor_prices.core import close_playwright_resource, launch_scraper_browser, new_scraper_context
 
 MARKETS = {market.code: market for market in (AMAZON_DE, AMAZON_GB, AMAZON_IT, AMAZON_ES)}
 PAGE_STATE = r"""() => {
@@ -30,7 +28,12 @@ PAGE_STATE = r"""() => {
     nextDisabled: !!document.querySelector('.s-pagination-next.s-pagination-disabled'),
     captcha: /captcha|enter the characters you see below|api-services-support@amazon.com/i.test(text),
     robotCheck: /robot check|not a robot|automated access|unusual traffic|access denied|accesso negato|verify you are human|security check/i.test(text),
-    continueShopping: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfläche unten, um mit dem Einkaufen fortzufahren/i.test(text)
+    continueShopping: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfläche unten, um mit dem Einkaufen fortzufahren/i.test(text),
+    accessChallengeTarget: Array.from(document.querySelectorAll('form, button, input[type=submit]')).some(el => {
+      if (!el.getClientRects().length) return false;
+      const raw = el.getAttribute('action') || el.getAttribute('formaction') || el.form?.getAttribute('action');
+      try { return /\/validatecaptcha\/?$/i.test(new URL(raw || '', location.href).pathname); } catch { return false; }
+    })
   };
 }"""
 
@@ -92,15 +95,10 @@ async def run(args: argparse.Namespace) -> int:
 
     try:
         async with async_playwright() as playwright:
-            try:
-                browser = await playwright.chromium.launch(headless=True, channel='chrome', args=list(BROWSER_ARGS))
-            except Exception:
-                browser = await playwright.chromium.launch(headless=True, args=list(BROWSER_ARGS))
-            context = await browser.new_context(
-                locale=market.locale, timezone_id=market.timezone,
-                viewport={'width': 1366, 'height': 900}, user_agent=random.choice(USER_AGENTS),
+            browser = await launch_scraper_browser(playwright, headless=True)
+            context = await new_scraper_context(
+                browser, country=market.code, locale_override=(market.locale, market.timezone),
             )
-            await context.add_init_script(STEALTH_JS)
             page = await context.new_page()
             try:
                 summary['sessionPrepared'] = await adapter._prepare_market_session(page)

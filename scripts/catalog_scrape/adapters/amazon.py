@@ -20,10 +20,12 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import hashlib
 import os
 import random
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Sequence
 from urllib.parse import parse_qs, quote_plus, urlparse
@@ -237,6 +239,11 @@ _JS_SEARCH_STATE = r"""() => {
     captcha: /captcha|enter the characters you see below|api-services-support@amazon.com/i.test(text),
     robotCheck: /robot check|not a robot|automated access|unusual traffic|access denied|accesso negato|verify you are human|security check/i.test(text),
     continueShopping: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfläche unten, um mit dem Einkaufen fortzufahren/i.test(text)
+    ,accessChallengeTarget: Array.from(document.querySelectorAll('form, button, input[type=submit]')).some(el => {
+      if (!el.getClientRects().length) return false;
+      const raw = el.getAttribute('action') || el.getAttribute('formaction') || el.form?.getAttribute('action');
+      try { return /\/validatecaptcha\/?$/i.test(new URL(raw || '', location.href).pathname); } catch { return false; }
+    })
   };
 }"""
 
@@ -509,6 +516,8 @@ class AmazonCatalogIncomplete(RuntimeError):
 
 
 async def _capture_amazon_failure(page, market, *, stage, reason, adapter=None, **kwargs):
+    if page is not None:
+        vars(page)['_amazon_failure_reason'] = reason
     return await capture_catalog_failure(
         page, platform='Amazon', country=market.code,
         stage=stage, reason=reason, adapter=adapter, **kwargs,
@@ -516,7 +525,7 @@ async def _capture_amazon_failure(page, market, *, stage, reason, adapter=None, 
 
 
 def _page_rejection_reason(http_status: int | None, state: dict) -> str | None:
-    if state.get('captcha') or state.get('robotCheck'):
+    if state.get('captcha') or state.get('robotCheck') or state.get('accessChallengeTarget'):
         return 'access_challenge'
     if state.get('continueShopping'):
         return 'continue_shopping_interstitial'
@@ -534,6 +543,7 @@ async def _checked_page_state(page, market: AmazonMarket, http_status: int | Non
     reason = _page_rejection_reason(http_status, state)
     if reason:
         error = AmazonCatalogIncomplete(f'Amazon {market.code} 页面不可用于配送恢复 ({reason})')
+        error.retryable = reason.startswith('http_5')
         await _capture_amazon_failure(
             page, market, stage=stage, reason=reason, http_status=http_status, error=error,
         )
@@ -950,19 +960,113 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         self.country = market.code
         self.locale_override = (market.locale, market.timezone)
         self.diagnostics: AmazonCatalogDiagnostics | None = None
+        self._price_baseline = {}
+        self._price_change_paths = []
+
+    def _load_price_baseline(self, started_at: datetime, catalog_dir: Path | None = None) -> dict:
+        """只从开始前最新合格正式目录取同市场 ASIN 原币价，不回退到诊断候选。"""
+        from amazon_artifact_gate import inspect_csv, parse_time
+        catalog_dir = catalog_dir or Path(__file__).resolve().parents[3] / 'catalog'
+        country = self.country.lower()
+        for path in sorted(catalog_dir.glob(f'amazon_{country}_*.csv'), reverse=True):
+            try:
+                info = inspect_csv(path, country, '1970-01-01T00:00:00Z', started_at.isoformat())
+                payload = path.read_bytes()
+                if hashlib.sha256(payload).hexdigest() != info['sha256']:
+                    continue
+                rows = list(csv.DictReader(payload.decode('utf-8-sig').splitlines()))
+                if any(parse_time(row['scraped_at']) >= started_at for row in rows):
+                    continue
+            except (OSError, UnicodeError, ValueError, csv.Error):
+                continue
+            result, ambiguous = {}, set()
+            for row in rows:
+                asin = (row.get('asin') or '').strip().upper()
+                if not re.fullmatch(r'[A-Z0-9]{10}', asin):
+                    continue
+                if row.get('currency') != self.market.currency or not row.get('price_local'):
+                    continue
+                parsed = urlparse(row.get('url') or '')
+                if parsed.netloc != urlparse(self.market.base_url).netloc or not re.search(
+                    rf'/(?:dp|gp/product)/{re.escape(asin)}(?:/|$)', parsed.path, re.I,
+                ):
+                    continue
+                baseline = {
+                    'price': row['price_local'], 'currency': row['currency'],
+                    'observed_at': row['scraped_at'], 'source_file': path.name,
+                    'identity_precision': 'country+ASIN+currency',
+                }
+                if asin in result and result[asin]['price'] != baseline['price']:
+                    ambiguous.add(asin)
+                else:
+                    result[asin] = baseline
+            return {asin: row for asin, row in result.items() if asin not in ambiguous}
+        return {}
+
+    async def _record_price_observation(self, page, item: CatalogItem, *, source: str,
+                                        query=None, page_number=None) -> None:
+        """在原观测页还打开时旁路取证，不为截图重新取价或改写正式价格。"""
+        try:
+            from price_anomalies import classify_change, record_price_change
+            asin = item.extra.get('asin')
+            baseline = self._price_baseline.get(asin)
+            if not baseline or not classify_change(
+                baseline['price'], item.price_local,
+                old_currency=baseline['currency'], currency=item.currency,
+            ):
+                return
+            evidence_page = page
+            evidence_source = 'same_product_page'
+            source_page_url = getattr(page, 'url', None)
+            if source == 'catalog_search':
+                evidence_source = 'same_search_page_asin_card'
+                try:
+                    card = page.locator(
+                        f"[data-component-type='s-search-result'][data-asin='{asin}']",
+                    ).first
+                    if not await card.count():
+                        raise ValueError('asin_card_missing')
+                    await card.scroll_into_view_if_needed(timeout=2000)
+                    if not await card.is_visible():
+                        raise ValueError('asin_card_not_visible')
+                except Exception:
+                    evidence_page = None
+                    evidence_source = 'search_observation_asin_card_unavailable'
+            path = await record_price_change(
+                baseline=baseline,
+                observation={
+                    'platform': 'Amazon', 'country': self.country, 'product': asin, 'asin': asin,
+                    'price': item.price_local, 'currency': item.currency, 'url': item.url,
+                    'observed_at': datetime.now(UTC).isoformat(), 'observation_source': source,
+                    'source_page_url': source_page_url, 'source_query': query, 'source_page': page_number,
+                    'ingestion_status': 'pending', 'validation_state': 'unvalidated',
+                },
+                page=evidence_page, evidence_source=evidence_source,
+            )
+            if path is not None:
+                self._price_change_paths.append(path)
+        except Exception:
+            # 旁路证据出错不改变已观测报价或当前目录门禁。
+            pass
+
+    def finalize_price_observations(self, status: str, reason: str | None = None) -> None:
+        from price_anomalies import update_price_change_status
+        for path in self._price_change_paths:
+            try:
+                update_price_change_status(
+                    path, ingestion_status='accepted' if status == 'validated' else 'rejected',
+                    reason=reason,
+                )
+            except Exception:
+                pass
 
     async def _prepare_market_session(self, page) -> bool:
-        """地址或币种守门遇到 Amazon 短时波动时，重建 cookie 状态后有限重试。"""
+        """仅传输暂错可在同一会话退避；配送/币种拒绝或访问挑战不能靠重置身份恢复。"""
         market = self.market
         for attempt in range(1, SESSION_PREP_ATTEMPTS + 1):
             # 每次准备只复用本次下层留下的现场，不能误用上一次页面。
             vars(page).pop('_catalog_failure_evidence_path', None)
-            if attempt > 1:
-                try:
-                    await page.context.clear_cookies()
-                    await page.goto("about:blank")
-                except Exception:
-                    pass
+            vars(page).pop('_amazon_failure_reason', None)
             stage = 'session_location'
             try:
                 location_ok = await set_amazon_market_location(page, market)
@@ -978,12 +1082,16 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     page, market, stage=stage, reason='session_preparation_error',
                     error=error, adapter=self,
                 )
+                if getattr(error, 'retryable', False) and attempt < SESSION_PREP_ATTEMPTS:
+                    await asyncio.sleep(3.0 * attempt)
+                    continue
                 raise
             if location_ok and canary_ok:
                 if attempt > 1:
                     print(f"[catalog/Amazon/{market.code}] 会话守门第 {attempt} 次成功 OK")
                 return True
             # 必须在下一次清状态/导航之前保存这一次真实页面。
+            failure_reason = vars(page).get('_amazon_failure_reason')
             previous = vars(page).get('_catalog_failure_evidence_path')
             if previous is not None:
                 self._failure_evidence_captured = True
@@ -994,6 +1102,12 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     reason='delivery_location_unverified' if not location_ok else 'canary_rejected',
                     adapter=self,
                 )
+            retryable = failure_reason in {
+                'navigation_error', 'location_token_request_error', 'address_request_error',
+                'canary_request_error', 'state_read_error',
+            }
+            if not retryable:
+                return False
             if attempt < SESSION_PREP_ATTEMPTS:
                 print(
                     f"[catalog/Amazon/{market.code}] 会话守门第 {attempt} 次失败 "
@@ -1267,7 +1381,9 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             return None
         if is_non_tv_title(title):
             return None
-        return self._build_item(asin, title, brand, size, detail.get("price") or "")
+        item = self._build_item(asin, title, brand, size, detail.get("price") or "")
+        await self._record_price_observation(page, item, source='catalog_detail')
+        return item
 
     async def _expand_variants_from_seed(
         self,
@@ -1337,6 +1453,8 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
 
     async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
         market = self.market
+        self._price_change_paths = []
+        self._price_baseline = self._load_price_baseline(datetime.now(UTC))
         self.diagnostics = AmazonCatalogDiagnostics(market.code)
         if not await self._prepare_market_session(page):
             self.diagnostics.finish(status='rejected', reason='会话地址或价格 canary 守门失败')
@@ -1446,6 +1564,9 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                         continue
                     item.extra["variant_hint"] = bool(r.get("variantHint"))
                     item.extra["search_kind"] = query_kind
+                    await self._record_price_observation(
+                        page, item, source='catalog_search', query=q, page_number=n,
+                    )
                     by_asin[asin] = item
                     if self._should_expand_variants(r, item):
                         variant_seeds[asin] = item

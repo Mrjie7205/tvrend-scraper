@@ -1,0 +1,268 @@
+"""真实浏览器配置、Amazon 可比原币快照和 Currys 分页完整性；全部离线。"""
+from __future__ import annotations
+
+import csv
+from datetime import UTC, datetime
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+from types import SimpleNamespace
+import unittest
+from unittest.mock import AsyncMock, MagicMock, patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+from monitor_prices.core import launch_scraper_browser, new_scraper_context
+from catalog_scrape.adapters.amazon import AMAZON_GB, AmazonCatalogAdapter, _page_rejection_reason
+from catalog_scrape.adapters.currys import CurrysCatalogAdapter, CurrysCatalogIncomplete
+from monitor_prices.adapters.boulanger import BoulangerAdapter
+
+
+class BrowserFactoryTests(unittest.IsolatedAsyncioTestCase):
+    async def test_fixed_chromium_without_identity_or_certificate_overrides(self):
+        launch = AsyncMock()
+        playwright = SimpleNamespace(chromium=SimpleNamespace(launch=launch))
+        await launch_scraper_browser(playwright)
+        options = launch.await_args.kwargs
+        self.assertNotIn('channel', options)
+        self.assertNotIn('executable_path', options)
+        self.assertTrue(options['headless'])
+        self.assertFalse(any('AutomationControlled' in arg or 'ignore-certificate' in arg for arg in options['args']))
+        launch.side_effect = RuntimeError('browser missing')
+        with self.assertRaises(RuntimeError):
+            await launch_scraper_browser(playwright)
+        self.assertEqual(2, launch.await_count, '每次只启动一次，失败不能换浏览器身份')
+
+    async def test_all_market_contexts_keep_real_locale_and_native_ua(self):
+        browser = AsyncMock()
+        for country, locale in [('GB', 'en-GB'), ('IT', 'it-IT'), ('DE', 'de-DE'),
+                                ('ES', 'es-ES'), ('FR', 'fr-FR'), ('NO', 'nb-NO')]:
+            context = await new_scraper_context(browser, country=country)
+            self.assertEqual(locale, browser.new_context.await_args.kwargs['locale'])
+            self.assertNotIn('user_agent', browser.new_context.await_args.kwargs)
+            context.add_init_script.assert_not_awaited()
+
+    async def test_boulanger_batch_also_uses_native_french_context(self):
+        browser = AsyncMock()
+        with patch('catalog_scrape.adapters.boulanger.BoulangerCatalogAdapter.fetch_catalog',
+                   new=AsyncMock(return_value=[])):
+            self.assertEqual({}, await BoulangerAdapter().prepare_batch_prices(browser, []))
+        self.assertEqual('fr-FR', browser.new_context.await_args.kwargs['locale'])
+        self.assertNotIn('user_agent', browser.new_context.await_args.kwargs)
+        browser.new_context.return_value.add_init_script.assert_not_awaited()
+
+
+class AmazonPriceBaselineTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.adapter = AmazonCatalogAdapter(AMAZON_GB)
+        self.started = datetime(2026, 10, 9, 10, tzinfo=UTC)
+
+    def catalog(self, day, price='100', *, country='GB', currency='GBP', target=True):
+        path = self.root / f'amazon_{country.lower()}_202610{day:02}.csv'
+        fields = ['platform', 'country', 'scraped_at', 'url', 'raw_text', 'currency',
+                  'price_local', 'price_eur', 'price_hint_eur', 'asin']
+        with path.open('w', newline='', encoding='utf-8') as handle:
+            writer = csv.DictWriter(handle, fieldnames=fields)
+            writer.writeheader()
+            for index in range(100):
+                asin = f'B{index + 1:09}'
+                if index == 0 and not target:
+                    asin = 'B999999999'
+                writer.writerow({
+                    'platform': 'Amazon', 'country': country, 'scraped_at': f'2026-10-{day:02}T09:00:00Z',
+                    'url': f'https://www.amazon.co.uk/dp/{asin}', 'raw_text': 'TCL 55 TV', 'asin': asin,
+                    'currency': currency, 'price_local': price, 'price_eur': price, 'price_hint_eur': price,
+                })
+        return path
+
+    def test_latest_valid_formal_catalog_is_frozen_before_run(self):
+        self.catalog(7, '100')
+        self.catalog(8, '120')
+        self.catalog(10, '999')
+        baseline = self.adapter._load_price_baseline(self.started, self.root)
+        self.assertEqual('120', baseline['B000000001']['price'])
+        self.assertEqual('amazon_gb_20261008.csv', baseline['B000000001']['source_file'])
+        self.catalog(8, '130')
+        self.assertEqual('120', baseline['B000000001']['price'], '冻结字典不能被后续文件变更污染')
+
+    def test_invalid_currency_or_nonfinite_latest_file_cannot_be_baseline(self):
+        self.catalog(7, '100')
+        for price, currency in [('120', 'EUR'), ('NaN', 'GBP'), ('0', 'GBP')]:
+            self.catalog(8, price, currency=currency)
+            result = self.adapter._load_price_baseline(self.started, self.root)
+            self.assertEqual('100', result['B000000001']['price'])
+
+    def test_missing_asin_in_latest_catalog_does_not_borrow_older_price(self):
+        self.catalog(7, '100')
+        self.catalog(8, '120', target=False)
+        self.assertNotIn('B000000001', self.adapter._load_price_baseline(self.started, self.root))
+
+    def test_partial_and_diagnostic_candidates_are_not_qualified_catalogs(self):
+        path = self.catalog(8)
+        path.write_text('\n'.join(path.read_text().splitlines()[:3]) + '\n')
+        self.assertEqual({}, self.adapter._load_price_baseline(self.started, self.root))
+
+    def test_visible_validate_captcha_target_is_access_challenge(self):
+        self.assertEqual('access_challenge', _page_rejection_reason(200, {'accessChallengeTarget': True}))
+
+
+class AmazonObservationTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.adapter = AmazonCatalogAdapter(AMAZON_GB)
+        self.adapter._price_baseline = {'B000000001': {
+            'price': '100', 'currency': 'GBP', 'observed_at': '2026-10-08T00:00:00Z',
+        }}
+        self.capture = self.enterContext(patch('price_anomalies.record_price_change',
+                                              new=AsyncMock(return_value=Path('event.json'))))
+
+    def item(self, value):
+        return self.adapter._build_item('B000000001', 'TCL 55 TV', 'TCL', 55, f'£{value}')
+
+    async def test_threshold_boundaries_capture_original_page_and_pending_state(self):
+        page = AsyncMock()
+        page.url = 'https://www.amazon.co.uk/dp/B000000001'
+        for value in ('200', '50'):
+            await self.adapter._record_price_observation(page, self.item(value), source='catalog_detail')
+            self.assertIs(page, self.capture.await_args.kwargs['page'])
+            observation = self.capture.await_args.kwargs['observation']
+            self.assertEqual('pending', observation['ingestion_status'])
+            self.assertEqual('unvalidated', observation['validation_state'])
+            self.assertEqual('B000000001', observation['asin'])
+        self.assertEqual(2, self.capture.await_count)
+
+    async def test_nontrigger_and_currency_mismatch_do_not_capture(self):
+        page = AsyncMock()
+        for value in ('199.99', '50.01'):
+            await self.adapter._record_price_observation(page, self.item(value), source='catalog_detail')
+        self.adapter._price_baseline['B000000001']['currency'] = 'EUR'
+        await self.adapter._record_price_observation(page, self.item('200'), source='catalog_detail')
+        self.capture.assert_not_awaited()
+
+    async def test_search_snapshot_requires_visible_corresponding_asin(self):
+        page = MagicMock()
+        page.url = 'https://www.amazon.co.uk/s?k=tcl&page=1'
+        card = MagicMock()
+        card.count = AsyncMock(return_value=1)
+        card.is_visible = AsyncMock(return_value=True)
+        card.scroll_into_view_if_needed = AsyncMock()
+        page.locator.return_value.first = card
+        await self.adapter._record_price_observation(page, self.item('200'),
+                                                    source='catalog_search', query='tcl', page_number=1)
+        self.assertIs(page, self.capture.await_args.kwargs['page'])
+        card.scroll_into_view_if_needed.assert_awaited_once()
+        self.assertIn('B000000001', page.locator.call_args.args[0])
+        card.count.return_value = 0
+        await self.adapter._record_price_observation(page, self.item('50'), source='catalog_search')
+        self.assertIsNone(self.capture.await_args.kwargs['page'])
+        self.assertEqual('search_observation_asin_card_unavailable', self.capture.await_args.kwargs['evidence_source'])
+
+    async def test_capture_failure_leaves_quote_and_business_result_unchanged(self):
+        item = self.item('200')
+        self.capture.side_effect = OSError('evidence unavailable')
+        await self.adapter._record_price_observation(AsyncMock(), item, source='catalog_detail')
+        self.assertEqual(200.0, item.price_local)
+        self.assertEqual([], self.adapter._price_change_paths)
+
+    def test_rejected_catalog_marks_all_events_rejected(self):
+        self.adapter._price_change_paths = [Path('event.json')]
+        with patch('price_anomalies.update_price_change_status') as update:
+            self.adapter.finalize_price_observations('rejected', 'incomplete catalog')
+        self.assertEqual('rejected', update.call_args.kwargs['ingestion_status'])
+
+    async def test_transport_retry_reuses_session_without_clearing_cookies(self):
+        page = AsyncMock()
+        calls = 0
+        async def location(*args):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                vars(page)['_amazon_failure_reason'] = 'navigation_error'
+                return False
+            return True
+        with patch('catalog_scrape.adapters.amazon.set_amazon_market_location', side_effect=location), patch(
+            'catalog_scrape.adapters.amazon.verify_amazon_detail_canary', new=AsyncMock(return_value=True),
+        ), patch('catalog_scrape.adapters.amazon.asyncio.sleep', new=AsyncMock()), patch(
+            'catalog_scrape.diagnostics.capture_failure', new=AsyncMock(return_value=None),
+        ):
+            self.assertTrue(await self.adapter._prepare_market_session(page))
+        self.assertEqual(2, calls)
+        page.context.clear_cookies.assert_not_awaited()
+        page.goto.assert_not_awaited()
+
+
+class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.enterContext(patch.dict(os.environ, {'CURRYS_CATALOG_DIAGNOSTICS_DIR': self.temp.name}))
+        self.enterContext(patch('catalog_scrape.adapters.currys.asyncio.sleep', new=AsyncMock()))
+        self.enterContext(patch('catalog_scrape.diagnostics.capture_failure', new=AsyncMock(return_value=Path('evidence.json'))))
+        self.adapter = CurrysCatalogAdapter()
+        self.context = AsyncMock()
+        self.adapter._new_context = AsyncMock(return_value=self.context)
+
+    @staticmethod
+    def card(number):
+        return {'slug': f'tcl-55-tv-{number}', 'title': f'TCL 55 TV MODEL {number}',
+                'price': '£300', 'href': f'/products/tcl-55-tv-{number}.html'}
+
+    async def test_transient_gap_is_recorded_and_recovered_once_after_initial_scan(self):
+        self.adapter._scrape_page = AsyncMock(side_effect=[
+            (200, [self.card(1)]), (503, []), (200, [self.card(3)]), (200, []),
+            (200, [self.card(2)]),
+        ])
+        await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        starts = [call.args[1] for call in self.adapter._scrape_page.await_args_list]
+        self.assertEqual([0, 50, 100, 150, 50], starts)
+        self.assertTrue(self.adapter.catalog_report['complete'])
+        self.assertEqual([], self.adapter.catalog_report['missing_pages'])
+        self.assertEqual(2, len(self.adapter.catalog_report['pages']['50']['attempts']))
+        self.adapter._new_context.assert_awaited_once()
+        self.context.close.assert_awaited_once()
+        self.assertTrue(list(Path(self.temp.name).rglob('report.json')))
+
+    async def test_unrecovered_gap_keeps_daily_observations_but_rejects_weekly_catalog(self):
+        self.adapter._scrape_page = AsyncMock(side_effect=[
+            (200, [self.card(1)]), (503, []), (200, []), (503, []),
+        ])
+        page = AsyncMock()
+        with self.assertRaises(CurrysCatalogIncomplete):
+            await self.adapter.fetch_catalog(page)
+        self.assertEqual([50], self.adapter.catalog_report['missing_pages'])
+        self.assertEqual(1, self.adapter.catalog_report['observed_items'])
+        self.assertFalse(self.adapter.catalog_report['complete'])
+
+    async def test_403_stops_without_new_identity_or_recovery(self):
+        self.adapter._scrape_page = AsyncMock(side_effect=[(200, [self.card(1)]), (403, [])])
+        items = await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.assertEqual(1, len(items))
+        self.assertEqual(2, self.adapter._scrape_page.await_count)
+        self.assertTrue(self.adapter.catalog_report['blocked'])
+        self.assertFalse(self.adapter.catalog_report['complete'])
+
+    async def test_http_403_is_classified_even_when_dom_unreadable(self):
+        page = AsyncMock()
+        page.goto.return_value = SimpleNamespace(status=403)
+        page.evaluate.side_effect = RuntimeError('DOM unreadable')
+        self.context.new_page.return_value = page
+        status, cards = await self.adapter._scrape_page(AsyncMock(), 0)
+        self.assertEqual(403, status)
+        self.assertEqual([], cards)
+        self.assertTrue(self.adapter._last_page_info['blocked'])
+        self.assertFalse(self.adapter._last_page_info['retryable'])
+        page.evaluate.assert_not_awaited()
+
+    async def test_page_limit_cannot_be_called_complete(self):
+        self.adapter._scrape_page = AsyncMock(return_value=(200, [self.card(1)]))
+        with patch('catalog_scrape.adapters.currys.MAX_PAGES', 2):
+            await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.assertFalse(self.adapter.catalog_report['complete'])
+        self.assertFalse(self.adapter.catalog_report['end_observed'])
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -31,14 +31,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from monitor_prices.core import (  # noqa: E402
     DEFAULT_LOCALE,
-    STEALTH_JS,
-    USER_AGENTS,
-    VIEWPORT_HEIGHTS,
-    VIEWPORT_WIDTHS,
     channels_in_scope,
     close_playwright_resource,
     handle_antibot_page,
-    locale_for,
     platform_in_scope,
 )
 from monitor_prices.checkpoint import reset_checkpoint, write_checkpoint  # noqa: E402
@@ -51,22 +46,19 @@ from monitor_prices.prices_io import (  # noqa: E402
 )
 from monitor_prices.adapters import get_adapter, supported_platforms  # noqa: E402
 from failure_evidence import capture_failure, record_failure  # noqa: E402
+from failure_evidence import _atomic_json, _bounded  # noqa: E402
+from price_anomalies import classify_change, record_price_change, attach_price_verification, summarize  # noqa: E402
+from monitor_prices.prices_io import FrozenPriceHistory, load_latest_historical_observations  # noqa: E402
+from monitor_prices.core import launch_scraper_browser, new_scraper_context  # noqa: E402
+from monitor_prices.core import ANTIBOT_TITLE_MARKERS  # noqa: E402
+from datetime import timezone
+from collections import Counter
+import json
 
 CONCURRENCY = int(os.environ.get("MONITOR_CONCURRENCY", "3"))
 HEADLESS = os.environ.get("HEADLESS_MODE", "true").lower() != "false"
 MAX_SKUS = int(os.environ.get("MONITOR_MAX_SKUS", "0") or "0")
 SKU_TIMEOUT_SECONDS = float(os.environ.get("MONITOR_SKU_TIMEOUT_SECONDS", "120") or "120")
-
-# Playwright 启动参数(降低指纹)
-BROWSER_ARGS = (
-    "--disable-blink-features=AutomationControlled",
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-infobars",
-    "--ignore-certificate-errors",
-    "--disable-dev-shm-usage",
-)
-
 
 def _safe_filename(s: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", s or "unknown")[:64]
@@ -125,28 +117,80 @@ def _batch_price_outlier_keys(adapter, skus: list[dict], prices: dict, hist: dic
 
 async def _new_context(browser, adapter, country: str):
     """按渠道地区创建浏览器会话，供单 SKU 或共享会话渠道复用。"""
-    locale, tz = adapter.locale_override or locale_for(country)
-    ctx = await browser.new_context(
-        user_agent=random.choice(USER_AGENTS),
-        viewport={
-            "width": random.choice(VIEWPORT_WIDTHS),
-            "height": random.choice(VIEWPORT_HEIGHTS),
-        },
-        locale=locale,
-        timezone_id=tz,
-    )
-    try:
-        await ctx.add_init_script(STEALTH_JS)
-    except BaseException:
-        # context 已创建但初始化失败时，调用方尚未拿到资源，必须在此有界释放。
-        await close_playwright_resource(ctx, f"{adapter.platform_name} incomplete context")
-        raise
+    ctx = await new_scraper_context(browser, country=country, locale_override=adapter.locale_override)
     if getattr(adapter, "context_cookies", ()):
         try:
             await ctx.add_cookies(list(adapter.context_cookies))
         except Exception as e:
             print(f"  [{adapter.platform_name}] 注入 context_cookies 失败: {str(e)[:80]}")
     return ctx
+
+
+async def _observe_success(result, sku, hist, adapter, browser, *, page=None, context=None, source="product_page"):
+    """最终成功价先固定时间；价格留证旁路失败不得把已取得的报价改成失败。"""
+    stamp = datetime.now(timezone.utc)
+    result["Date"], result["Time"] = stamp.strftime("%Y-%m-%d"), stamp.strftime("%H:%M:%S")
+    baseline = getattr(hist, "observations", {}).get((sku["product_name"], sku["country"], sku["platform"], str(result["Currency"]).upper()))
+    if not baseline or not classify_change(baseline["price"], result["Price"], old_currency=baseline["currency"], currency=result["Currency"]):
+        return
+    observation = {"price": result["Price"], "currency": result["Currency"],
+                   "observed_at": f"{result['Date']}T{result['Time']}+00:00",
+                   "platform": sku["platform"], "country": sku["country"], "product": sku["product_name"],
+                   "url": sku["url"], "listing_id": adapter.batch_price_key(sku["url"]),
+                   "source_page_url": getattr(page, "url", None) if page is not None else None,
+                   "observation_source": source, "ingestion_status": "accepted"}
+    verification_page, verification_context = None, None
+    event_path = None
+    try:
+        event_path = await record_price_change(baseline=baseline, observation=observation, page=page,
+                                               evidence_source="same_product_page" if page is not None else "pdp_verification_pending")
+        if page is not None or event_path is None:
+            return
+        if json.loads(event_path.read_text(encoding="utf-8")).get("verification") is not None:
+            return  # 同一观测已复核，不重复打开页面。
+        if getattr(adapter, "catalog_report", {}).get("blocked"):
+            await attach_price_verification(event_path, verification={"status": "not_attempted_channel_blocked"},
+                                            evidence_source="pdp_not_opened_channel_blocked")
+            return
+        verification = {"status": "not_attempted", "url": sku["url"]}
+
+        async def verify_once():
+            nonlocal verification_page, verification_context, verification
+            ctx = context
+            if ctx is None:
+                verification_context = await _new_context(browser, adapter, sku["country"])
+                ctx = verification_context
+            verification_page = await ctx.new_page()
+            response = await verification_page.goto(sku["url"], wait_until="domcontentloaded", timeout=10000)
+            status = response.status if response else 0
+            title = await verification_page.title()
+            reason = adapter.classify_response(status, sku["url"], verification_page.url, title) if hasattr(adapter, "classify_response") else None
+            if not reason and any(marker in title.lower() for marker in ANTIBOT_TITLE_MARKERS):
+                reason = "challenge_unresolved"
+            if status in {403, 429} or reason:
+                verification = {"status": reason or "access_blocked", "http_status": status, "url": verification_page.url}
+                return
+            if status != 200 or adapter.is_unavailable_response(status, sku["url"], verification_page.url):
+                verification = {"status": "page_unavailable", "http_status": status, "url": verification_page.url}
+                return
+            price = await adapter.extract_price(verification_page)
+            verification = {"status": "price_observed" if price else "price_not_found", "http_status": status,
+                            "url": verification_page.url, "observed_at": datetime.now(timezone.utc).isoformat()}
+            if price:
+                verification.update(price=float(price[0]), currency=price[1])
+        try:
+            await _bounded(verify_once(), 12.0)
+        except (Exception, asyncio.CancelledError) as exc:
+            verification = {"status": "verification_timeout" if isinstance(exc, (asyncio.TimeoutError, asyncio.CancelledError)) else "verification_failed",
+                            "error_type": type(exc).__name__, "url": sku["url"]}
+        await attach_price_verification(event_path, page=verification_page, verification=verification)
+    except (Exception, asyncio.CancelledError) as exc:
+        print(json.dumps({"event": "price_evidence_unavailable", "error_type": type(exc).__name__, "price_preserved": True}))
+    finally:
+        if verification_page is not None:
+            await close_playwright_resource(verification_page, "price verification page", timeout_seconds=1)
+        if verification_context is not None:
+            await close_playwright_resource(verification_context, "price verification context", timeout_seconds=1)
 
 
 async def process_sku(
@@ -196,6 +240,13 @@ async def process_sku(
             result["Page Title"] = "Batch category snapshot"
             result["Price_Trend"] = compute_price_trend(name, country, platform, new_price, hist)
             print(f"  [ok/batch] {currency} {new_price} ({result['Price_Trend']})")
+            await _observe_success(result, sku, hist, adapter, browser, source="batch_catalog")
+            return result
+
+        if getattr(adapter, "catalog_report", {}).get("blocked"):
+            result["Status"] = "Failed: channel_access_blocked"
+            record_failure(platform=platform, country=country, stage="blocked_before_pdp",
+                           reason="channel_access_blocked", url=url, product=name)
             return result
 
         ctx = shared_context
@@ -226,6 +277,7 @@ async def process_sku(
                     result["Page Title"] = "Direct API"
                     result["Price_Trend"] = compute_price_trend(name, country, platform, new_price, hist)
                     print(f"  [ok/api] {currency} {new_price} ({result['Price_Trend']})")
+                    await _observe_success(result, sku, hist, adapter, browser, context=ctx, source="direct_api")
                     return result
                 print(f"  [{name}] direct API 无价，回退页面抓取")
 
@@ -243,7 +295,15 @@ async def process_sku(
                     wait_until = getattr(adapter, "navigation_wait_until", "domcontentloaded")
                     response = await page.goto(url, wait_until=wait_until, timeout=timeout_ms)
                     status = response.status if response else 0
-                    if adapter.is_unavailable_response(status, url, page.url):
+                    if platform.lower() == "currys":
+                        # 先判访问拒绝，再判链接失效；403跳转不能被写成下架。
+                        reason = adapter.classify_response(status, url, page.url)
+                        if status in {403, 429} and reason:
+                            result["Status"] = f"Failed: {reason}"
+                            result["Page Title"] = f"HTTP {status} → {page.url}"
+                            failure_reason = reason
+                            break
+                    if platform.lower() != "currys" and adapter.is_unavailable_response(status, url, page.url):
                         result["Status"] = "Failed: Dead Link"
                         result["Page Title"] = f"HTTP {status} → {page.url}"
                         print(f"  [{name}] 死链/下架: HTTP {status} → {page.url[:100]}")
@@ -258,6 +318,15 @@ async def process_sku(
                         except Exception:
                             # HTTP 状态和最终 URL 已拿到；重页面继续由反爬检测和价格选择器判断。
                             pass
+                    if platform.lower() == "currys":
+                        reason = adapter.classify_response(status, url, page.url, await page.title())
+                        if reason:
+                            if reason == "http_error" and status >= 500 and attempt < MAX_RETRIES - 1:
+                                print(f"  [{name}] 临时 HTTP {status}，保留一次导航重试")
+                                continue
+                            result["Status"] = f"Failed: {reason}"
+                            failure_reason = reason
+                            break
                     passed = await handle_antibot_page(
                         page,
                         name,
@@ -265,13 +334,19 @@ async def process_sku(
                         wait_seconds=getattr(adapter, "antibot_wait_seconds", 5.0),
                     )
                     if not passed:
+                        if platform.lower() == "currys":
+                            result["Status"] = "Failed: challenge_unresolved"
+                            failure_reason = "challenge_unresolved"
+                            break
                         raise RuntimeError("反爬验证等待超时")
                 except Exception as e:
                     print(f"  [{name}] 导航异常 ({attempt + 1}/{MAX_RETRIES}): {str(e)[:80]}")
                     if attempt < MAX_RETRIES - 1:
                         continue
                     result["Status"] = "Failed: Navigation Error"
-                    failure_reason = "navigation_error"
+                    failure_reason = "navigation_timeout" if isinstance(e, (asyncio.TimeoutError, TimeoutError)) or "Timeout" in type(e).__name__ else "navigation_error"
+                    if platform.lower() == "currys":
+                        result["Status"] = f"Failed: {failure_reason}"
                     failure_error = e
                     break
 
@@ -312,6 +387,7 @@ async def process_sku(
                     result["Page Title"] = (await page.title()) or ""
                     result["Price_Trend"] = compute_price_trend(name, country, platform, new_price, hist)
                     print(f"  [ok] {currency} {new_price} ({result['Price_Trend']})")
+                    await _observe_success(result, sku, hist, adapter, browser, page=page, context=ctx)
                     break
                 else:
                     if attempt < MAX_RETRIES - 1:
@@ -336,6 +412,7 @@ async def process_sku(
                     await capture_failure(page, platform=platform, country=country, stage=stage,
                                           reason=failure_reason, url=url, http_status=status,
                                           product=name, error=failure_error,
+                                          listing_id=adapter.batch_price_key(url),
                                           timeout_seconds=1.0 if failure_reason == "sku_cancelled" else None)
             except (Exception, asyncio.CancelledError):
                 # 即使诊断被取消，仍先清理资源，再由原始异常/状态决定抓取结果。
@@ -489,21 +566,17 @@ async def run() -> int:
         runnable = runnable[:MAX_SKUS]
 
     print(f"[monitor] 抓取 {len(runnable)} SKU · headless={HEADLESS} · concurrency={CONCURRENCY}")
-    hist = load_latest_historical_prices()
+    hist = FrozenPriceHistory(load_latest_historical_prices(), load_latest_historical_observations())
 
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
         try:
-            browser = await p.chromium.launch(headless=HEADLESS, channel="chrome", args=list(BROWSER_ARGS))
-        except Exception:
-            try:
-                browser = await p.chromium.launch(headless=HEADLESS, args=list(BROWSER_ARGS))
-            except (Exception, asyncio.CancelledError) as exc:
-                for platform, country in sorted({(s["platform"], s["country"]) for s in runnable}):
-                    record_failure(platform=platform, country=country, stage="browser_launch",
-                                   reason="browser_unavailable", error=exc)
-                raise
+            browser = await launch_scraper_browser(p, headless=HEADLESS)
+        except (Exception, asyncio.CancelledError) as exc:
+            for platform, country in sorted({(s["platform"], s["country"]) for s in runnable}):
+                record_failure(platform=platform, country=country, stage="browser_launch", reason="browser_unavailable", error=exc)
+            raise
 
         sem = asyncio.Semaphore(CONCURRENCY)
         batch_price_maps: dict[str, dict[str, tuple[float, str]]] = {}
@@ -591,8 +664,8 @@ async def run() -> int:
                 batch_rows = batch if isinstance(batch, list) else [batch]
                 now = datetime.now()
                 for row in batch_rows:
-                    row["Date"] = now.strftime("%Y-%m-%d")
-                    row["Time"] = now.strftime("%H:%M:%S")
+                    row.setdefault("Date", now.strftime("%Y-%m-%d"))
+                    row.setdefault("Time", now.strftime("%H:%M:%S"))
                 results.extend(batch_rows)
                 completed += len(batch_rows)
                 try:
@@ -620,6 +693,19 @@ async def run() -> int:
     n_ok = sum(1 for r in results if r["Status"] == "Success")
     n_fail = len(results) - n_ok
     n_batch = sum(1 for r in results if r["Page Title"] == "Batch category snapshot")
+    evidence = summarize()
+    quality = {"attempted": len(runnable), "success": n_ok, "failed": n_fail,
+               "failed_by_category": dict(Counter(r["Status"] for r in results if r["Status"] != "Success")),
+               "latest_date": max((r["Date"] for r in results if r["Status"] == "Success"), default=None),
+               "price_anomalies": evidence["events"], "price_screenshots": evidence["screenshots_saved"],
+               "price_evidence_write_failures": evidence["write_failures_this_process"],
+               "price_screenshot_statuses": evidence["screenshot_statuses"],
+               "catalog_reports": {platform: getattr(get_adapter(platform), "catalog_report", {}) for platform in sorted({s["platform"] for s in runnable})},
+               "collection_status": "complete" if not n_fail else "partial", "publication_status": "awaiting_publish_job"}
+    try:
+        _atomic_json(checkpoint_path.parent / "quality.json", quality)
+    except OSError as exc:
+        print(json.dumps({"event": "monitor_quality_write_failed", "error_type": type(exc).__name__}))
     print(
         f"\n[monitor] 完成 · 成功 {n_ok} / 失败 {n_fail} (共 {len(results)})"
         f" · 类目快照命中 {n_batch}"

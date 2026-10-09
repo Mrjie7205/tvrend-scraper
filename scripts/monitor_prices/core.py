@@ -161,6 +161,30 @@ def locale_for(country: str) -> tuple[str, str]:
     return COUNTRY_LOCALE.get(country.upper(), DEFAULT_LOCALE)
 
 
+# 使用当前 Playwright 配套 Chromium；禁止按访问挑战切换身份或浏览器来源。
+SCRAPER_BROWSER_ARGS = ("--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage")
+
+
+async def launch_scraper_browser(playwright, *, headless: bool = True):
+    """正式抓取和诊断共用固定引擎，不自动回退系统 Chrome。"""
+    browser = await playwright.chromium.launch(headless=headless, args=list(SCRAPER_BROWSER_ARGS))
+    version = getattr(browser, 'version', None)
+    if isinstance(version, str):
+        print(f"[browser] Playwright Chromium {version}; native identity; headless={headless}")
+    return browser
+
+
+async def new_scraper_context(browser, *, country: str,
+                              locale_override: tuple[str, str] | None = None,
+                              viewport: dict | None = None):
+    """按真实市场设置语言/时区，不覆盖 UA、浏览器属性或所有站点的语言。"""
+    locale, timezone = locale_override or locale_for(country)
+    return await browser.new_context(
+        locale=locale, timezone_id=timezone,
+        viewport=viewport or {'width': 1366, 'height': 900},
+    )
+
+
 # ============================================================
 # 价格文本清洗
 # ============================================================

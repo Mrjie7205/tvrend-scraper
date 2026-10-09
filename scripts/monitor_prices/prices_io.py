@@ -165,6 +165,44 @@ def compute_price_trend(name: str, country: str, platform: str, new_price: float
     return "持平"
 
 
+def load_latest_historical_observations() -> dict[tuple[str, str, str, str], dict]:
+    """按型号/国家/渠道/原币种冻结最近成功观测；旧11列主表不能证明同一 listing。"""
+    latest = {}
+    sources = sorted((_root() / "raw").glob("prices*.csv"), key=lambda p: (p.name == "prices.csv", p.name))
+    for source in sources:
+        with source.open(encoding="utf-8-sig", newline="") as handle:
+            for row in csv.DictReader(handle):
+                if row.get("Status") != "Success":
+                    continue
+                try:
+                    stamp = datetime.strptime(f"{row.get('Date', '')} {row.get('Time') or '00:00:00'}", "%Y-%m-%d %H:%M:%S")
+                except (TypeError, ValueError):
+                    continue
+                # 最新成功行若含零值/坏价，保留其基线状态让比较跳过；不偷偷退回更旧正价。
+                try:
+                    price = float(row.get("Price", ""))
+                    if not math.isfinite(price):
+                        price = None
+                except (TypeError, ValueError):
+                    price = None
+                currency = (row.get("Currency") or "").strip().upper()
+                if not currency:
+                    continue
+                key = tuple((row.get(c) or "").strip() for c in ("Product Name", "Country", "Platform")) + (currency,)
+                value = {"price": price, "currency": currency, "observed_at": stamp.isoformat() + "+00:00", "source_file": source.name,
+                         "identity_precision": "model_country_platform_currency"}
+                if key not in latest or value["observed_at"] >= latest[key]["observed_at"]:
+                    latest[key] = value
+    return latest
+
+
+class FrozenPriceHistory(dict):
+    """保持旧浮点价字典接口，另挂只读使用的本轮历史快照。"""
+    def __init__(self, prices: dict, observations: dict):
+        super().__init__(prices)
+        self.observations = observations
+
+
 def append_prices(rows: Iterable[dict]) -> None:
     """本地追加主表；Actions 只交接本轮观测，避免携带旧主表覆盖远端。"""
     rows = list(rows)

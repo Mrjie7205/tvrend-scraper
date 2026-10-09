@@ -93,12 +93,12 @@ class MonitorEvidenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(capture.await_args.args[0])
         self.assertEqual("create_context", capture.await_args.kwargs["stage"])
 
-    async def test_context_initialization_failure_closes_unreturned_context(self):
-        self.ctx.add_init_script = AsyncMock(side_effect=RuntimeError("init unavailable"))
+    async def test_context_uses_shared_native_factory_without_stealth(self):
+        self.ctx.add_init_script = AsyncMock()
         browser = SimpleNamespace(new_context=AsyncMock(return_value=self.ctx))
-        with self.assertRaisesRegex(RuntimeError, "init unavailable"):
-            await ORIGINAL_NEW_CONTEXT(browser, adapter(), "FR")
-        self.ctx.close.assert_awaited_once()
+        result = await ORIGINAL_NEW_CONTEXT(browser, adapter(), "FR")
+        self.assertIs(result, self.ctx)
+        self.ctx.add_init_script.assert_not_awaited()
 
     async def test_shared_warmup_page_creation_failure_still_has_summary(self):
         chosen = adapter()
@@ -116,7 +116,7 @@ class MonitorEvidenceTests(unittest.IsolatedAsyncioTestCase):
         self.page.goto.side_effect = TimeoutError("navigation timed out")
         result = await self.run_sku(adapter())
         self.assertEqual("Failed: Navigation Error", result["Status"])
-        self.assertEqual("navigation_error", capture.await_args.kwargs["reason"])
+        self.assertEqual("navigation_timeout", capture.await_args.kwargs["reason"])
         self.page.goto.side_effect = None
         result = await self.run_sku(adapter())
         self.assertEqual("Failed: Price Not Found", result["Status"])

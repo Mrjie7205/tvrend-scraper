@@ -251,7 +251,7 @@ def _visible_payload(raw) -> dict:
 
 
 async def capture_failure(page, *, platform, country, stage, reason, url=None, http_status=None,
-                          product=None, error=None, timeout_seconds=None) -> Path | None:
+                          product=None, error=None, timeout_seconds=None, listing_id=None) -> Path | None:
     """先持久化最小现场，再限时采集已脱敏结构/真实页面截图；任何采集异常均旁路处理。"""
     path = None
     document = None
@@ -283,6 +283,9 @@ async def capture_failure(page, *, platform, country, stage, reason, url=None, h
         if result is None:
             return None
         root, state, group, path, document = result
+        document["requested_url"] = sanitize_url(url)
+        document["final_url"] = sanitize_url(current_url)
+        document["listing_id"] = str(listing_id) if re.fullmatch(r"[A-Za-z0-9_-]{1,64}", str(listing_id or "")) else None
         available = page is not None
         if available and callable(getattr(page, "is_closed", None)):
             closed = page.is_closed()
@@ -341,3 +344,51 @@ async def capture_failure(page, *, platform, country, stage, reason, url=None, h
                 _atomic_json(path, document)
             except Exception:
                 pass  # 最初的最小 JSON 已经落盘，最终更新失败不能覆盖主抓取异常。
+
+
+_SNAPSHOT_ATTEMPTS: dict[tuple[str, str], int] = {}
+
+
+async def capture_redacted_snapshot(page, *, output_dir: Path, event_type: str, event_id: str,
+                                    screenshot_limit: int | None = None, timeout_seconds: float = 4.0) -> dict:
+    """独立事件的安全截图接口；显式目录和额度，不复用故障类每组两张的限额。"""
+    result = {"status": "not_attempted", "file": None, "page_url": None}
+    try:
+        result["page_url"] = sanitize_url(getattr(page, "url", None))
+        if page is None or (callable(getattr(page, "is_closed", None)) and page.is_closed() is True):
+            result["status"] = "page_unavailable"
+            return result
+        root = Path(output_dir).resolve()
+        root.mkdir(parents=True, exist_ok=True)
+        event_type = _code(event_type)
+        if not re.fullmatch(r"[a-f0-9]{16,64}", event_id):
+            raise ValueError("事件标识必须是摘要")
+        with _LOCK:
+            key = (str(root), event_type)
+            used = _SNAPSHOT_ATTEMPTS.get(key, 0)
+            if screenshot_limit is not None and screenshot_limit > 0 and used >= screenshot_limit:
+                result["status"] = "omitted_explicit_limit"
+                result["limit"] = screenshot_limit
+                return result
+            _SNAPSHOT_ATTEMPTS[key] = used + 1
+        seconds = min(CAPTURE_TIMEOUT_SECONDS, max(0.01, timeout_seconds))
+        deadline = asyncio.get_running_loop().time() + seconds
+        raw = await _bounded(page.evaluate(_VISIBLE_STRUCTURE_JS), min(1.5, seconds))
+        result["visible_structure"] = _visible_payload(raw)
+        if not isinstance(raw, dict) or raw.get("redaction_ready") is not True:
+            result["status"] = "redaction_not_ready"
+            return result
+        remaining = deadline - asyncio.get_running_loop().time()
+        if remaining <= 0:
+            raise asyncio.TimeoutError()
+        pixels = await _bounded(page.screenshot(full_page=False, animations="disabled", mask=[page.locator(_MASK_SELECTORS)],
+                                                mask_color="#000000", timeout=max(1, int(remaining * 1000))), remaining)
+        if not isinstance(pixels, bytes) or not pixels.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise ValueError("screenshot_not_png")
+        path = root / f"{event_type}_{event_id}.png"
+        path.write_bytes(pixels)
+        result.update(status="saved", file=path.name, redacted=True)
+    except (Exception, asyncio.CancelledError) as exc:
+        result.update(status="capture_timeout" if isinstance(exc, asyncio.TimeoutError) else "capture_failed",
+                      error_type=type(exc).__name__)
+    return result

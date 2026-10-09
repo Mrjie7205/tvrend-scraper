@@ -29,16 +29,20 @@ def test_currys_batch_key_uses_stable_product_id() -> None:
     assert adapter.batch_price_key(new_slug) == "10283600"
 
 
-def test_currys_category_redirect_is_unavailable() -> None:
+def test_currys_category_redirect_is_unverified_not_confirmed_unavailable() -> None:
     adapter = CurrysAdapter()
     product_url = "https://www.currys.co.uk/products/tv-name-10283600.html"
 
-    assert adapter.is_unavailable_response(
+    assert not adapter.is_unavailable_response(
         200,
         product_url,
         "https://www.currys.co.uk/tv-and-audio/televisions/tvs",
     )
     assert not adapter.is_unavailable_response(200, product_url, product_url)
+    assert adapter.classify_response(200, product_url, "https://www.currys.co.uk/tv-and-audio/televisions/tvs") == "redirect_unverified"
+    assert adapter.classify_response(403, product_url, "https://www.currys.co.uk/tv-and-audio/televisions/tvs") == "access_blocked"
+    assert adapter.classify_response(200, product_url, "https://www.currys.co.uk/tv-and-audio/televisions/tvs", "Just a moment...") == "challenge_unresolved"
+    assert adapter.classify_response(429, product_url, product_url) == "rate_limited"
 
 
 def test_currys_http_404_is_unavailable() -> None:

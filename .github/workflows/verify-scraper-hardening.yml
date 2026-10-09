@@ -35,6 +35,8 @@ jobs:
         run: python -m pytest tests -q
       - name: Verify real-browser snapshots on synthetic failure pages
         run: python scripts/verify_failure_evidence.py
+      - name: Verify inclusive price change thresholds and page snapshots
+        run: python scripts/verify_price_anomalies.py
       - name: Upload synthetic browser verification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -43,6 +45,15 @@ jobs:
           path: scripts/failure_artifacts/verification/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Upload synthetic price change verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-change-verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: scripts/price_artifacts/verification/
+          if-no-files-found: warn
+          retention-days: 90
 
   queue_contract:
     name: Verify queued publisher slot ${{ matrix.slot }}

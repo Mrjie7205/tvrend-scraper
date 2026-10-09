@@ -12,17 +12,13 @@
 from __future__ import annotations
 
 import os
-import random
 import re
 
 from .base import BaseAdapter
 from ..core import (
-    STEALTH_JS,
-    USER_AGENTS,
-    VIEWPORT_HEIGHTS,
-    VIEWPORT_WIDTHS,
     clean_price,
     close_playwright_resource,
+    new_scraper_context,
     get_price_from_schema,
 )
 
@@ -45,16 +41,7 @@ class BoulangerAdapter(BaseAdapter):
         """按五大品牌 facet 批量取价，未命中的少量链接再回退 PDP。"""
         from catalog_scrape.adapters.boulanger import BoulangerCatalogAdapter
 
-        ctx = await browser.new_context(
-            user_agent=random.choice(USER_AGENTS),
-            viewport={
-                "width": random.choice(VIEWPORT_WIDTHS),
-                "height": random.choice(VIEWPORT_HEIGHTS),
-            },
-            locale="fr-FR",
-            timezone_id="Europe/Paris",
-        )
-        await ctx.add_init_script(STEALTH_JS)
+        ctx = await new_scraper_context(browser, country='FR', locale_override=self.locale_override)
         page = await ctx.new_page()
         try:
             items = await BoulangerCatalogAdapter().fetch_catalog(page)

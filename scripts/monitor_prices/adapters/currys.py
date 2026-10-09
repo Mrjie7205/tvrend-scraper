@@ -34,7 +34,12 @@ class CurrysAdapter(BaseAdapter):
         # 环境里对 Currys 最稳定的访问方式。
         from catalog_scrape.adapters.currys import CurrysCatalogAdapter
 
-        items = await CurrysCatalogAdapter().fetch_catalog_from_browser(browser)
+        catalog_adapter = CurrysCatalogAdapter()
+        self.catalog_report = {}
+        try:
+            items = await catalog_adapter.fetch_catalog_from_browser(browser)
+        finally:
+            self.catalog_report = dict(getattr(catalog_adapter, "catalog_report", {}) or {})
         price_map: dict[str, tuple[float, str]] = {}
         for item in items:
             if item.price_hint_eur is None:
@@ -64,15 +69,30 @@ class CurrysAdapter(BaseAdapter):
         return price_map
 
     def is_unavailable_response(self, status: int, requested_url: str, final_url: str) -> bool:
-        if super().is_unavailable_response(status, requested_url, final_url):
-            return True
-        # Currys 的下架 PDP 常返回 200，但最终跳到电视分类页。原逻辑会把它
-        # 当成反爬页等待两轮；这里按稳定商品 ID 识别为已下架并快速结束。
+        # 只有明确404/410可确认为链接不可用；重定向与访问拒绝不能推出型号下架。
+        return super().is_unavailable_response(status, requested_url, final_url)
+
+    def classify_response(self, status: int, requested_url: str, final_url: str, title: str = "") -> str | None:
+        if status == 403:
+            return "access_blocked"
+        if status == 429:
+            return "rate_limited"
+        lowered = (title or "").lower()
+        if any(marker in lowered for marker in ("attention required", "access denied", "cloudflare")):
+            return "access_blocked"
+        if any(marker in lowered for marker in ("just a moment", "bear with us", "security check")):
+            return "challenge_unresolved"
+        if status in {404, 410}:
+            return "dead_link"
+        if status >= 400:
+            return "http_error"
         requested_key = self.batch_price_key(requested_url)
         final_key = self.batch_price_key(final_url)
-        return "/products/" in (requested_url or "") and (
+        if status == 200 and "/products/" in (requested_url or "") and (
             "/products/" not in (final_url or "") or final_key != requested_key
-        )
+        ):
+            return "redirect_unverified"
+        return None
 
     def is_dead_link(self, page_title: str) -> bool:
         t = (page_title or "").lower()

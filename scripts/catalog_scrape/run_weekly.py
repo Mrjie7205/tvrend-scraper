@@ -21,7 +21,6 @@ import argparse
 import asyncio
 import csv
 import os
-import random
 import statistics
 import sys
 from dataclasses import dataclass
@@ -32,27 +31,18 @@ from typing import TextIO
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from monitor_prices.core import (  # noqa: E402
-    STEALTH_JS,
-    USER_AGENTS,
-    VIEWPORT_HEIGHTS,
-    VIEWPORT_WIDTHS,
+    SCRAPER_BROWSER_ARGS,
     channels_in_scope,
     close_playwright_resource,
-    locale_for,
+    launch_scraper_browser,
+    new_scraper_context,
 )
 from catalog_scrape import REGISTRY, supported_catalogs  # noqa: E402
 from catalog_scrape.diagnostics import capture_catalog_failure  # noqa: E402
 from failure_evidence import redact_text  # noqa: E402
 
 HEADLESS = os.environ.get("HEADLESS_MODE", "true").lower() != "false"
-BROWSER_ARGS = (
-    "--disable-blink-features=AutomationControlled",
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-infobars",
-    "--ignore-certificate-errors",
-    "--disable-dev-shm-usage",
-)
+BROWSER_ARGS = SCRAPER_BROWSER_ARGS
 
 OUTPUT_COLUMNS = (
     "brand_raw",
@@ -176,6 +166,12 @@ def _validate_amazon_catalog_size(adapter, items, date_tag: str) -> str | None:
 
 
 def _finish_diagnostics(adapter, status: str, reason: str | None = None, path: Path | None = None) -> None:
+    finalize = getattr(adapter, 'finalize_price_observations', None)
+    if callable(finalize):
+        try:
+            finalize(status, reason=reason)
+        except Exception:
+            pass
     diagnostics = getattr(adapter, 'diagnostics', None)
     if diagnostics is not None:
         diagnostics.finish(status=status, reason=reason, catalog_file=path.name if path else None)
@@ -183,26 +179,12 @@ def _finish_diagnostics(adapter, status: str, reason: str | None = None, path: P
 
 async def run_one_adapter(browser, adapter) -> AdapterRunResult:
     """跑一个 adapter，产出 CSV；失败时返回不会丢失的具体原因。"""
-    locale, tz = adapter.locale_override or locale_for(adapter.country)
-    context_options = dict(
-        viewport={
-            "width": random.choice(VIEWPORT_WIDTHS),
-            "height": random.choice(VIEWPORT_HEIGHTS),
-        },
-        locale=locale,
-        timezone_id=tz,
-    )
-    native_identity = bool(getattr(adapter, "native_browser_identity", False))
-    if not native_identity:
-        context_options["user_agent"] = random.choice(USER_AGENTS)
     ctx = page = None
     adapter._failure_evidence_captured = False
     try:
-        ctx = await browser.new_context(**context_options)
-        if native_identity:
-            _console_print(f"[catalog/{adapter.platform_name}] 使用 Chromium 原生一致浏览器身份")
-        else:
-            await ctx.add_init_script(STEALTH_JS)
+        ctx = await new_scraper_context(
+            browser, country=adapter.country, locale_override=adapter.locale_override,
+        )
         page = await ctx.new_page()
         items = await adapter.fetch_catalog(page)
         if not items:
@@ -318,10 +300,7 @@ async def run(only: str | None = None) -> int:
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
-        try:
-            browser = await p.chromium.launch(headless=HEADLESS, channel="chrome", args=list(BROWSER_ARGS))
-        except Exception:
-            browser = await p.chromium.launch(headless=HEADLESS, args=list(BROWSER_ARGS))
+        browser = await launch_scraper_browser(p, headless=HEADLESS)
         results = []
         for key, adapter in targets:
             result = await run_one_adapter(browser, adapter)

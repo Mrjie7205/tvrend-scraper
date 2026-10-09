@@ -16,6 +16,7 @@ on:
 # 同一时刻只跑一个,防与上一轮/并发抢提交
 concurrency:
   group: daily-amazon-catalog
+  queue: max
   cancel-in-progress: false
 
 jobs:
@@ -104,6 +105,19 @@ jobs:
           --context _amazon_run.json --catalog catalog
           --out _amazon_out/${{ matrix.country }}
           --outcome "${{ steps.scrape.outcome }}"
+
+      - name: Summarize significant price changes
+        if: always()
+        run: python scripts/price_anomalies.py summary --output-dir scripts/price_artifacts --github-summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Amazon price change snapshots（独立保留90天）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-changes-amazon-${{ matrix.country }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: scripts/price_artifacts/
+          retention-days: 90
+          if-no-files-found: ignore
 
       - name: Upload current result
         if: always()

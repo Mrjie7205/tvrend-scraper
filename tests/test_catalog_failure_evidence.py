@@ -59,7 +59,7 @@ class CatalogFailureEvidenceTests(unittest.IsolatedAsyncioTestCase):
         page.goto.assert_awaited_once()
         page.context.clear_cookies.assert_not_awaited()
 
-    async def test_amazon_location_false_is_saved_before_existing_retry(self):
+    async def test_amazon_unverified_location_is_saved_without_cookie_reset(self):
         adapter = AmazonCatalogAdapter(AMAZON_GB)
         _, _, page = self.browser()
         page.context.clear_cookies.side_effect = lambda: self.events.append(('reset',))
@@ -67,7 +67,8 @@ class CatalogFailureEvidenceTests(unittest.IsolatedAsyncioTestCase):
             'catalog_scrape.adapters.amazon.set_amazon_market_location', new=AsyncMock(return_value=False),
         ), patch('catalog_scrape.adapters.amazon.asyncio.sleep', new=AsyncMock()):
             self.assertFalse(await adapter._prepare_market_session(page))
-        self.assertEqual(['capture', 'reset', 'capture'], [event[0] for event in self.events])
+        self.assertEqual(['capture'], [event[0] for event in self.events])
+        page.context.clear_cookies.assert_not_awaited()
         self.assertEqual('delivery_location_unverified', self.capture.await_args.kwargs['reason'])
 
     async def test_amazon_canary_false_is_saved_and_still_rejected(self):
