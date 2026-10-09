@@ -38,7 +38,13 @@ _MASK_SELECTORS = (
 # 不取 body 全文、HTML、表单值或隐藏字段。先标记个人区域，随后 screenshot 的 mask 覆盖这些节点。
 _VISIBLE_STRUCTURE_JS = r"""() => {
   const attr = 'data-tvrend-failure-mask';
-  const visible = el => !!(el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+  const visible = el => {
+    if (!el || !el.getClientRects().length) return false;
+    const box = el.getBoundingClientRect(), style = getComputedStyle(el);
+    return box.width > 0 && box.height > 0 && style.display !== 'none' &&
+      style.visibility !== 'hidden' && style.visibility !== 'collapse' &&
+      (!el.checkVisibility || el.checkVisibility({checkOpacity: true, checkVisibilityCSS: true}));
+  };
   const sensitive = 'input,textarea,select,[contenteditable],iframe,canvas,video,address,' +
     '[autocomplete],[id*="account" i],[class*="account" i],[id*="address" i],[class*="address" i],' +
     '[id*="profile" i],[class*="profile" i],[id*="customer" i],[class*="customer" i],' +
@@ -50,20 +56,42 @@ _VISIBLE_STRUCTURE_JS = r"""() => {
   document.querySelectorAll(sensitive).forEach(mark);
   const personal = /[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b|\b\d{5}(?:-\d{4})?\b|\+?\d[\d ()-]{7,}\d|\b(?:hello|bonjour|hallo|deliver to|livrer|lieferadresse|address|adresse|indirizzo|direcci[oó]n|recipient|customer name)\b|\b\d{1,5}\s+(?:[\w'-]+\s+){0,4}(?:street|road|avenue|lane|drive|rue|strasse|straße|calle|via)\b/i;
   const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
-  let node, checked = 0;
+  let node, checked = 0, visibleLanguage = '';
   while ((node = walker.nextNode()) && checked++ < 12000) {
     const parent = node.parentElement;
-    if (parent && !['SCRIPT','STYLE','NOSCRIPT'].includes(parent.tagName) && visible(parent) && personal.test(node.textContent || '')) mark(parent);
+    if (parent && !['SCRIPT','STYLE','NOSCRIPT'].includes(parent.tagName) && visible(parent)) {
+      const text = node.textContent || '';
+      if (personal.test(text)) mark(parent);
+      // 只在浏览器内暂存有限可见文字作布尔判断；不返回正文，也不读取任何 input.value。
+      if (visibleLanguage.length < 20000) visibleLanguage += ' ' + text.slice(0, 20000 - visibleLanguage.length);
+    }
   }
   // 未完成全页检查时拒绝截图，不能把遍历上限变成脱敏漏洞。
   const ready = !node;
   const publicText = el => el.closest('[' + attr + ']') ? '[redacted]' : (el.innerText || '').trim().slice(0, 160);
   const headings = [...document.querySelectorAll('h1,h2,[role="alert"]')].filter(visible).slice(0, 16)
     .map(el => ({tag: el.tagName.toLowerCase(), text: publicText(el)}));
+  const formTarget = el => {
+    const form = el.form || el.closest('form');
+    // formAction 在未写覆盖属性时可能指向当前页面，不能盖掉所属 form 的真实 action。
+    const action = el.hasAttribute('formaction') ? el.formAction : (form?.action || '');
+    const method = el.hasAttribute('formmethod') ? el.formMethod : (form?.method || '');
+    return {form_action: action || '', form_method: method || ''};
+  };
   const buttons = [...document.querySelectorAll('button,a,[role="button"],input[type="submit"]')].filter(visible).slice(0, 30)
-    .map(el => ({label: publicText(el), url: el.href || el.formAction || ''}));
+    .map(el => { const target = formTarget(el); return {label: publicText(el), url: el.href || target.form_action || '', ...target}; });
+  const hasVisible = selector => [...document.querySelectorAll(selector)].some(visible);
+  const language = visibleLanguage.replace(/\s+/g, ' ');
+  const captchaLanguage = /captcha|enter the characters you see below|inserisci i caratteri|digitare i caratteri|saisissez les caract[eè]res|geben sie die zeichen|introduce los caracteres/i.test(language);
+  const robotLanguage = /robot|automated access|unusual traffic|verify you are human|verifica di essere umano|[uü]berpr[uü]fen sie.*mensch|v[eé]rifiez que vous [eê]tes humain/i.test(language);
   return {redaction_ready: ready, masked_elements: masked, title: document.title,
-          headings, buttons, form_count: document.forms.length, input_count: document.querySelectorAll('input,textarea,select').length};
+          headings, buttons, form_count: document.forms.length, input_count: document.querySelectorAll('input,textarea,select').length,
+          normal_page: hasVisible('#nav-main, #glow-ingress-block, #productTitle, [data-component-type="s-search-result"], [itemtype$="/Product"], [data-testid="product-title"], [data-testid="product-card"]'),
+          captcha_language: captchaLanguage, robot_language: robotLanguage,
+          challenge_language: captchaLanguage || robotLanguage || /access denied|accesso negato|security check|verifica di sicurezza|zugriff verweigert|v[eé]rification de s[eé]curit[eé]|acceso denegado/i.test(language),
+          visible_challenge_controls: hasVisible('input[name*="captcha" i]:not([type="hidden"]), input[id*="captcha" i]:not([type="hidden"]), iframe[src*="captcha" i], iframe[src*="turnstile" i], [class*="g-recaptcha"], [class*="h-captcha"], .cf-turnstile'),
+          continue_shopping_instruction: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfl[aä]che unten, um mit dem Einkaufen fortzufahren|Cliquez sur le bouton ci-dessous pour continuer vos achats|Haz clic en el bot[oó]n de abajo para seguir comprando/i.test(language),
+          visible_scan_complete: ready && visibleLanguage.length < 20000};
 }"""
 
 
@@ -206,14 +234,20 @@ async def _bounded(awaitable, seconds: float):
 
 def _visible_payload(raw) -> dict:
     raw = raw if isinstance(raw, dict) else {}
+    flags = ("normal_page", "captcha_language", "robot_language", "challenge_language",
+             "visible_challenge_controls", "continue_shopping_instruction", "visible_scan_complete")
     return {"title": redact_text(raw.get("title")),
             "headings": [{"tag": _code(x.get("tag")), "text": redact_text(x.get("text"))}
                          for x in raw.get("headings", [])[:16] if isinstance(x, dict)],
-            "buttons": [{"label": redact_text(x.get("label"), 100), "url": sanitize_url(x.get("url"))}
+            "buttons": [{"label": redact_text(x.get("label"), 100), "url": sanitize_url(x.get("url")),
+                         "form_action": sanitize_url(x.get("form_action")),
+                         "form_method": str(x.get("form_method", "")).upper()
+                         if str(x.get("form_method", "")).upper() in {"GET", "POST", "DIALOG"} else None}
                         for x in raw.get("buttons", [])[:30] if isinstance(x, dict)],
             "form_count": min(100, max(0, int(raw.get("form_count", 0)))),
             "input_count": min(1000, max(0, int(raw.get("input_count", 0)))),
-            "masked_elements": min(12000, max(0, int(raw.get("masked_elements", 0))))}
+            "masked_elements": min(12000, max(0, int(raw.get("masked_elements", 0)))),
+            **{flag: raw.get(flag) is True for flag in flags}}
 
 
 async def capture_failure(page, *, platform, country, stage, reason, url=None, http_status=None,

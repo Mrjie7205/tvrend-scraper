@@ -157,6 +157,90 @@ class FailureEvidenceTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("PRIVATE", evidence.redact_text(value))
         self.assertEqual("https://www.amazon.es/[redacted]", evidence.sanitize_url("https://www.amazon.es/ref/%3Fapi_key=PRIVATE"))
 
+    def test_visible_payload_methods_and_flags_are_strictly_allowlisted(self):
+        payload = evidence._visible_payload({"buttons": [
+            {"label": "Continue", "url": "https://www.amazon.it/continue?key=PRIVATE",
+             "form_action": "https://www.amazon.it/submit?token=PRIVATE", "form_method": "post"},
+            {"label": "Unknown", "form_action": "https://relay.test/key?signature=PRIVATE", "form_method": "PUT PRIVATE"},
+        ], "normal_page": "true", "captcha_language": True, "hidden_fields": "PRIVATE"})
+        self.assertEqual("POST", payload["buttons"][0]["form_method"])
+        self.assertEqual("https://www.amazon.it/submit", payload["buttons"][0]["form_action"])
+        self.assertIsNone(payload["buttons"][1]["form_method"])
+        self.assertIsNone(payload["buttons"][1]["form_action"])
+        self.assertFalse(payload["normal_page"])
+        self.assertTrue(payload["captcha_language"])
+        self.assertNotIn("PRIVATE", json.dumps(payload))
+
+    async def test_real_dom_form_destinations_and_visible_page_flags(self):
+        from playwright.async_api import async_playwright
+        instruction = "Fai clic sul pulsante qui sotto per continuare a fare acquisti"
+        cases = {
+            "continue": f"""<p>{instruction}</p>
+              <form id="continue-form" method="post" action="/errors/continue?nonce=PRIVATE-FORM#private">
+                <input type="hidden" name="captcha-token" value="PRIVATE-HIDDEN">
+                <button type="submit">Continue</button>
+                <button type="submit" formaction="/override?signature=PRIVATE-OVERRIDE" formmethod="get">Override</button>
+                <button type="submit" formaction="https://relay.test/key?signature=PRIVATE-RELAY">External</button>
+              </form>
+              <button type="submit" form="continue-form">Associated</button>
+              <div style="display:none">captcha robot verify you are human</div>""",
+            "normal": f"""<nav id="nav-main">Shop</nav><h1 id="productTitle">TCL television</h1>
+              <label><input type="checkbox" name="in_stock">In stock</label>
+              <div hidden><input name="captcha"><p>captcha robot {instruction}</p></div>
+              <script>const hiddenCaptchaToken = 'PRIVATE-SCRIPT';</script>""",
+            "challenge": """<h1>Robot check</h1><p>Enter the characters you see below</p>
+              <input id="captcha-input" name="captcha" value="PRIVATE-INPUT">
+              <input type="hidden" name="csrf" value="PRIVATE-HIDDEN">""",
+        }
+        async with async_playwright() as playwright:
+            try:
+                browser = await playwright.chromium.launch(channel="chrome", headless=True)
+            except Exception:
+                browser = await playwright.chromium.launch(headless=True)
+            try:
+                reports = {}
+                for case, body in cases.items():
+                    page = await browser.new_page(viewport={"width": 800, "height": 480})
+                    try:
+                        html = f"<html><head><title>Public store fixture</title></head><body>{body}</body></html>"
+                        await page.route("**/*", lambda route: route.fulfill(status=200, content_type="text/html", body=html))
+                        await page.goto(f"https://www.amazon.it/evidence/{case}?session_key=PRIVATE-LOCATION")
+                        path = await evidence.capture_failure(page, platform="Amazon", country="IT", stage="structure_test",
+                                                              reason=f"synthetic_{case}")
+                        content = path.read_text(encoding="utf-8")
+                        self.assertNotIn("PRIVATE", content)
+                        self.assertNotIn("hiddenCaptchaToken", content)
+                        report = json.loads(content)
+                        self.assertEqual("saved", report["screenshot"]["status"])
+                        reports[case] = report["visible_structure"]
+                    finally:
+                        await page.close()
+                continued = reports["continue"]
+                buttons = {button["label"]: button for button in continued["buttons"]}
+                for label in ("Continue", "Associated"):
+                    self.assertEqual("https://www.amazon.it/errors/continue", buttons[label]["form_action"])
+                    self.assertEqual("https://www.amazon.it/errors/continue", buttons[label]["url"])
+                    self.assertEqual("POST", buttons[label]["form_method"])
+                self.assertEqual("https://www.amazon.it/override", buttons["Override"]["form_action"])
+                self.assertEqual("GET", buttons["Override"]["form_method"])
+                self.assertIsNone(buttons["External"]["form_action"])
+                self.assertIsNone(buttons["External"]["url"])
+                self.assertTrue(continued["continue_shopping_instruction"])
+                self.assertFalse(continued["normal_page"])
+                self.assertFalse(continued["challenge_language"])
+                self.assertFalse(continued["visible_challenge_controls"])
+                self.assertTrue(reports["normal"]["normal_page"])
+                for name in ("captcha_language", "robot_language", "challenge_language",
+                             "visible_challenge_controls", "continue_shopping_instruction"):
+                    self.assertFalse(reports["normal"][name], name)
+                self.assertFalse(reports["challenge"]["normal_page"])
+                self.assertFalse(reports["challenge"]["continue_shopping_instruction"])
+                for name in ("captcha_language", "robot_language", "challenge_language", "visible_challenge_controls"):
+                    self.assertTrue(reports["challenge"][name], name)
+                self.assertTrue(all(report["visible_scan_complete"] for report in reports.values()))
+            finally:
+                await browser.close()
+
     async def test_real_browser_masks_personal_areas_before_image_capture(self):
         from playwright.async_api import async_playwright
         html = """<html><head><title>Public store fixture</title></head><body>
