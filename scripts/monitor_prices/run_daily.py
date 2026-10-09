@@ -50,6 +50,7 @@ from monitor_prices.prices_io import (  # noqa: E402
     trim_prices_window,
 )
 from monitor_prices.adapters import get_adapter, supported_platforms  # noqa: E402
+from failure_evidence import capture_failure, record_failure  # noqa: E402
 
 CONCURRENCY = int(os.environ.get("MONITOR_CONCURRENCY", "3"))
 HEADLESS = os.environ.get("HEADLESS_MODE", "true").lower() != "false"
@@ -134,7 +135,12 @@ async def _new_context(browser, adapter, country: str):
         locale=locale,
         timezone_id=tz,
     )
-    await ctx.add_init_script(STEALTH_JS)
+    try:
+        await ctx.add_init_script(STEALTH_JS)
+    except BaseException:
+        # context 已创建但初始化失败时，调用方尚未拿到资源，必须在此有界释放。
+        await close_playwright_resource(ctx, f"{adapter.platform_name} incomplete context")
+        raise
     if getattr(adapter, "context_cookies", ()):
         try:
             await ctx.add_cookies(list(adapter.context_cookies))
@@ -195,6 +201,10 @@ async def process_sku(
         ctx = shared_context
         owns_context = shared_context is None
         page = None
+        failure_reason = None
+        failure_error = None
+        stage = "create_context"
+        status = None
         try:
             if owns_context:
                 ctx = await _new_context(browser, adapter, country)
@@ -204,6 +214,9 @@ async def process_sku(
                     price_data = await adapter.extract_price_direct(url, ctx.request)
                 except Exception as e:
                     print(f"  [{name}] direct API 异常，回退页面抓取: {str(e)[:100]}")
+                    record_failure(platform=platform, country=country, stage="direct_api",
+                                   reason="direct_api_error", url=url, product=name, error=e,
+                                   browser_available=False)
                     price_data = None
                 if price_data:
                     new_price, currency = price_data
@@ -216,6 +229,7 @@ async def process_sku(
                     return result
                 print(f"  [{name}] direct API 无价，回退页面抓取")
 
+            stage = "create_page"
             page = await ctx.new_page()
 
             # 导航(2 次重试 + 反爬等待)
@@ -223,6 +237,7 @@ async def process_sku(
             price_data = None
             for attempt in range(MAX_RETRIES):
                 try:
+                    stage = "navigate"
                     await asyncio.sleep(random.uniform(1.0, 3.0))
                     timeout_ms = 40000 if attempt == 0 else 60000
                     wait_until = getattr(adapter, "navigation_wait_until", "domcontentloaded")
@@ -232,6 +247,7 @@ async def process_sku(
                         result["Status"] = "Failed: Dead Link"
                         result["Page Title"] = f"HTTP {status} → {page.url}"
                         print(f"  [{name}] 死链/下架: HTTP {status} → {page.url[:100]}")
+                        failure_reason = "dead_link"
                         break
                     if wait_until == "commit":
                         try:
@@ -255,14 +271,18 @@ async def process_sku(
                     if attempt < MAX_RETRIES - 1:
                         continue
                     result["Status"] = "Failed: Navigation Error"
+                    failure_reason = "navigation_error"
+                    failure_error = e
                     break
 
                 # 死链 / 缺货
+                stage = "page_identity"
                 page_title = (await page.title()) or ""
                 if adapter.is_dead_link(page_title):
                     print(f"  [{name}] 死链/下架: {page_title[:80]}")
                     result["Status"] = "Failed: Dead Link"
                     result["Page Title"] = page_title
+                    failure_reason = "dead_link"
                     break
 
                 # cookie 弹窗(轻量)
@@ -282,6 +302,7 @@ async def process_sku(
                         continue
 
                 # 价格提取
+                stage = "extract_price"
                 price_data = await adapter.extract_price(page)
                 if price_data:
                     new_price, currency = price_data
@@ -297,12 +318,28 @@ async def process_sku(
                         await asyncio.sleep(2)
                         continue
                     result["Status"] = "Failed: Price Not Found"
+                    failure_reason = "price_not_found"
                     print(f"  [{name}] 价格未找到")
 
+        except asyncio.CancelledError as e:
+            failure_reason = "sku_cancelled"
+            failure_error = e
+            raise
         except Exception as e:
             print(f"  [{name}] 严重异常: {str(e)[:120]}")
             result["Status"] = f"Failed: Critical {str(e)[:50]}"
+            failure_reason = "critical_error"
+            failure_error = e
         finally:
+            try:
+                if failure_reason:
+                    await capture_failure(page, platform=platform, country=country, stage=stage,
+                                          reason=failure_reason, url=url, http_status=status,
+                                          product=name, error=failure_error,
+                                          timeout_seconds=1.0 if failure_reason == "sku_cancelled" else None)
+            except (Exception, asyncio.CancelledError):
+                # 即使诊断被取消，仍先清理资源，再由原始异常/状态决定抓取结果。
+                pass
             if page:
                 await close_playwright_resource(page, f"{name} page")
             if owns_context and ctx:
@@ -342,6 +379,8 @@ async def process_sku_bounded(
                 f"  [{sku['product_name']}] 单 SKU 总耗时超过 "
                 f"{SKU_TIMEOUT_SECONDS:g}s，释放并发位并继续"
             )
+            record_failure(platform=sku["platform"], country=sku["country"], stage="sku_timeout",
+                           reason="sku_timeout", url=sku["url"], product=sku["product_name"])
             return {
                 "Brand": sku["brand"],
                 "Product Name": sku["product_name"],
@@ -353,20 +392,30 @@ async def process_sku_bounded(
                 "Status": "Failed: SKU Timeout",
                 "Price_Trend": "-",
             }
+        except asyncio.CancelledError as exc:
+            record_failure(platform=sku["platform"], country=sku["country"], stage="sku_task",
+                           reason="task_cancelled", url=sku["url"], product=sku["product_name"], error=exc)
+            raise
 
 
 async def process_shared_group(browser, adapter, skus: list[dict], hist: dict) -> list[dict]:
     """同一渠道串行复用 context，保留 Vercel 等验证产生的会话状态。"""
-    ctx = await _new_context(browser, adapter, skus[0]["country"])
+    ctx = None
+    country = skus[0]["country"]
     try:
+        ctx = await _new_context(browser, adapter, country)
         if adapter.warmup_url:
-            page = await ctx.new_page()
+            page = None
+            warmup_reason = None
+            warmup_error = None
             try:
+                page = await ctx.new_page()
                 print(f"\n[monitor/{adapter.platform_name}] 预热共享会话: {adapter.warmup_url}")
                 try:
                     await page.goto(adapter.warmup_url, wait_until="domcontentloaded", timeout=120000)
                 except Exception as exc:
                     print(f"[monitor/{adapter.platform_name}] 预热导航提示: {str(exc)[:100]}")
+                    warmup_reason, warmup_error = "warmup_navigation_error", exc
                 passed = await handle_antibot_page(
                     page,
                     f"{adapter.platform_name} warmup",
@@ -375,8 +424,20 @@ async def process_shared_group(browser, adapter, skus: list[dict], hist: dict) -
                 )
                 if not passed:
                     print(f"[monitor/{adapter.platform_name}] 预热验证未通过，仍继续商品页测试")
+                    warmup_reason = "warmup_antibot_failed"
+            except (Exception, asyncio.CancelledError) as exc:
+                warmup_reason, warmup_error = "warmup_failed", exc
+                raise
             finally:
-                await close_playwright_resource(page, f"{adapter.platform_name} warmup page")
+                try:
+                    if warmup_reason:
+                        await capture_failure(page, platform=adapter.platform_name, country=country,
+                                              stage="shared_warmup", reason=warmup_reason,
+                                              url=adapter.warmup_url, error=warmup_error)
+                except (Exception, asyncio.CancelledError):
+                    pass
+                if page:
+                    await close_playwright_resource(page, f"{adapter.platform_name} warmup page")
 
         serial_sem = asyncio.Semaphore(1)
         results = []
@@ -385,8 +446,13 @@ async def process_shared_group(browser, adapter, skus: list[dict], hist: dict) -
                 await process_sku_bounded(serial_sem, browser, sku, hist, shared_context=ctx)
             )
         return results
+    except (Exception, asyncio.CancelledError) as exc:
+        record_failure(platform=adapter.platform_name, country=country, stage="shared_context",
+                       reason="shared_group_failed", error=exc, browser_available=ctx is not None)
+        raise
     finally:
-        await close_playwright_resource(ctx, f"{adapter.platform_name} shared context")
+        if ctx:
+            await close_playwright_resource(ctx, f"{adapter.platform_name} shared context")
 
 
 async def run() -> int:
@@ -431,7 +497,13 @@ async def run() -> int:
         try:
             browser = await p.chromium.launch(headless=HEADLESS, channel="chrome", args=list(BROWSER_ARGS))
         except Exception:
-            browser = await p.chromium.launch(headless=HEADLESS, args=list(BROWSER_ARGS))
+            try:
+                browser = await p.chromium.launch(headless=HEADLESS, args=list(BROWSER_ARGS))
+            except (Exception, asyncio.CancelledError) as exc:
+                for platform, country in sorted({(s["platform"], s["country"]) for s in runnable}):
+                    record_failure(platform=platform, country=country, stage="browser_launch",
+                                   reason="browser_unavailable", error=exc)
+                raise
 
         sem = asyncio.Semaphore(CONCURRENCY)
         batch_price_maps: dict[str, dict[str, tuple[float, str]]] = {}
@@ -442,8 +514,15 @@ async def run() -> int:
             group = [s for s in runnable if s["platform"].lower() == platform.lower()]
             try:
                 prepared = await adapter.prepare_batch_prices(browser, group)
+                if not prepared:
+                    for country in sorted({s["country"] for s in group}):
+                        record_failure(platform=adapter.platform_name, country=country, stage="prepare_batch",
+                                       reason="batch_prices_unavailable", browser_available=True)
                 if prepared and not _batch_prices_pass_history_guard(adapter, group, prepared, hist):
                     print(f"[monitor/{adapter.platform_name}] 批量价格疑似系统性错位，整批回退 PDP")
+                    for country in sorted({s["country"] for s in group}):
+                        record_failure(platform=adapter.platform_name, country=country, stage="batch_history_guard",
+                                       reason="batch_history_guard_rejected", browser_available=True)
                     prepared = {}
                 if prepared:
                     outlier_keys = _batch_price_outlier_keys(adapter, group, prepared, hist)
@@ -454,9 +533,23 @@ async def run() -> int:
                             f"[monitor/{adapter.platform_name}] {len(outlier_keys)} 个异常跳变 SKU "
                             "已从 batch 价移除，后续走 PDP 真值复核"
                         )
+                        for sku in group:
+                            if adapter.batch_price_key(sku["url"]) in outlier_keys:
+                                record_failure(platform=adapter.platform_name, country=sku["country"],
+                                               stage="batch_single_guard", reason="batch_price_outlier",
+                                               product=sku["product_name"], url=sku["url"], browser_available=True)
                 batch_price_maps[adapter.platform_name.lower()] = prepared
+            except asyncio.CancelledError as exc:
+                for country in sorted({s["country"] for s in group}):
+                    record_failure(platform=adapter.platform_name, country=country, stage="prepare_batch",
+                                   reason="batch_preparation_cancelled", error=exc, browser_available=True)
+                await close_playwright_resource(browser, "cancelled batch browser")
+                raise
             except Exception as exc:
                 print(f"[monitor/{adapter.platform_name}] 批量价格准备失败，回退 PDP: {str(exc)[:120]}")
+                for country in sorted({s["country"] for s in group}):
+                    record_failure(platform=adapter.platform_name, country=country, stage="prepare_batch",
+                                   reason="batch_preparation_failed", error=exc, browser_available=True)
                 batch_price_maps[adapter.platform_name.lower()] = {}
 
         normal = [s for s in runnable if not get_adapter(s["platform"]).shared_context]
@@ -492,6 +585,8 @@ async def run() -> int:
                     message = f"未预期的任务异常: {type(exc).__name__}: {str(exc)[:160]}"
                     print(f"[monitor] {message}")
                     fatal_errors.append(message)
+                    record_failure(platform="multi", country="multi", stage="worker_result",
+                                   reason="worker_failed", error=exc)
                     continue
                 batch_rows = batch if isinstance(batch, list) else [batch]
                 now = datetime.now()
@@ -533,7 +628,13 @@ async def run() -> int:
 
 
 def main() -> int:
-    return asyncio.run(run())
+    try:
+        return asyncio.run(run())
+    except (Exception, asyncio.CancelledError, KeyboardInterrupt) as exc:
+        record_failure(platform=os.environ.get("CHANNELS", "multi"), country="multi",
+                       stage="monitor_main", reason="monitor_interrupted" if isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt))
+                       else "monitor_failed", error=exc)
+        raise
 
 
 if __name__ == "__main__":

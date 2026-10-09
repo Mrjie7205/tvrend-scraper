@@ -4,11 +4,13 @@
 由上游私库匹配后推入,active=true 才抓)。
 
 输出:raw/prices.csv;每次抓完按 Date 只保留最近 N 天(滚动窗口,N 由环境变量
-PRICES_KEEP_DAYS 控制,默认 30)——完整历史由私库 enrich 留存,public 只当近窗。
+PRICES_KEEP_DAYS 控制,默认 45)——完整历史由私库 enrich 留存,public 只当近窗。
+Actions 设置 PRICE_PUBLICATION_DIR 后只输出本轮产物，主表由独立发布阶段统一合并。
 """
 from __future__ import annotations
 
 import csv
+import math
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -104,16 +106,16 @@ def load_latest_historical_prices() -> dict[str, float]:
     扫描 raw/ 下所有 prices*.csv:
       - 主表 prices.csv
       - 任何归档 prices_<period>.csv(冷启动的 prices_2026_q1_q2.csv 也算)
-    按文件名排序读,主表 prices.csv 最后扫(字母序 prices.csv 在 prices_2026...
-    之前,但我们想让"最新"覆盖"旧"—— 所以反一下,prices_ 排在前面,prices.csv
-    最后)。简化:用 mtime 排序,新文件最后扫。
+    按 Date + Time 比较观测时间，不把文件修改时间或回补追加顺序当作报价新旧。
+    同一时刻仍保留原有后行优先语义；原始文件中的不同报价不受本查表影响。
     """
     out: dict[str, float] = {}
+    latest_at: dict[str, datetime] = {}
     raw_dir = _root() / "raw"
     if not raw_dir.exists():
         return out
 
-    sources = sorted(raw_dir.glob("prices*.csv"), key=lambda p: p.stat().st_mtime)
+    sources = sorted(raw_dir.glob("prices*.csv"), key=lambda p: (p.name == "prices.csv", p.name))
     if not sources:
         return out
 
@@ -129,10 +131,18 @@ def load_latest_historical_prices() -> dict[str, float]:
                         continue
                     try:
                         price = float(p)
+                        observed_at = datetime.strptime(
+                            f"{(row.get('Date') or '').strip()} {(row.get('Time') or '00:00:00').strip()}",
+                            "%Y-%m-%d %H:%M:%S",
+                        )
+                        if not math.isfinite(price) or price <= 0:
+                            continue
                     except (TypeError, ValueError):
                         continue
                     key = f"{row.get('Product Name')}_{row.get('Country')}_{row.get('Platform')}"
-                    out[key] = price  # 后写覆盖,等价于"按时间最新"
+                    if key not in latest_at or observed_at >= latest_at[key]:
+                        latest_at[key] = observed_at
+                        out[key] = price
                     n_total += 1
         except Exception as e:
             print(f"[hist] {src.name} 读取异常: {e}")
@@ -156,8 +166,22 @@ def compute_price_trend(name: str, country: str, platform: str, new_price: float
 
 
 def append_prices(rows: Iterable[dict]) -> None:
-    """追加 N 行到 raw/prices.csv,首次写入自动加表头。"""
+    """本地追加主表；Actions 只交接本轮观测，避免携带旧主表覆盖远端。"""
     rows = list(rows)
+    publication_dir = os.environ.get("PRICE_PUBLICATION_DIR", "")
+    if publication_dir:
+        # 延迟导入避免发布模块复用本文件列契约时形成循环依赖。
+        from price_publication import PublicationError, RunIdentity, write_run_artifact
+
+        try:
+            max_skus = int(os.environ.get("MONITOR_MAX_SKUS", "0") or "0")
+        except ValueError as exc:
+            raise PublicationError("MONITOR_MAX_SKUS 不是非负整数") from exc
+        manifest = write_run_artifact(
+            rows, Path(publication_dir), RunIdentity.from_environment(os.environ), max_skus=max_skus,
+        )
+        print(f"[write] 本轮产物 {manifest['row_count']} 行 → {publication_dir}，等待独立发布")
+        return
     if not rows:
         return
     path = prices_csv_path()
@@ -176,10 +200,14 @@ def trim_prices_window(keep_days: int | None = None) -> None:
     """把 raw/prices.csv 只保留最近 keep_days 天(按 Date 列 YYYY-MM-DD)。
 
     public 仓只当"近窗",完整历史由私库 enrich 每天并入留存——private 同步频率(每天)
-    远高于本窗口(默认 30 天),且 merge 是整行去重幂等,所以裁剪不会丢数据。
-    keep_days 默认读环境变量 PRICES_KEEP_DAYS,否则 30。别设太短(<14):price_trend
+    远高于本窗口(默认 45 天),且 merge 是整行去重幂等。
+    keep_days 默认读环境变量 PRICES_KEEP_DAYS,否则 45。别设太短(<14):price_trend
     需要每个 SKU 有近期价做基线。Date 解析不出的行保守保留(不误删)。
     """
+    if os.environ.get("PRICE_PUBLICATION_DIR"):
+        # 窗口必须依据发布时的最新主表；抓取机上的旧副本不能决定远端删哪些行。
+        print("[trim] Actions 产物模式：由独立发布阶段统一整理价格窗口")
+        return
     if keep_days is None:
         try:
             keep_days = int(os.environ.get("PRICES_KEEP_DAYS", DEFAULT_KEEP_DAYS))

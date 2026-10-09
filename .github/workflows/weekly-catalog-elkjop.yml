@@ -56,6 +56,15 @@ jobs:
           ELKJOP_MAX_ITEMS: ${{ env.CATALOG_MAX_ITEMS }}
         run: python -m catalog_scrape.run_weekly --only Elkjop
 
+      - name: Upload catalog failure evidence（失败也保留现场）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-weekly-elkjop-${{ github.run_id }}-${{ github.run_attempt }}
+          path: scripts/failure_artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Commit Elkjop catalog
         run: |
           set -e

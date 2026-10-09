@@ -1,0 +1,3 @@
+# 测试环境复用运行依赖；pytest 同时收集现有函数测试和 unittest 测试类。
+-r requirements.txt
+pytest==9.1.1

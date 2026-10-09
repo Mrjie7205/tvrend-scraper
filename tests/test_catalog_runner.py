@@ -71,6 +71,10 @@ class CatalogRunnerOutputTest(unittest.TestCase):
 
 
 class CatalogRunnerAdapterTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.enterContext(patch('catalog_scrape.diagnostics.capture_failure',
+                                new=AsyncMock(return_value=None)))
+
     async def test_adapter_exception_is_kept_for_final_summary(self) -> None:
         adapter = type(
             "AmazonAdapter",

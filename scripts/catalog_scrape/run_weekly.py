@@ -37,9 +37,12 @@ from monitor_prices.core import (  # noqa: E402
     VIEWPORT_HEIGHTS,
     VIEWPORT_WIDTHS,
     channels_in_scope,
+    close_playwright_resource,
     locale_for,
 )
 from catalog_scrape import REGISTRY, supported_catalogs  # noqa: E402
+from catalog_scrape.diagnostics import capture_catalog_failure  # noqa: E402
+from failure_evidence import redact_text  # noqa: E402
 
 HEADLESS = os.environ.get("HEADLESS_MODE", "true").lower() != "false"
 BROWSER_ARGS = (
@@ -192,39 +195,52 @@ async def run_one_adapter(browser, adapter) -> AdapterRunResult:
     native_identity = bool(getattr(adapter, "native_browser_identity", False))
     if not native_identity:
         context_options["user_agent"] = random.choice(USER_AGENTS)
-    ctx = await browser.new_context(**context_options)
-    if native_identity:
-        _console_print(f"[catalog/{adapter.platform_name}] 使用 Chromium 原生一致浏览器身份")
-    else:
-        await ctx.add_init_script(STEALTH_JS)
-    page = await ctx.new_page()
-
+    ctx = page = None
+    adapter._failure_evidence_captured = False
     try:
+        ctx = await browser.new_context(**context_options)
+        if native_identity:
+            _console_print(f"[catalog/{adapter.platform_name}] 使用 Chromium 原生一致浏览器身份")
+        else:
+            await ctx.add_init_script(STEALTH_JS)
+        page = await ctx.new_page()
         items = await adapter.fetch_catalog(page)
+        if not items:
+            diagnostics = getattr(adapter, 'diagnostics', None)
+            reason = (diagnostics.report.get('failureReason') if diagnostics else None) or "0 条记录，不写文件"
+            if not adapter._failure_evidence_captured:
+                await capture_catalog_failure(
+                    page, platform=adapter.platform_name, country=adapter.country,
+                    stage='catalog_validation', reason='empty_catalog', adapter=adapter,
+                )
+            _finish_diagnostics(adapter, 'rejected', reason)
+            _console_print(f"[catalog/{adapter.platform_name}] {reason}")
+            return AdapterRunResult(path=None, failure_reason=reason)
+        now = datetime.now(UTC)
+        date_tag = now.strftime("%Y%m%d")
+        scraped_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        size_failure = _validate_amazon_catalog_size(adapter, items, date_tag)
+        if size_failure:
+            if not adapter._failure_evidence_captured:
+                await capture_catalog_failure(
+                    page, platform=adapter.platform_name, country=adapter.country,
+                    stage='catalog_validation', reason='incomplete_catalog', adapter=adapter,
+                )
+            _finish_diagnostics(adapter, 'rejected', size_failure)
+            _console_print(f"[catalog/{adapter.platform_name}/{adapter.country}] {size_failure}")
+            return AdapterRunResult(path=None, failure_reason=size_failure)
     except Exception as e:
-        reason = f"抓取异常 {type(e).__name__}: {e}"
+        await capture_catalog_failure(
+            page, platform=adapter.platform_name, country=adapter.country,
+            stage='catalog_runner', reason='catalog_exception', error=e, adapter=adapter,
+        )
+        reason = f"抓取异常 {type(e).__name__}: {redact_text(str(e))}"
         _finish_diagnostics(adapter, 'failed', reason)
         _console_print(f"[catalog/{adapter.platform_name}] {reason}")
         return AdapterRunResult(path=None, failure_reason=reason)
     finally:
-        await ctx.close()
-
-    if not items:
-        diagnostics = getattr(adapter, 'diagnostics', None)
-        reason = (diagnostics.report.get('failureReason') if diagnostics else None) or "0 条记录，不写文件"
-        _finish_diagnostics(adapter, 'rejected', reason)
-        _console_print(f"[catalog/{adapter.platform_name}] {reason}")
-        return AdapterRunResult(path=None, failure_reason=reason)
-
-    now = datetime.now(UTC)
-    date_tag = now.strftime("%Y%m%d")
-    scraped_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    size_failure = _validate_amazon_catalog_size(adapter, items, date_tag)
-    if size_failure:
-        _finish_diagnostics(adapter, 'rejected', size_failure)
-        _console_print(f"[catalog/{adapter.platform_name}/{adapter.country}] {size_failure}")
-        return AdapterRunResult(path=None, failure_reason=size_failure)
+        if ctx is not None:
+            await close_playwright_resource(ctx, f'{adapter.platform_name} catalog context')
 
     out_dir = _catalog_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -310,7 +326,7 @@ async def run(only: str | None = None) -> int:
         for key, adapter in targets:
             result = await run_one_adapter(browser, adapter)
             results.append((_adapter_label(key, adapter), result))
-        await browser.close()
+        await close_playwright_resource(browser, 'catalog browser')
 
     return _summarize_results(results)
 

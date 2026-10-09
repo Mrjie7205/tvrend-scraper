@@ -27,3 +27,31 @@ def test_playwright_runtime_is_pinned() -> None:
     requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
     assert "playwright==1.61.0" in requirements
     assert "playwright>=" not in requirements
+
+
+def test_every_price_writer_holds_shared_queue_and_uses_run_artifacts() -> None:
+    for filename in ("daily-monitor.yml", "daily-monitor-currys.yml", "daily-monitor-elkjop.yml"):
+        content = (ROOT / ".github" / "workflows" / filename).read_text(encoding="utf-8")
+        monitor, publish = content.split("\n  publish:", 1)
+        assert "contents: read" in monitor
+        assert "contents: write" not in monitor
+        assert "PRICE_PUBLICATION_DIR:" in monitor
+        assert "scripts/failure_artifacts/" in monitor
+        assert "scripts/monitor_artifacts/" in monitor
+        assert "retention-days: 14" in monitor
+        assert "if-no-files-found: error" in monitor
+        assert "github.run_id }}-${{ github.run_attempt" in monitor
+        assert "needs: monitor" in publish
+        assert "needs.monitor.result == 'success'" in publish
+        assert "github.ref == 'refs/heads/main'" in publish
+        assert "(inputs.max_skus || '0') == '0'" in publish
+        assert "group: raw-prices-${{ github.ref }}" in publish
+        assert "queue: max" in publish
+        assert "cancel-in-progress: false" in publish
+        assert "ref: main" in publish
+        assert "python scripts/price_publication.py publish" in publish
+        assert '--expected-run-id "$GITHUB_RUN_ID"' in publish
+        assert '--expected-run-attempt "$GITHUB_RUN_ATTEMPT"' in publish
+        assert '--expected-source-sha "$GITHUB_SHA"' in publish
+        assert "-X theirs" not in content
+        assert "git push" not in content

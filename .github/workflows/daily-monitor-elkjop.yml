@@ -1,7 +1,6 @@
 name: Daily Price Monitor - Elkjop
 
-# Elkjop 由 Vercel Security Checkpoint 保护，GitHub Actions 上耗时和失败风险
-# 明显高于 Boulanger/Currys，因此独立调度，避免拖住其它渠道的每日价格提交。
+# 抓取按渠道独立运行，只交接本轮观测；共享主表由独立发布任务合并。
 on:
   schedule:
     - cron: "45 6 * * *"
@@ -12,16 +11,21 @@ on:
         required: false
         default: "0"
 
+concurrency:
+  group: daily-price-elkjop-${{ github.ref }}
+  queue: max
+  cancel-in-progress: false
+
 jobs:
   monitor:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
-      contents: write
+      contents: read
     env:
       MONITOR_INPUT_MAX_SKUS: ${{ inputs.max_skus || '0' }}
     steps:
-      - name: Checkout
+      - name: Checkout scrape source
         uses: actions/checkout@v4
 
       - name: Set up Python 3.11
@@ -34,52 +38,89 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          python -c "import importlib.metadata as m; print('Playwright', m.version('playwright'))"
 
       - name: Install Playwright Chromium
         run: python -m playwright install chromium --with-deps
 
       - name: Run Elkjop daily monitor
+        id: scrape
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
           PYTHONUNBUFFERED: "1"
           MONITOR_CONCURRENCY: "3"
+          MONITOR_SKU_TIMEOUT_SECONDS: "120"
+          PLAYWRIGHT_CLOSE_TIMEOUT_SECONDS: "10"
           MONITOR_MAX_SKUS: ${{ env.MONITOR_INPUT_MAX_SKUS }}
-          ELKJOP_DIRECT_PRICE: "true"
           CHANNELS: "Elkjop"
+          PRICE_PUBLICATION_DIR: ${{ github.workspace }}/scripts/monitor_artifacts/price-publication
+          ELKJOP_DIRECT_PRICE: "true"
         run: python -m monitor_prices.run_daily
 
-      - name: Upload debug screenshots(失败 SKU 截图)
+      - name: Upload checkpoint and failure evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: monitor-elkjop-debug-${{ github.run_id }}
-          path: scripts/debug_screenshots/
-          retention-days: 7
-          if-no-files-found: ignore
+          name: monitor-elkjop-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            scripts/failure_artifacts/
+            scripts/monitor_artifacts/
+            scripts/debug_screenshots/
+          retention-days: 14
+          if-no-files-found: warn
 
-      - name: Commit prices.csv（rebase 重试，防并发）
+      - name: Upload current price publication artifact
+        if: ${{ steps.scrape.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-elkjop-${{ github.run_id }}-${{ github.run_attempt }}
+          path: scripts/monitor_artifacts/price-publication/
+          retention-days: 14
+          if-no-files-found: error
+
+  publish:
+    name: Merge current prices into latest main
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: monitor
+    # 手动分支和有限 SKU 烟测只留下产物，不能更新正式价格。
+    if: ${{ needs.monitor.result == 'success' && github.ref == 'refs/heads/main' && (inputs.max_skus || '0') == '0' }}
+    concurrency:
+      group: raw-prices-${{ github.ref }}
+      queue: max
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout latest target branch while holding publication lock
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download this run price artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: price-elkjop-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/price-publication-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Validate merge publish and read back prices
+        env:
+          PRICE_ARTIFACT_DIR: ${{ runner.temp }}/price-publication-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
-          set -e
-          git config user.name "tvrend-scraper bot"
-          git config user.email "actions@github.com"
-          if [ "${MONITOR_INPUT_MAX_SKUS:-0}" != "0" ]; then
-            echo "手动 Elkjop smoke test（MONITOR_MAX_SKUS=${MONITOR_INPUT_MAX_SKUS}），跳过 prices.csv 提交。"
-            exit 0
-          fi
-          git add -- raw/prices.csv
-          if git diff --cached --quiet; then
-            echo "无新数据，跳过提交。"
-            exit 0
-          fi
-          git commit -m "chore: daily elkjop prices ${{ github.run_id }} [skip ci]"
-          BR="${{ github.ref_name }}"
-          for i in 1 2 3 4 5; do
-            if git pull --rebase -X theirs origin "$BR" && git push origin "HEAD:$BR"; then
-              exit 0
-            fi
-            git rebase --abort 2>/dev/null || true
-            sleep $((i * 3))
-          done
-          echo "::error::推送失败。"
-          exit 1
+          python scripts/price_publication.py publish \
+            --artifact-dir "$PRICE_ARTIFACT_DIR" \
+            --repo-dir "$GITHUB_WORKSPACE" \
+            --repository "$GITHUB_REPOSITORY" \
+            --expected-run-id "$GITHUB_RUN_ID" \
+            --expected-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --expected-source-sha "$GITHUB_SHA" \
+            --expected-source-ref "$GITHUB_REF" \
+            --expected-channel Elkjop \
+            --branch main

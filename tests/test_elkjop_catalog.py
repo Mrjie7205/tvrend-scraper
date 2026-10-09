@@ -20,6 +20,10 @@ from catalog_scrape.adapters.elkjop import (  # noqa: E402
 
 
 class ElkjopSignedKeyTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.enterContext(patch('catalog_scrape.diagnostics.capture_failure',
+                                new=AsyncMock(return_value=None)))
+
     @staticmethod
     def signed_key(valid_until: int) -> str:
         raw = (

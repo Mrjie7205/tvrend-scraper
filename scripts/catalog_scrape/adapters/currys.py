@@ -24,6 +24,7 @@ import re
 from typing import Sequence
 
 from .base import BaseCatalogAdapter, CatalogItem
+from catalog_scrape.diagnostics import capture_catalog_failure
 from monitor_prices.core import close_playwright_resource
 
 LISTING_URL = "https://www.currys.co.uk/tv-and-audio/televisions/tvs"
@@ -156,10 +157,20 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
             except Exception:
                 pass
             if status != 200:
+                await capture_catalog_failure(
+                    page, platform=self.platform_name, country=self.country,
+                    stage='catalog_page', reason='http_error', url=url,
+                    http_status=status, adapter=self,
+                )
                 return status, []
             cards = await page.evaluate(_JS_EXTRACT)
             return status, cards or []
         except Exception as e:
+            await capture_catalog_failure(
+                page, platform=self.platform_name, country=self.country,
+                stage='catalog_page', reason='navigation_or_extraction_error',
+                url=url, error=e, adapter=self,
+            )
             print(f"    [Currys] start={start} 异常: {str(e)[:90]}")
             return 0, []
         finally:

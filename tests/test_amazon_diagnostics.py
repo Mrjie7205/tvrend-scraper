@@ -20,6 +20,10 @@ from catalog_scrape.run_weekly import run_one_adapter
 
 
 class AmazonDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.enterContext(patch('catalog_scrape.diagnostics.capture_failure',
+                                new=AsyncMock(return_value=None)))
+
     async def _run_second_page_case(self, *, status=200, captcha=False, robot=False, failure=None):
         """第一页足够跨过100行门槛，第二页失败时仍必须阻止正式发布。"""
         with tempfile.TemporaryDirectory() as temporary:

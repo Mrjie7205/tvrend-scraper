@@ -49,6 +49,17 @@ jobs:
           AMAZON_MAX_PAGES: ${{ inputs.amazon_max_pages || '7' }}
         run: python -m catalog_scrape.run_weekly
 
+      - name: Upload catalog failure evidence（失败也保留现场）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-weekly-catalog-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            scripts/failure_artifacts/
+            scripts/catalog_artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Commit catalog（rebase 重试，防并发）
         run: |
           set -e

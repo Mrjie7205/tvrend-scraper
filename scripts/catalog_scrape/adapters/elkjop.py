@@ -22,7 +22,8 @@ from typing import Sequence
 from urllib.parse import parse_qs, urlencode, urljoin, urlsplit, urlunsplit
 
 from .base import BaseCatalogAdapter, CatalogItem
-from monitor_prices.core import clean_price, handle_antibot_page
+from catalog_scrape.diagnostics import capture_catalog_failure
+from monitor_prices.core import clean_price, close_playwright_resource, handle_antibot_page
 from monitor_prices.fx import ECB_RATE_DATE, price_to_eur
 from monitor_prices.adapters.elkjop import ElkjopAdapter
 
@@ -314,7 +315,8 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
                     if response.status in {401, 403}:
                         break
             except Exception as exc:
-                last_error = str(exc)[:120]
+                # Relay 请求错误可能带鉴权参数，不将错误正文写入日志或诊断。
+                last_error = type(exc).__name__
             if attempt < 3:
                 await asyncio.sleep(2 ** attempt)
         raise RuntimeError(f"Elkjop signed key relay 获取失败: {last_error}")
@@ -328,7 +330,13 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
         """
         print("    [Elkjop/api] 预热首页并建立签名 key 会话")
         if not await self._open_and_pass_checkpoint(page, HOME_URL, "Elkjop key warmup"):
-            raise RuntimeError("Elkjop 首页安全检查未通过，无法获取 Algolia signed key")
+            error = RuntimeError("Elkjop 首页安全检查未通过，无法获取 Algolia signed key")
+            await capture_catalog_failure(
+                page, platform=self.platform_name, country=self.country,
+                stage='key_warmup', reason='access_challenge', url=HOME_URL,
+                error=error, adapter=self,
+            )
+            raise error
         await self._accept_cookies(page)
 
         last_error = ""
@@ -361,8 +369,18 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
                     return key
                 suffix = " Vercel Security Checkpoint" if result.get("checkpoint") else ""
                 last_error = f"HTTP {result.get('status')}{suffix}"
+                await capture_catalog_failure(
+                    None, platform=self.platform_name, country=self.country,
+                    stage='key_api', reason='signed_key_api_error', url=ALGOLIA_KEY_URL,
+                    http_status=result.get('status'), adapter=self,
+                )
             except Exception as exc:
-                last_error = str(exc)[:120]
+                last_error = type(exc).__name__
+                await capture_catalog_failure(
+                    None, platform=self.platform_name, country=self.country,
+                    stage='key_api', reason='signed_key_api_error',
+                    error=type(exc).__name__, adapter=self,
+                )
             if attempt < 3:
                 # 短时波动时给 Vercel/页面会话留出恢复时间，不连续轰击 key 接口。
                 await asyncio.sleep(2 ** attempt)
@@ -370,9 +388,22 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
 
     async def _signed_api_key(self, page) -> str:
         """GitHub 使用 relay；本地/VPS 无 relay 时使用真实浏览器会话。"""
-        if KEY_RELAY_URL:
-            return await self._signed_api_key_from_relay(page.context.request)
-        return await self._signed_api_key_from_browser(page)
+        try:
+            if KEY_RELAY_URL:
+                return await self._signed_api_key_from_relay(page.context.request)
+            return await self._signed_api_key_from_browser(page)
+        except Exception as error:
+            # Relay 不在当前 browser 页面执行，不能以空白页冒充远端失败现场。
+            evidence_error = RuntimeError(type(error).__name__) if KEY_RELAY_URL else error
+            path = await capture_catalog_failure(
+                None if KEY_RELAY_URL else page,
+                platform=self.platform_name, country=self.country,
+                stage='key_relay' if KEY_RELAY_URL else 'key_browser',
+                reason='signed_key_error', error=evidence_error, adapter=self,
+            )
+            if path is not None:
+                error._catalog_evidence_path = path
+            raise
 
     @staticmethod
     def _algolia_payload(year: int, page_index: int) -> dict:
@@ -437,8 +468,18 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
                     last_error = "响应缺少 results[0]"
                 else:
                     last_error = f"HTTP {response.status}"
+                await capture_catalog_failure(
+                    None, platform=self.platform_name, country=self.country,
+                    stage='catalog_api', reason='catalog_api_response_error',
+                    http_status=response.status, adapter=self,
+                )
             except Exception as exc:
-                last_error = str(exc)[:120]
+                last_error = type(exc).__name__
+                await capture_catalog_failure(
+                    None, platform=self.platform_name, country=self.country,
+                    stage='catalog_api', reason='catalog_api_request_error',
+                    error=type(exc).__name__, adapter=self,
+                )
             if attempt < 3:
                 await asyncio.sleep(attempt)
         raise RuntimeError(
@@ -565,8 +606,19 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=120000)
         except Exception as exc:
+            await capture_catalog_failure(
+                page, platform=self.platform_name, country=self.country,
+                stage='catalog_navigation', reason='navigation_error',
+                url=url, error=exc, adapter=self,
+            )
             print(f"    [Elkjop] {label} 导航异常: {str(exc)[:100]}")
-        return await handle_antibot_page(page, label, max_waits=24, wait_seconds=5.0)
+        passed = await handle_antibot_page(page, label, max_waits=24, wait_seconds=5.0)
+        if not passed:
+            await capture_catalog_failure(
+                page, platform=self.platform_name, country=self.country,
+                stage='catalog_checkpoint', reason='access_challenge', url=url, adapter=self,
+            )
+        return passed
 
     async def _accept_cookies(self, page) -> None:
         for sel in ("#onetrust-accept-btn-handler", "button:has-text('Godta alle')"):
@@ -654,15 +706,24 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
             try:
                 url = _canonical_url(card.get("href") or "")
                 await detail.goto(url, wait_until="domcontentloaded", timeout=120000)
-                await handle_antibot_page(detail, "Elkjop PDP", max_waits=24, wait_seconds=5.0)
+                passed = await handle_antibot_page(detail, "Elkjop PDP", max_waits=24, wait_seconds=5.0)
+                if not passed:
+                    await capture_catalog_failure(
+                        detail, platform=self.platform_name, country=self.country,
+                        stage='catalog_detail', reason='access_challenge', url=url, adapter=self,
+                    )
                 result = await ElkjopAdapter().extract_price(detail)
                 if result and result[1] == "NOK":
                     card["currentPrice"] = f"{result[0]} kr"
                 print(f"    [Elkjop] PDP 补价 {idx}/{len(missing_price_cards)}: {card.get('sku')}")
             except Exception as exc:
+                await capture_catalog_failure(
+                    detail, platform=self.platform_name, country=self.country,
+                    stage='catalog_detail', reason='detail_error', error=exc, adapter=self,
+                )
                 print(f"    [Elkjop] PDP 补价失败: {str(exc)[:100]}")
             finally:
-                await detail.close()
+                await close_playwright_resource(detail, 'Elkjop catalog detail page')
 
     async def _fetch_catalog_page(self, page) -> Sequence[CatalogItem]:
         print("    [Elkjop] 预热首页并等待安全检查")
@@ -747,6 +808,10 @@ class ElkjopCatalogAdapter(BaseCatalogAdapter):
             try:
                 return await self._fetch_catalog_api(page)
             except Exception as exc:
+                await capture_catalog_failure(
+                    None, platform=self.platform_name, country=self.country,
+                    stage='catalog_api', reason='catalog_api_error', error=exc, adapter=self,
+                )
                 print(f"[catalog/Elkjop/api] 抓取失败: {str(exc)[:200]}")
                 if not PAGE_FALLBACK_ENABLED:
                     raise

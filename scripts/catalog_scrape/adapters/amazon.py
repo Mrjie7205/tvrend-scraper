@@ -32,7 +32,7 @@ from monitor_prices.core import clean_price
 from monitor_prices.fx import ECB_RATE_DATE, price_to_eur
 
 from .base import BaseCatalogAdapter, CatalogItem
-from catalog_scrape.diagnostics import AmazonCatalogDiagnostics
+from catalog_scrape.diagnostics import AmazonCatalogDiagnostics, capture_catalog_failure
 
 
 # 追踪的 5 大品牌。Amazon 搜某品牌仍会混入别牌，品牌以标题为准。
@@ -508,6 +508,13 @@ class AmazonCatalogIncomplete(RuntimeError):
     """本轮存在明确错误或访问挑战，已有候选只能保留在隔离诊断中。"""
 
 
+async def _capture_amazon_failure(page, market, *, stage, reason, adapter=None, **kwargs):
+    return await capture_catalog_failure(
+        page, platform='Amazon', country=market.code,
+        stage=stage, reason=reason, adapter=adapter, **kwargs,
+    )
+
+
 def _page_rejection_reason(http_status: int | None, state: dict) -> str | None:
     if state.get('captcha') or state.get('robotCheck'):
         return 'access_challenge'
@@ -518,14 +525,19 @@ def _page_rejection_reason(http_status: int | None, state: dict) -> str | None:
     return None
 
 
-async def _checked_page_state(page, market: AmazonMarket, http_status: int | None = None) -> dict:
+async def _checked_page_state(page, market: AmazonMarket, http_status: int | None = None,
+                              *, stage: str = 'delivery') -> dict:
     """恢复配送会话前后都先排除错误页，不通过重试绕过访问验证。"""
     state = await page.evaluate(_JS_SEARCH_STATE)
     if not isinstance(state, dict):
         raise AmazonCatalogIncomplete(f'Amazon {market.code} 无法读取页面状态，停止采集')
     reason = _page_rejection_reason(http_status, state)
     if reason:
-        raise AmazonCatalogIncomplete(f'Amazon {market.code} 页面不可用于配送恢复 ({reason})')
+        error = AmazonCatalogIncomplete(f'Amazon {market.code} 页面不可用于配送恢复 ({reason})')
+        await _capture_amazon_failure(
+            page, market, stage=stage, reason=reason, http_status=http_status, error=error,
+        )
+        raise error
     return state
 
 
@@ -548,6 +560,22 @@ def _recovery_page_matches(state: dict, target_url: str, *, asin: str = '', requ
 
 
 async def ensure_amazon_page_delivery(
+    page, market: AmazonMarket, target_url: str, *, asin: str = '',
+    http_status: int | None = None, state: dict | None = None,
+) -> dict:
+    try:
+        return await _ensure_amazon_page_delivery(
+            page, market, target_url, asin=asin, http_status=http_status, state=state,
+        )
+    except Exception as error:
+        await _capture_amazon_failure(
+            page, market, stage='delivery_recovery', reason='delivery_recovery_rejected',
+            url=target_url, http_status=http_status, product=asin or None, error=error,
+        )
+        raise
+
+
+async def _ensure_amazon_page_delivery(
     page, market: AmazonMarket, target_url: str, *, asin: str = '',
     http_status: int | None = None, state: dict | None = None,
 ) -> dict:
@@ -601,17 +629,29 @@ async def verify_amazon_delivery_location(page, market: AmazonMarket, *, refresh
         except AmazonCatalogIncomplete:
             raise
         except Exception as exc:
+            await _capture_amazon_failure(
+                page, market, stage='delivery_verification', reason='navigation_error', error=exc,
+            )
             print(f'  [set-loc/{market.code}] 配送地复核加载失败: {type(exc).__name__}')
             return False
     try:
         state = await page.evaluate(_JS_SEARCH_STATE)
-    except Exception:
+    except Exception as exc:
+        await _capture_amazon_failure(
+            page, market, stage='delivery_verification', reason='state_read_error', error=exc,
+        )
         return False
     reason = _page_rejection_reason(None, state)
     if reason:
-        raise AmazonCatalogIncomplete(f'Amazon {market.code} 页面出现访问挑战，停止本轮采集 ({reason})')
+        error = AmazonCatalogIncomplete(f'Amazon {market.code} 页面出现访问挑战，停止本轮采集 ({reason})')
+        await _capture_amazon_failure(page, market, stage='delivery_verification', reason=reason, error=error)
+        raise error
     text = state.get('deliveryText') or ''
     ok = _delivery_postcode_matches(text, market)
+    if not ok:
+        await _capture_amazon_failure(
+            page, market, stage='delivery_verification', reason='delivery_location_unverified',
+        )
     print(f'  [set-loc/{market.code}] 配送栏复核 {text[:120]!r} -> {market.postcode}: {"OK" if ok else "FAIL"}')
     return ok
 
@@ -620,7 +660,7 @@ async def set_amazon_location_via_popup(page, market: AmazonMarket) -> bool:
     """旧 glow toaster 接口为空时，用顶部配送地弹窗填邮编作为 fallback。"""
     try:
         response = await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
-        await _checked_page_state(page, market, response.status if response else None)
+        await _checked_page_state(page, market, response.status if response else None, stage='location_popup')
         await _accept_cookie(page)
         location_entry = page.locator(
             "#nav-global-location-popover-link, #glow-ingress-block, "
@@ -669,6 +709,9 @@ async def set_amazon_location_via_popup(page, market: AmazonMarket) -> bool:
             ).first
         if await inp.count() == 0:
             print(f"  [set-loc/{market.code}] 弹窗未出现邮编输入框")
+            await _capture_amazon_failure(
+                page, market, stage='location_popup', reason='postcode_input_missing',
+            )
             return False
         await inp.fill(market.postcode, timeout=5000)
         submit = page.locator(
@@ -693,6 +736,9 @@ async def set_amazon_location_via_popup(page, market: AmazonMarket) -> bool:
     except AmazonCatalogIncomplete:
         raise
     except Exception as e:
+        await _capture_amazon_failure(
+            page, market, stage='location_popup', reason='location_popup_error', error=e,
+        )
         print(f"  [set-loc/{market.code}] 配送地弹窗失败: {str(e)[:120]}")
         return False
 
@@ -714,10 +760,13 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
 
     try:
         response = await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
-        await _checked_page_state(page, market, response.status if response else None)
+        await _checked_page_state(page, market, response.status if response else None, stage='location_home')
     except AmazonCatalogIncomplete:
         raise
     except Exception as e:
+        await _capture_amazon_failure(
+            page, market, stage='location_home', reason='navigation_error', error=e,
+        )
         print(f"  [set-loc/{market.code}] 进首页失败: {e}")
         return False
 
@@ -734,11 +783,17 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
             market.base_url,
         )
     except Exception as e:
+        await _capture_amazon_failure(
+            page, market, stage='location_api', reason='location_token_request_error', error=e,
+        )
         print(f"  [set-loc/{market.code}] 取 CSRF token 失败: {e}")
         return False
 
     m = re.search(r'data-toaster-csrfToken="([^"]+)"', html)
     if not m:
+        await _capture_amazon_failure(
+            page, market, stage='location_api', reason='location_token_missing',
+        )
         print(f"  [set-loc/{market.code}] 没找到 CSRF token，Amazon glow 可能改版")
         ok = await set_amazon_location_via_popup(page, market)
         if ok:
@@ -769,12 +824,20 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
             {"baseUrl": market.base_url, "token": token, "zip": market.postcode},
         )
     except Exception as e:
+        await _capture_amazon_failure(
+            page, market, stage='location_api', reason='address_request_error', error=e,
+        )
         print(f"  [set-loc/{market.code}] POST address-change 失败: {e}")
         return False
 
     failure = _page_rejection_reason(res.get('status'), {})
     if failure:
-        raise AmazonCatalogIncomplete(f'Amazon {market.code} 地址设置请求失败 ({failure})')
+        error = AmazonCatalogIncomplete(f'Amazon {market.code} 地址设置请求失败 ({failure})')
+        await _capture_amazon_failure(
+            page, market, stage='location_api', reason=failure,
+            http_status=res.get('status'), error=error,
+        )
+        raise error
     ok = bool(res.get("updated"))
     print(
         f"  [set-loc/{market.code}] 配送地 -> {market.postcode}:"
@@ -800,6 +863,10 @@ async def verify_amazon_detail_canary(page, market: AmazonMarket) -> bool:
             if _page_rejection_reason(None, state):
                 raise AmazonCatalogIncomplete(f'Amazon {market.code} canary 页面出现访问挑战，停止采集')
             if _page_rejection_reason(response.status if response else None, {}):
+                await _capture_amazon_failure(
+                    page, market, stage='canary', reason='canary_http_error',
+                    http_status=response.status if response else None, product=asin,
+                )
                 continue
             await page.wait_for_timeout(1500)
             if not await verify_amazon_delivery_location(page, market):
@@ -814,9 +881,15 @@ async def verify_amazon_detail_canary(page, market: AmazonMarket) -> bool:
                 }""",
                 list(_AMZ_PRICE_SELECTORS),
             )
-        except AmazonCatalogIncomplete:
+        except AmazonCatalogIncomplete as e:
+            await _capture_amazon_failure(
+                page, market, stage='canary', reason='canary_rejected', product=asin, error=e,
+            )
             raise
         except Exception as e:
+            await _capture_amazon_failure(
+                page, market, stage='canary', reason='canary_request_error', product=asin, error=e,
+            )
             print(f"  [canary/{market.code}] {asin} 抓取异常: {str(e)[:80]}")
             continue
         local_price, currency, _eur = _price_pair(txt, market.currency)
@@ -825,6 +898,9 @@ async def verify_amazon_detail_canary(page, market: AmazonMarket) -> bool:
             print(f"  [canary/{market.code}] {asin} {local_price} {currency} in [{lo:.0f},{hi:.0f}] OK")
             ok_any = True
         else:
+            await _capture_amazon_failure(
+                page, market, stage='canary', reason='canary_price_invalid', product=asin,
+            )
             print(
                 f"  [canary/{market.code}] {asin} raw={txt[:24]!r} 不符"
                 f"(要 {market.currency} 且 ∈[{lo:.0f},{hi:.0f}])"
@@ -842,6 +918,9 @@ async def verify_amazon_search_currency(page, market: AmazonMarket) -> bool:
         await page.wait_for_timeout(2000)
         rows = await page.evaluate(_JS_EXTRACT)
     except Exception as e:
+        await _capture_amazon_failure(
+            page, market, stage='search_canary', reason='canary_request_error', url=url, error=e,
+        )
         print(f"  [canary/{market.code}] 搜索页校验失败: {e}")
         return False
     for r in rows:
@@ -855,6 +934,9 @@ async def verify_amazon_search_currency(page, market: AmazonMarket) -> bool:
             print(f"  [canary/{market.code}] 搜索页 {price} {currency} 合理 OK")
             return True
     print(f"  [canary/{market.code}] 搜索页未找到合理 {market.currency} 电视价 -> abort")
+    await _capture_amazon_failure(
+        page, market, stage='search_canary', reason='canary_price_invalid', url=url,
+    )
     return False
 
 
@@ -873,23 +955,45 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         """地址或币种守门遇到 Amazon 短时波动时，重建 cookie 状态后有限重试。"""
         market = self.market
         for attempt in range(1, SESSION_PREP_ATTEMPTS + 1):
+            # 每次准备只复用本次下层留下的现场，不能误用上一次页面。
+            vars(page).pop('_catalog_failure_evidence_path', None)
             if attempt > 1:
                 try:
                     await page.context.clear_cookies()
                     await page.goto("about:blank")
                 except Exception:
                     pass
-            location_ok = await set_amazon_market_location(page, market)
-            canary_ok = False
-            if location_ok:
-                if market.detail_canary:
-                    canary_ok = await verify_amazon_detail_canary(page, market)
-                else:
-                    canary_ok = await verify_amazon_search_currency(page, market)
+            stage = 'session_location'
+            try:
+                location_ok = await set_amazon_market_location(page, market)
+                canary_ok = False
+                if location_ok:
+                    stage = 'session_canary'
+                    if market.detail_canary:
+                        canary_ok = await verify_amazon_detail_canary(page, market)
+                    else:
+                        canary_ok = await verify_amazon_search_currency(page, market)
+            except Exception as error:
+                await _capture_amazon_failure(
+                    page, market, stage=stage, reason='session_preparation_error',
+                    error=error, adapter=self,
+                )
+                raise
             if location_ok and canary_ok:
                 if attempt > 1:
                     print(f"[catalog/Amazon/{market.code}] 会话守门第 {attempt} 次成功 OK")
                 return True
+            # 必须在下一次清状态/导航之前保存这一次真实页面。
+            previous = vars(page).get('_catalog_failure_evidence_path')
+            if previous is not None:
+                self._failure_evidence_captured = True
+                self._failure_evidence_path = previous
+            else:
+                await _capture_amazon_failure(
+                    page, market, stage=stage,
+                    reason='delivery_location_unverified' if not location_ok else 'canary_rejected',
+                    adapter=self,
+                )
             if attempt < SESSION_PREP_ATTEMPTS:
                 print(
                     f"[catalog/Amazon/{market.code}] 会话守门第 {attempt} 次失败 "
@@ -1126,6 +1230,10 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             if failure:
                 if self.diagnostics:
                     self.diagnostics.record_page({'queryKind': 'detail', 'asin': asin, 'reason': failure})
+                await _capture_amazon_failure(
+                    page, market, stage='catalog_detail', reason=failure,
+                    http_status=response.status if response else None, product=asin, adapter=self,
+                )
                 return None
             await page.wait_for_timeout(random.randint(1300, 2200))
             await ensure_amazon_page_delivery(
@@ -1133,13 +1241,25 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 http_status=response.status if response else None,
             )
             detail = await page.evaluate(_JS_DETAIL, list(_AMZ_DETAIL_PRICE_SELECTORS))
-        except AmazonCatalogIncomplete:
+        except AmazonCatalogIncomplete as e:
+            await _capture_amazon_failure(
+                page, market, stage='catalog_detail', reason='detail_rejected',
+                product=asin, error=e, adapter=self,
+            )
             raise
         except Exception as e:
+            await _capture_amazon_failure(
+                page, market, stage='catalog_detail', reason='detail_error',
+                product=asin, error=e, adapter=self,
+            )
             print(f"[catalog/Amazon/{market.code}] detail {asin} 失败: {str(e)[:100]}")
             return None
         title = (detail.get("title") or "").strip()
         if not title:
+            await _capture_amazon_failure(
+                page, market, stage='catalog_detail', reason='missing_product_title',
+                product=asin, adapter=self,
+            )
             return None
         brand = _brand_from_title(title) or fallback_brand
         size = _size_from_title(title) or _size_from_title(fallback_variant_text)
@@ -1173,6 +1293,10 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             if failure:
                 if self.diagnostics:
                     self.diagnostics.record_page({'queryKind': 'variant', 'asin': seed_asin, 'reason': failure})
+                await _capture_amazon_failure(
+                    page, market, stage='catalog_variant', reason=failure,
+                    http_status=response.status if response else None, product=seed_asin, adapter=self,
+                )
                 return -1
             await page.wait_for_timeout(random.randint(1300, 2200))
             await ensure_amazon_page_delivery(
@@ -1180,9 +1304,17 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 http_status=response.status if response else None,
             )
             detail = await page.evaluate(_JS_DETAIL, list(_AMZ_DETAIL_PRICE_SELECTORS))
-        except AmazonCatalogIncomplete:
+        except AmazonCatalogIncomplete as e:
+            await _capture_amazon_failure(
+                page, market, stage='catalog_variant', reason='variant_rejected',
+                product=seed_asin, error=e, adapter=self,
+            )
             raise
         except Exception as e:
+            await _capture_amazon_failure(
+                page, market, stage='catalog_variant', reason='variant_error',
+                product=seed_asin, error=e, adapter=self,
+            )
             print(f"[catalog/Amazon/{market.code}] variants {seed_asin} 失败: {str(e)[:100]}")
             return -1
 
@@ -1229,6 +1361,10 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 except Exception as e:
                     page_info.update(reason='navigation_failed', errorType=type(e).__name__)
                     self.diagnostics.record_page(page_info)
+                    await _capture_amazon_failure(
+                        page, market, stage='catalog_search', reason='navigation_error',
+                        url=url, error=e, adapter=self,
+                    )
                     print(f"[catalog/Amazon/{market.code}] {q} p{n} goto 失败: {e}")
                     if query_kind == 'brand':
                         raise AmazonCatalogIncomplete(f'Amazon {market.code} 主品牌 {q} 第 {n} 页导航失败，本轮目录不完整') from e
@@ -1237,7 +1373,12 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 if failure:
                     page_info['reason'] = failure
                     self.diagnostics.record_page(page_info)
-                    raise AmazonCatalogIncomplete(f'Amazon {market.code} 搜索页请求失败 ({failure})')
+                    error = AmazonCatalogIncomplete(f'Amazon {market.code} 搜索页请求失败 ({failure})')
+                    await _capture_amazon_failure(
+                        page, market, stage='catalog_search', reason=failure,
+                        url=url, http_status=page_info.get('httpStatus'), error=error, adapter=self,
+                    )
+                    raise error
                 if not cookie_done:
                     await _accept_cookie(page)
                     cookie_done = True
@@ -1262,11 +1403,19 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                         page_info.update(restored)
                     # 地址恢复可能重载页面；只读取复核成功后的当前搜索卡片。
                     rows = await page.evaluate(_JS_EXTRACT)
-                except AmazonCatalogIncomplete:
+                except AmazonCatalogIncomplete as e:
+                    await _capture_amazon_failure(
+                        page, market, stage='catalog_search', reason=failure or 'search_page_rejected',
+                        url=url, http_status=page_info.get('httpStatus'), error=e, adapter=self,
+                    )
                     raise
                 except Exception as e:
                     page_info.update(reason='extraction_failed', errorType=type(e).__name__)
                     self.diagnostics.record_page(page_info)
+                    await _capture_amazon_failure(
+                        page, market, stage='catalog_search', reason='extraction_error',
+                        url=url, error=e, adapter=self,
+                    )
                     print(f"[catalog/Amazon/{market.code}] {q} p{n} extract 失败: {e}")
                     if query_kind == 'brand':
                         raise AmazonCatalogIncomplete(f'Amazon {market.code} 主品牌 {q} 第 {n} 页抽取失败，本轮目录不完整') from e
@@ -1309,6 +1458,11 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                                  candidateCount=len(by_asin), filtered=filtered,
                                  reason='rows' if rows else 'empty_search_response')
                 self.diagnostics.record_page(page_info, rows)
+                if not rows and n == 1 and query_kind == 'brand':
+                    await _capture_amazon_failure(
+                        page, market, stage='catalog_search', reason='empty_search_response',
+                        url=url, adapter=self,
+                    )
                 self.diagnostics.checkpoint(by_asin.values())
                 if new_real == 0:
                     consecutive_empty += 1

@@ -112,6 +112,11 @@ class AmazonCatalogSeriesTest(unittest.TestCase):
 
 
 class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        # 本组只验证业务门禁；真实采集及顺序由失败现场专门测试覆盖。
+        self.enterContext(patch('catalog_scrape.diagnostics.capture_failure',
+                                new=AsyncMock(return_value=None)))
+
     def test_delivery_postcode_requires_real_header_match(self) -> None:
         self.assertTrue(_delivery_postcode_matches('Madrid 28013\u200c', AMAZON_ES))
         self.assertTrue(_delivery_postcode_matches('Milano 20121', AMAZON_IT))
@@ -237,6 +242,10 @@ class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
 
 
 class AmazonDeliveryRecoveryTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.enterContext(patch('catalog_scrape.diagnostics.capture_failure',
+                                new=AsyncMock(return_value=None)))
+
     """模拟短时配送栏缺失；任何页面/配送/挑战校验失败都不能输出价格。"""
 
     ASIN = 'B000000001'

@@ -8,6 +8,47 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
+from failure_evidence import capture_failure, redact_text, sanitize_url
+
+
+async def capture_catalog_failure(page, *, platform: str, country: str, stage: str,
+                                  reason: str, adapter=None, error=None, **kwargs):
+    """在真实页面关闭前留证；同一异常向上传播时复用，采集失败不改变业务结果。"""
+    previous = None
+    current = error
+    seen = set()
+    while isinstance(current, BaseException) and id(current) not in seen:
+        seen.add(id(current))
+        previous = getattr(current, '_catalog_evidence_path', None)
+        if previous is not None:
+            break
+        current = current.__cause__ or current.__context__
+    if previous is not None:
+        if adapter is not None:
+            adapter._failure_evidence_captured = True
+            adapter._failure_evidence_path = previous
+        return previous
+    try:
+        path = await capture_failure(
+            page, platform=platform, country=country, stage=stage,
+            reason=reason, error=error, **kwargs,
+        )
+    except Exception:
+        # 留证是旁路，不能把原来的超时/拒绝替换成截图或文件系统异常。
+        return None
+    if path is not None:
+        if page is not None:
+            try:
+                page._catalog_failure_evidence_path = path
+            except Exception:
+                pass
+        if isinstance(error, BaseException):
+            error._catalog_evidence_path = path
+        if adapter is not None:
+            adapter._failure_evidence_captured = True
+            adapter._failure_evidence_path = path
+    return path
+
 
 class AmazonCatalogDiagnostics:
     """诊断文件永不进入 catalog，未通过完整性检查的价格不能进入正式历史。"""
@@ -18,6 +59,12 @@ class AmazonCatalogDiagnostics:
         'validation_status',
     )
     OBSERVATION_KEYS = ('asin', 'brand', 'title', 'price', 'sizeText', 'sponsored', 'variantHint')
+    PAGE_KEYS = {
+        'query', 'page', 'queryKind', 'asin', 'reason', 'errorType', 'httpStatus',
+        'currentUrl', 'productAsin', 'cardCount', 'nextPresent', 'nextDisabled',
+        'captcha', 'robotCheck', 'continueShopping', 'deliveryRecoveryAttempted',
+        'extractedRows', 'acceptedNew', 'candidateCount', 'filtered',
+    }
 
     def __init__(self, country: str, root: Path | None = None):
         root = root or Path(os.environ.get(
@@ -47,7 +94,14 @@ class AmazonCatalogDiagnostics:
         temp.replace(self.path / 'report.json')
 
     def record_page(self, page_info: dict, rows: list[dict] | None = None) -> None:
-        self.report['pages'].append(page_info)
+        # 页面 URL 可能带临时令牌，只保存公开定位信息。
+        safe_info = {
+            key: (sanitize_url(value) if key.lower().endswith('url')
+                  else redact_text(value, 500) if isinstance(value, str) else value)
+            for key, value in page_info.items()
+            if key in self.PAGE_KEYS
+        }
+        self.report['pages'].append(safe_info)
         if rows:
             # 只保存公开商品字段，不保存 HTML、Cookie、响应头、storage 或浏览器状态。
             payload = {
@@ -81,7 +135,7 @@ class AmazonCatalogDiagnostics:
 
     def finish(self, *, status: str, reason: str | None = None, catalog_file: str | None = None) -> None:
         self.report.update(status=status, finishedAt=datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ'))
-        self.report['failureReason'] = reason
+        self.report['failureReason'] = redact_text(reason) if reason else reason
         self.report['validatedCatalogFile'] = catalog_file
         # 即使正式目录已通过，诊断文件也不成为另一条自动导入路径。
         self._save_report()

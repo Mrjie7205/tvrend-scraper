@@ -1,0 +1,127 @@
+name: Verify scraper diagnostics and safe publication
+
+# 只验证实现与诊断材料，不提交目录、价格或 mapping。
+on:
+  push:
+    branches:
+      - "codex/channel-hardening-*"
+  workflow_dispatch:
+    inputs:
+      probe_amazon:
+        description: "同时执行 GB/IT 最小入口诊断（不采集完整目录、不发布价格）"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install existing runtime and pinned test dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Install Chromium
+        run: python -m playwright install chromium --with-deps
+      - name: Run unit and Git publication tests
+        run: python -m pytest tests -q
+      - name: Verify real-browser snapshots on synthetic failure pages
+        run: python scripts/verify_failure_evidence.py
+      - name: Upload synthetic browser verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-evidence-verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: scripts/failure_artifacts/verification/
+          if-no-files-found: warn
+          retention-days: 14
+
+  queue_contract:
+    name: Verify queued publisher slot ${{ matrix.slot }}
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        slot: [1, 2, 3]
+    concurrency:
+      group: verify-price-queue-${{ github.run_id }}
+      queue: max
+      cancel-in-progress: false
+    steps:
+      - name: Confirm all three pending jobs survive the shared queue
+        env:
+          VERIFY_SLOT: ${{ matrix.slot }}
+        run: |
+          python - <<'PY'
+          import json, os, time
+          started = time.time()
+          time.sleep(8)
+          print(json.dumps({'slot': os.environ['VERIFY_SLOT'], 'started': started, 'finished': time.time(), 'writes_prices': False}))
+          PY
+
+  amazon_entry:
+    if: github.event_name == 'push' || inputs.probe_amazon
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        country: [GB, IT]
+    env:
+      ENTRY_COUNTRY: ${{ matrix.country }}
+      ENTRY_OUTPUT: ${{ github.workspace }}/scripts/failure_artifacts/entry-${{ matrix.country }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install existing dependencies
+        run: pip install -r requirements.txt
+      - name: Install Chromium
+        run: python -m playwright install chromium --with-deps
+      - name: Inspect Amazon entry without publishing catalog
+        id: entry
+        continue-on-error: true
+        run: >-
+          python scripts/diagnose_amazon_catalog.py
+          --country "$ENTRY_COUNTRY" --query samsung --pages 1
+          --entry-only --output "$ENTRY_OUTPUT"
+      - name: Verify diagnostic package was preserved
+        if: always()
+        env:
+          ENTRY_OUTCOME: ${{ steps.entry.outcome }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          files = list(Path(os.environ['ENTRY_OUTPUT']).rglob('*.json'))
+          if not files:
+              raise SystemExit('入口诊断没有留下 JSON，验收失败。')
+          summary = Path(os.environ['GITHUB_STEP_SUMMARY'])
+          with summary.open('a', encoding='utf-8') as handle:
+              handle.write(f"### Amazon {os.environ['ENTRY_COUNTRY'].upper()} 入口诊断\n\n")
+              handle.write(f"诊断命令结果：{os.environ['ENTRY_OUTCOME']}；已保存 {len(files)} 份 JSON。\n\n")
+              handle.write('本任务只验收入口诊断材料，不表示完整目录抓取成功，不发布价格。\n')
+          PY
+      - name: Upload Amazon entry evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amazon-entry-${{ matrix.country }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: scripts/failure_artifacts/
+          if-no-files-found: error
+          retention-days: 14

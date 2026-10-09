@@ -22,6 +22,7 @@ import re
 from typing import Sequence
 
 from .base import BaseCatalogAdapter, CatalogItem
+from catalog_scrape.diagnostics import capture_catalog_failure
 
 # 品牌 facet 入口(我们关心的 5 大品牌)
 BRAND_FACETS = ("samsung", "tcl", "lg", "hisense", "sony")
@@ -198,8 +199,20 @@ class BoulangerCatalogAdapter(BaseCatalogAdapter):
         """抓单个 numPage 页,累加 (canonical_url → list[(text, price)]) 到 by_url。
         返回这一页新增的 URL 数。"""
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            response = await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            status = response.status if response else None
+            if isinstance(status, int) and status >= 400:
+                await capture_catalog_failure(
+                    page, platform=self.platform_name, country=self.country,
+                    stage='catalog_navigation', reason='http_error',
+                    url=url, http_status=status, adapter=self,
+                )
         except Exception as e:
+            await capture_catalog_failure(
+                page, platform=self.platform_name, country=self.country,
+                stage='catalog_navigation', reason='navigation_error',
+                url=url, error=e, adapter=self,
+            )
             print(f"    goto 失败: {str(e)[:80]}")
             return 0
         await asyncio.sleep(1.5)
@@ -217,6 +230,11 @@ class BoulangerCatalogAdapter(BaseCatalogAdapter):
         try:
             extracted = await page.evaluate(_JS_EXTRACT)
         except Exception as e:
+            await capture_catalog_failure(
+                page, platform=self.platform_name, country=self.country,
+                stage='catalog_extraction', reason='extraction_error',
+                url=url, error=e, adapter=self,
+            )
             print(f"    JS 抓取失败: {str(e)[:80]}")
             return 0
 
