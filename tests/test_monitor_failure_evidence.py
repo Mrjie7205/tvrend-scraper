@@ -4,6 +4,8 @@ from __future__ import annotations
 import asyncio
 from contextlib import ExitStack
 import os
+import json
+import csv
 from pathlib import Path
 import sys
 import tempfile
@@ -58,7 +60,7 @@ class MonitorEvidenceTests(unittest.IsolatedAsyncioTestCase):
         self.page.goto.return_value.status = 404
         capture = self.stack.enter_context(patch.object(run_daily, "capture_failure", new=AsyncMock(side_effect=lambda *a, **kw: self.events.append("capture"))))
         result = await self.run_sku(adapter())
-        self.assertEqual("Failed: Dead Link", result["Status"])
+        self.assertEqual("Failed: dead_link", result["Status"])
         self.assertEqual(["capture", "close_page", "close_context"], self.events)
         self.assertIs(self.page, capture.await_args.args[0])
         self.assertEqual(404, capture.await_args.kwargs["http_status"])
@@ -67,7 +69,7 @@ class MonitorEvidenceTests(unittest.IsolatedAsyncioTestCase):
         self.page.goto.return_value.status = 404
         self.stack.enter_context(patch.object(run_daily, "capture_failure", new=AsyncMock(side_effect=OSError("disk"))))
         result = await self.run_sku(adapter())
-        self.assertEqual("Failed: Dead Link", result["Status"])
+        self.assertEqual("Failed: dead_link", result["Status"])
         self.assertEqual(["close_page", "close_context"], self.events)
 
     async def test_success_has_no_screenshot(self):
@@ -75,6 +77,24 @@ class MonitorEvidenceTests(unittest.IsolatedAsyncioTestCase):
         result = await self.run_sku(adapter((499.0, "EUR")))
         self.assertEqual("Success", result["Status"])
         capture.assert_not_awaited()
+
+    async def test_http_errors_never_fall_through_to_price_selectors(self):
+        capture = self.stack.enter_context(patch.object(run_daily, "capture_failure", new=AsyncMock()))
+        for status, reason in ((400, "http_error"), (403, "access_blocked"), (404, "dead_link"),
+                               (410, "dead_link"), (429, "rate_limited"), (500, "http_error")):
+            with self.subTest(status=status):
+                chosen = adapter()
+                self.page.goto.reset_mock()
+                self.page.goto.return_value.status = status
+                result = await self.run_sku(chosen)
+                self.assertEqual(f"Failed: {reason}", result["Status"])
+                self.assertEqual(status, capture.await_args.kwargs["http_status"])
+                self.assertEqual(reason, capture.await_args.kwargs["reason"])
+                self.assertEqual(SKU["url"], capture.await_args.kwargs["url"])
+                self.assertIs(self.page, capture.await_args.args[0])
+                self.assertEqual(1, self.page.goto.await_count)
+                chosen.extract_price.assert_not_awaited()
+        run_daily.handle_antibot_page.assert_not_awaited()
 
     async def test_page_creation_failure_has_summary_and_context_cleanup(self):
         self.ctx.new_page.side_effect = RuntimeError("page unavailable")
@@ -96,9 +116,25 @@ class MonitorEvidenceTests(unittest.IsolatedAsyncioTestCase):
     async def test_context_uses_shared_native_factory_without_stealth(self):
         self.ctx.add_init_script = AsyncMock()
         browser = SimpleNamespace(new_context=AsyncMock(return_value=self.ctx))
-        result = await ORIGINAL_NEW_CONTEXT(browser, adapter(), "FR")
+        with patch.dict(os.environ, {"SCRAPER_BROWSER_PROFILE": "native"}):
+            result = await ORIGINAL_NEW_CONTEXT(browser, adapter(), "FR")
         self.assertIs(result, self.ctx)
         self.ctx.add_init_script.assert_not_awaited()
+        self.assertNotIn("user_agent", browser.new_context.await_args.kwargs)
+
+    async def test_daily_default_current_context_preserves_baseline_identity(self):
+        from monitor_prices import core
+        self.ctx.add_init_script = AsyncMock()
+        browser = SimpleNamespace(new_context=AsyncMock(return_value=self.ctx))
+        with patch.dict(os.environ):
+            os.environ.pop("SCRAPER_BROWSER_PROFILE", None)
+            result = await ORIGINAL_NEW_CONTEXT(browser, adapter(), "FR")
+        self.assertIs(result, self.ctx)
+        self.assertEqual("current", browser._tvrend_browser_profile)
+        options = browser.new_context.await_args.kwargs
+        self.assertIn(options["user_agent"], core.USER_AGENTS)
+        self.assertEqual(("fr-FR", "Europe/Paris"), (options["locale"], options["timezone_id"]))
+        self.ctx.add_init_script.assert_awaited_once_with(core.STEALTH_JS)
 
     async def test_shared_warmup_page_creation_failure_still_has_summary(self):
         chosen = adapter()
@@ -183,6 +219,71 @@ class MonitorEvidenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("batch_preparation_failed", summary.call_args.kwargs["reason"])
         self.assertEqual(1, len(append.call_args.args[0]))
         browser.close.assert_awaited_once()
+
+    async def exercise_empty_collection(self, *, summary_write_fails=False):
+        from monitor_prices.prices_io import append_prices as prepare_prices
+        from price_publication import PublicationError
+        import playwright.async_api
+
+        root = Path(self.temporary.name)
+        checkpoint = root / "partial.csv"
+        chosen = adapter()
+        chosen.platform_name = "Currys"
+        chosen.catalog_report = {"blocked": True, "complete": False}
+        skus = [dict(SKU, platform="Currys", country="GB", product_name=f"55TEST{i}") for i in range(2)]
+        browser = SimpleNamespace(close=AsyncMock())
+        manager = AsyncMock()
+        manager.__aenter__.return_value = object()
+        self.stack.enter_context(patch.dict(os.environ, {
+            "PRICE_PUBLICATION_DIR": str(root / "publication"), "PRICE_ARTIFACTS_DIR": str(root / "price-evidence"),
+            "MONITOR_MAX_SKUS": "0", "CHANNELS": "Currys", "GITHUB_REPOSITORY": "Mrjie7205/tvrend-scraper",
+            "GITHUB_RUN_ID": "123456", "GITHUB_RUN_ATTEMPT": "1", "GITHUB_SHA": "a" * 40,
+            "GITHUB_REF": "refs/heads/main",
+        }))
+        for name, value in (("reset_checkpoint", checkpoint), ("load_active_skus", skus),
+                            ("channels_in_scope", None), ("load_latest_historical_prices", {}),
+                            ("load_latest_historical_observations", {}), ("get_adapter", chosen)):
+            self.stack.enter_context(patch.object(run_daily, name, return_value=value))
+        self.stack.enter_context(patch.object(playwright.async_api, "async_playwright", return_value=manager))
+        self.stack.enter_context(patch.object(run_daily, "launch_scraper_browser", new=AsyncMock(return_value=browser)))
+
+        async def failed_result(sem, browser, sku, hist, **kwargs):
+            return {"Brand": "TCL", "Product Name": sku["product_name"], "Country": "GB", "Platform": "Currys",
+                    "Price": None, "Currency": None, "Page Title": "", "Status": "Failed: channel_access_blocked", "Price_Trend": "-"}
+        self.stack.enter_context(patch.object(run_daily, "process_sku_bounded", new=AsyncMock(side_effect=failed_result)))
+
+        def prepare_with_prior_report(rows):
+            if not summary_write_fails:
+                prior = json.loads((root / "quality.json").read_text(encoding="utf-8"))
+                self.assertEqual("empty", prior["collection_status"])
+                self.assertEqual("preparing", prior["artifact_status"])
+            return prepare_prices(rows)
+        self.stack.enter_context(patch.object(run_daily, "append_prices", side_effect=prepare_with_prior_report))
+        if summary_write_fails:
+            self.stack.enter_context(patch.object(run_daily, "_atomic_json", side_effect=OSError("summary disk failure")))
+        with self.assertRaisesRegex(PublicationError, "没有有效价格"):
+            await run_daily.run()
+        with checkpoint.open(encoding="utf-8-sig", newline="") as handle:
+            stored = list(csv.DictReader(handle))
+        self.assertEqual(2, len(stored))
+        self.assertTrue(all(row["Status"] == "Failed: channel_access_blocked" for row in stored))
+        self.assertFalse((root / "publication" / "manifest.json").exists())
+        return root
+
+    async def test_empty_collection_quality_precedes_artifact_failure(self):
+        root = await self.exercise_empty_collection()
+        report = json.loads((root / "quality.json").read_text(encoding="utf-8"))
+        self.assertEqual("empty", report["collection_status"])
+        self.assertEqual("artifact_failed", report["artifact_status"])
+        self.assertEqual("not_published", report["publication_status"])
+        self.assertEqual((2, 0, 2), (report["attempted"], report["success"], report["failed"]))
+        self.assertEqual({"Failed: channel_access_blocked": 2}, report["failed_by_category"])
+        self.assertEqual("PublicationError", report["artifact_error"]["type"])
+        self.assertEqual(0, report["price_anomalies"])
+        self.assertEqual("no_alerts", report["price_evidence"]["status"])
+
+    async def test_quality_write_error_does_not_replace_original_artifact_error(self):
+        await self.exercise_empty_collection(summary_write_fails=True)
 
 
 if __name__ == "__main__":

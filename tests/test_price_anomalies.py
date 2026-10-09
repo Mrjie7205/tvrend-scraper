@@ -282,3 +282,29 @@ def test_body_challenge_is_not_retried_as_generic_navigation_error(monkeypatch):
     result = asyncio.run(run_daily.process_sku(asyncio.Semaphore(1), object(), sku, {}))
     assert result["Status"] == "Failed: challenge_unresolved"
     assert page.goto.await_count == 1
+
+
+def test_outer_sku_timeout_during_verification_cleanup_preserves_api_price(monkeypatch):
+    async def exercise():
+        page = Page()
+        closing = asyncio.Event()
+        async def hanging_close():
+            closing.set()
+            await asyncio.Event().wait()
+        page.close = AsyncMock(side_effect=hanging_close)
+        context = SimpleNamespace(new_page=AsyncMock(return_value=page), close=AsyncMock(), request=object())
+        adapter = CurrysAdapter()
+        adapter.direct_price_enabled = True
+        adapter.extract_price_direct = AsyncMock(return_value=(200, "GBP"))
+        adapter.extract_price = AsyncMock(return_value=(190, "GBP"))
+        monkeypatch.setattr(run_daily, "_new_context", AsyncMock(return_value=context))
+        monkeypatch.setattr(run_daily, "get_adapter", lambda _: adapter)
+        monkeypatch.setattr(run_daily, "SKU_TIMEOUT_SECONDS", 0.25)
+        hist = prices_io.FrozenPriceHistory({}, {("55TV", "GB", "Currys", "GBP"): BASELINE})
+        sku = {"brand": "LG", "product_name": "55TV", "country": "GB", "platform": "Currys", "url": OBSERVATION["url"]}
+        task = asyncio.create_task(run_daily.process_sku_bounded(asyncio.Semaphore(1), object(), sku, hist))
+        await asyncio.wait_for(closing.wait(), timeout=1)
+        result = await asyncio.wait_for(task, timeout=1)
+        assert result["Status"] == "Success" and result["Price"] == 200
+        assert page.goto.await_count == 1
+    asyncio.run(exercise())

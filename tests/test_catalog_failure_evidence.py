@@ -266,6 +266,16 @@ class StandaloneAmazonDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.summary()['entryOnly'])
         self.assertEqual([], self.summary()['pages'])
 
+    async def test_summary_identifies_native_experiment_and_actual_engine(self):
+        self.args.entry_only = True
+        self.browser.version = '149.0.synthetic'
+        with patch.dict(os.environ, {'SCRAPER_BROWSER_PROFILE': 'native'}):
+            self.assertEqual(0, await diagnose.run(self.args))
+        summary = self.summary()
+        self.assertEqual('native', summary['browser_profile'])
+        self.assertEqual('149.0.synthetic', summary['browser_version'])
+        self.assertEqual('Playwright Chromium', summary['browser_source'])
+
     async def test_challenge_stops_diagnostic_before_next_page(self):
         self.page.evaluate.return_value = {'continueShopping': True}
         self.assertEqual(1, await diagnose.run(self.args))

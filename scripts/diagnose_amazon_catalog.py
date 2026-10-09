@@ -17,7 +17,9 @@ from catalog_scrape.adapters.amazon import (
 )
 from catalog_scrape.diagnostics import capture_catalog_failure
 from failure_evidence import redact_text, sanitize_url
-from monitor_prices.core import close_playwright_resource, launch_scraper_browser, new_scraper_context
+from monitor_prices.core import (
+    close_playwright_resource, get_browser_profile, launch_scraper_browser, new_scraper_context,
+)
 
 MARKETS = {market.code: market for market in (AMAZON_DE, AMAZON_GB, AMAZON_IT, AMAZON_ES)}
 PAGE_STATE = r"""() => {
@@ -77,7 +79,9 @@ async def run(args: argparse.Namespace) -> int:
     args.output.mkdir(parents=True, exist_ok=True)
     summary = {'country': market.code, 'query': args.query,
                'observedAt': datetime.now(UTC).isoformat(), 'diagnosticOnly': True,
-               'entryOnly': bool(getattr(args, 'entry_only', False)), 'pages': []}
+               'entryOnly': bool(getattr(args, 'entry_only', False)), 'pages': [],
+               'browser_profile': get_browser_profile(),
+               'browser_version': 'not_started', 'browser_source': 'not_started'}
     browser = context = page = None
     old_root = os.environ.get('FAILURE_EVIDENCE_DIR')
     if old_root is None:
@@ -96,8 +100,16 @@ async def run(args: argparse.Namespace) -> int:
     try:
         async with async_playwright() as playwright:
             browser = await launch_scraper_browser(playwright, headless=True)
+            version = getattr(browser, 'version', None)
+            source = vars(browser).get('_tvrend_browser_source')
+            summary.update(
+                browser_profile=get_browser_profile(browser),
+                browser_version=version if isinstance(version, str) else 'unknown',
+                browser_source=source if isinstance(source, str) else 'unknown',
+            )
             context = await new_scraper_context(
                 browser, country=market.code, locale_override=(market.locale, market.timezone),
+                viewport={'width': 1366, 'height': 900},
             )
             page = await context.new_page()
             try:

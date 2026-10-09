@@ -47,13 +47,14 @@ from monitor_prices.prices_io import (  # noqa: E402
 from monitor_prices.adapters import get_adapter, supported_platforms  # noqa: E402
 from failure_evidence import capture_failure, record_failure  # noqa: E402
 from failure_evidence import _atomic_json, _bounded  # noqa: E402
-from price_anomalies import classify_change, record_price_change, attach_price_verification, summarize  # noqa: E402
+from price_anomalies import classify_change, record_price_change, attach_price_verification, update_price_change_status, summarize  # noqa: E402
 from monitor_prices.prices_io import FrozenPriceHistory, load_latest_historical_observations  # noqa: E402
 from monitor_prices.core import launch_scraper_browser, new_scraper_context  # noqa: E402
 from monitor_prices.core import ANTIBOT_TITLE_MARKERS  # noqa: E402
 from datetime import timezone
 from collections import Counter
 import json
+from decimal import Decimal, InvalidOperation
 
 CONCURRENCY = int(os.environ.get("MONITOR_CONCURRENCY", "3"))
 HEADLESS = os.environ.get("HEADLESS_MODE", "true").lower() != "false"
@@ -126,10 +127,77 @@ async def _new_context(browser, adapter, country: str):
     return ctx
 
 
+def _candidate_key(sku):
+    return tuple(sku[key] for key in ("product_name", "country", "platform", "url"))
+
+
+def _same_candidate_price(candidate, result):
+    try:
+        return (result.get("Status") == "Success" and result.get("Currency") == candidate["currency"]
+                and Decimal(str(result.get("Price"))) > 0
+                and Decimal(str(result["Price"])) == Decimal(str(candidate["price"])))
+    except (InvalidOperation, ValueError, TypeError):
+        return False
+
+
+async def _retain_batch_candidates(adapter, skus, prices, hist, *, guard):
+    """门禁弃用前只留重大波动候选，不改变正式价格映射，也不再访问站点。"""
+    pending = getattr(hist, "pending_candidates", None)
+    if pending is None:
+        hist.pending_candidates = pending = {}
+    observed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    for sku in skus:
+        price_data = prices.get(adapter.batch_price_key(sku["url"]))
+        if not price_data or _candidate_key(sku) in pending:
+            continue
+        price, currency = price_data
+        baseline = getattr(hist, "observations", {}).get((sku["product_name"], sku["country"], sku["platform"], str(currency).upper()))
+        if not baseline or not classify_change(baseline.get("price"), price, old_currency=baseline.get("currency"), currency=currency):
+            continue
+        path = await record_price_change(
+            baseline=baseline,
+            observation={"price": price, "currency": currency, "observed_at": observed_at,
+                         "platform": sku["platform"], "country": sku["country"], "product": sku["product_name"],
+                         "url": sku["url"], "listing_id": adapter.batch_price_key(sku["url"]),
+                         "observation_source": "batch_catalog_candidate", "ingestion_status": "pending",
+                         "validation_state": "unvalidated"},
+            evidence_source="batch_candidate_awaiting_existing_pdp",
+            verification={"status": "pending_existing_pdp", "guard": guard},
+        )
+        if path is not None:
+            pending[_candidate_key(sku)] = {"path": path, "price": price, "currency": currency, "guard": guard}
+
+
+async def _finalize_batch_candidate(sku, hist, result, *, page=None, status=None, reason=None):
+    candidate = getattr(hist, "pending_candidates", {}).get(_candidate_key(sku))
+    if not candidate or candidate.get("accepted"):
+        return
+    try:
+        matched = _same_candidate_price(candidate, result)
+        success = result.get("Status") == "Success"
+        verification = {"status": "matching_pdp_price" if matched else "different_pdp_price" if success else reason or result.get("Status", "pdp_unavailable"),
+                        "url": getattr(page, "url", None), "http_status": status, "guard": candidate["guard"],
+                        "observed_at": datetime.now(timezone.utc).isoformat()}
+        if success:
+            verification.update(price=result.get("Price"), currency=result.get("Currency"))
+        # 复用已经访问过、尚未关闭的PDP，不能为一个候选再发第二次访问。
+        await attach_price_verification(candidate["path"], page=page, verification=verification,
+                                        evidence_source="existing_pdp_verification" if page is not None else "existing_pdp_unavailable")
+        update_price_change_status(candidate["path"], ingestion_status="accepted" if matched else "rejected",
+                                   reason="pdp_confirms_candidate" if matched else "pdp_differs_from_candidate" if success else "pdp_verification_unavailable")
+        candidate["accepted"] = matched
+    except (Exception, asyncio.CancelledError) as exc:
+        update_price_change_status(candidate["path"], ingestion_status="not_published", reason="candidate_verification_interrupted")
+        print(json.dumps({"event": "batch_candidate_evidence_unavailable", "error_type": type(exc).__name__}))
+
+
 async def _observe_success(result, sku, hist, adapter, browser, *, page=None, context=None, source="product_page"):
     """最终成功价先固定时间；价格留证旁路失败不得把已取得的报价改成失败。"""
     stamp = datetime.now(timezone.utc)
     result["Date"], result["Time"] = stamp.strftime("%Y-%m-%d"), stamp.strftime("%H:%M:%S")
+    candidate = getattr(hist, "pending_candidates", {}).get(_candidate_key(sku))
+    if page is not None and candidate and _same_candidate_price(candidate, result):
+        return  # 同价PDP通过同一个候选事件确认，finally会留同页截图及独立复核时间。
     baseline = getattr(hist, "observations", {}).get((sku["product_name"], sku["country"], sku["platform"], str(result["Currency"]).upper()))
     if not baseline or not classify_change(baseline["price"], result["Price"], old_currency=baseline["currency"], currency=result["Currency"]):
         return
@@ -187,10 +255,13 @@ async def _observe_success(result, sku, hist, adapter, browser, *, page=None, co
     except (Exception, asyncio.CancelledError) as exc:
         print(json.dumps({"event": "price_evidence_unavailable", "error_type": type(exc).__name__, "price_preserved": True}))
     finally:
-        if verification_page is not None:
-            await close_playwright_resource(verification_page, "price verification page", timeout_seconds=1)
-        if verification_context is not None:
-            await close_playwright_resource(verification_context, "price verification context", timeout_seconds=1)
+        for resource, label in ((verification_page, "price verification page"), (verification_context, "price verification context")):
+            if resource is not None:
+                try:
+                    await close_playwright_resource(resource, label, timeout_seconds=1)
+                except (Exception, asyncio.CancelledError) as exc:
+                    # SKU预算恰在取证清理时耗尽，也不能把已经获得的有效API/batch价变成空价。
+                    print(json.dumps({"event": "price_evidence_cleanup_failed", "error_type": type(exc).__name__, "price_preserved": True}))
 
 
 async def process_sku(
@@ -247,6 +318,7 @@ async def process_sku(
             result["Status"] = "Failed: channel_access_blocked"
             record_failure(platform=platform, country=country, stage="blocked_before_pdp",
                            reason="channel_access_blocked", url=url, product=name)
+            await _finalize_batch_candidate(sku, hist, result, reason="channel_access_blocked")
             return result
 
         ctx = shared_context
@@ -295,14 +367,13 @@ async def process_sku(
                     wait_until = getattr(adapter, "navigation_wait_until", "domcontentloaded")
                     response = await page.goto(url, wait_until=wait_until, timeout=timeout_ms)
                     status = response.status if response else 0
-                    if platform.lower() == "currys":
-                        # 先判访问拒绝，再判链接失效；403跳转不能被写成下架。
-                        reason = adapter.classify_response(status, url, page.url)
-                        if status in {403, 429} and reason:
-                            result["Status"] = f"Failed: {reason}"
-                            result["Page Title"] = f"HTTP {status} → {page.url}"
-                            failure_reason = reason
-                            break
+                    if status >= 400:
+                        # 所有渠道的错误HTTP先归类；错误页面不能继续进入价格选择器。
+                        failure_reason = ({403: "access_blocked", 429: "rate_limited", 404: "dead_link", 410: "dead_link"}
+                                          .get(status, "http_error"))
+                        result["Status"] = f"Failed: {failure_reason}"
+                        result["Page Title"] = f"HTTP {status} → {page.url}"
+                        break
                     if platform.lower() != "currys" and adapter.is_unavailable_response(status, url, page.url):
                         result["Status"] = "Failed: Dead Link"
                         result["Page Title"] = f"HTTP {status} → {page.url}"
@@ -321,9 +392,6 @@ async def process_sku(
                     if platform.lower() == "currys":
                         reason = adapter.classify_response(status, url, page.url, await page.title())
                         if reason:
-                            if reason == "http_error" and status >= 500 and attempt < MAX_RETRIES - 1:
-                                print(f"  [{name}] 临时 HTTP {status}，保留一次导航重试")
-                                continue
                             result["Status"] = f"Failed: {reason}"
                             failure_reason = reason
                             break
@@ -407,6 +475,7 @@ async def process_sku(
             failure_reason = "critical_error"
             failure_error = e
         finally:
+            await _finalize_batch_candidate(sku, hist, result, page=page, status=status, reason=failure_reason)
             try:
                 if failure_reason:
                     await capture_failure(page, platform=platform, country=country, stage=stage,
@@ -585,9 +654,11 @@ async def run() -> int:
             if not getattr(adapter, "batch_price_enabled", False):
                 continue
             group = [s for s in runnable if s["platform"].lower() == platform.lower()]
+            adapter.batch_candidate_prices = {}
             try:
                 prepared = await adapter.prepare_batch_prices(browser, group)
                 if not prepared:
+                    await _retain_batch_candidates(adapter, group, getattr(adapter, "batch_candidate_prices", {}), hist, guard="batch_completeness_guard")
                     for country in sorted({s["country"] for s in group}):
                         record_failure(platform=adapter.platform_name, country=country, stage="prepare_batch",
                                        reason="batch_prices_unavailable", browser_available=True)
@@ -596,9 +667,11 @@ async def run() -> int:
                     for country in sorted({s["country"] for s in group}):
                         record_failure(platform=adapter.platform_name, country=country, stage="batch_history_guard",
                                        reason="batch_history_guard_rejected", browser_available=True)
+                    await _retain_batch_candidates(adapter, group, prepared, hist, guard="batch_history_guard")
                     prepared = {}
                 if prepared:
                     outlier_keys = _batch_price_outlier_keys(adapter, group, prepared, hist)
+                    await _retain_batch_candidates(adapter, group, {key: prepared[key] for key in outlier_keys}, hist, guard="batch_single_guard")
                     for key in outlier_keys:
                         prepared.pop(key, None)
                     if outlier_keys:
@@ -682,30 +755,51 @@ async def run() -> int:
         if fatal_errors:
             raise RuntimeError("；".join(fatal_errors))
 
-    # 批量追加进 prices.csv(给每行打时间戳)
-    # 每行在完成时已经写入时间戳和检查点；整轮成功后才合入主 CSV。
-    # 只把成功行写进 prices.csv:失败行有 stdout 日志 + debug 截图可查,后端也只读 Success;
-    # 失败空价行进库会污染近窗,并可能在 trim 把唯一 Success 滚出窗口后误判"新上线"。
-    append_prices([r for r in results if r["Status"] == "Success"])
-    # public 只留近窗(默认 45 天,PRICES_KEEP_DAYS 可调);完整历史由私库 enrich 留存
-    trim_prices_window()
-
     n_ok = sum(1 for r in results if r["Status"] == "Success")
     n_fail = len(results) - n_ok
     n_batch = sum(1 for r in results if r["Page Title"] == "Batch category snapshot")
-    evidence = summarize()
+    try:
+        evidence = summarize()
+    except Exception as exc:
+        print(json.dumps({"event": "price_evidence_summary_failed", "error_type": type(exc).__name__}))
+        evidence = {"events": None, "screenshots_saved": None, "write_failures_this_process": None,
+                    "screenshot_statuses": {}, "summary_status": "unavailable"}
     quality = {"attempted": len(runnable), "success": n_ok, "failed": n_fail,
                "failed_by_category": dict(Counter(r["Status"] for r in results if r["Status"] != "Success")),
                "latest_date": max((r["Date"] for r in results if r["Status"] == "Success"), default=None),
                "price_anomalies": evidence["events"], "price_screenshots": evidence["screenshots_saved"],
                "price_evidence_write_failures": evidence["write_failures_this_process"],
                "price_screenshot_statuses": evidence["screenshot_statuses"],
+               "price_evidence": {"status": evidence.get("status", evidence.get("summary_status", "unavailable")),
+                                  "events": evidence["events"], "screenshots_saved": evidence["screenshots_saved"],
+                                  "write_failures": evidence.get("write_failures", evidence["write_failures_this_process"]),
+                                  "screenshot_statuses": evidence["screenshot_statuses"],
+                                  "evidence_complete": evidence.get("evidence_complete")},
                "catalog_reports": {platform: getattr(get_adapter(platform), "catalog_report", {}) for platform in sorted({s["platform"] for s in runnable})},
-               "collection_status": "complete" if not n_fail else "partial", "publication_status": "awaiting_publish_job"}
+               "collection_status": "empty" if not n_ok else "partial" if n_fail else "full",
+               "artifact_status": "preparing", "publication_status": "not_started"}
+
+    def save_quality():
+        try:
+            _atomic_json(checkpoint_path.parent / "quality.json", quality)
+        except Exception as exc:
+            # 摘要是旁路。尤其不能用写盘异常盖掉下方真实的产物准备失败。
+            print(json.dumps({"event": "monitor_quality_write_failed", "error_type": type(exc).__name__}))
+
+    # 先记录采集结果：零成功也必须留下 typed failures，不能等发布产物准备完才写。
+    save_quality()
     try:
-        _atomic_json(checkpoint_path.parent / "quality.json", quality)
-    except OSError as exc:
-        print(json.dumps({"event": "monitor_quality_write_failed", "error_type": type(exc).__name__}))
+        # 每条观测已进入检查点；继续沿用成功价格和正价门禁，失败行不进入正式产物。
+        append_prices([r for r in results if r["Status"] == "Success"])
+        trim_prices_window()
+    except (Exception, asyncio.CancelledError) as exc:
+        quality.update(artifact_status="artifact_failed", publication_status="not_published",
+                       artifact_error={"type": type(exc).__name__,
+                                       "reason": "no_successful_observations" if not n_ok else "artifact_preparation_failed"})
+        save_quality()
+        raise
+    quality.update(artifact_status="prepared", publication_status="awaiting_publish_job")
+    save_quality()
     print(
         f"\n[monitor] 完成 · 成功 {n_ok} / 失败 {n_fail} (共 {len(results)})"
         f" · 类目快照命中 {n_batch}"

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import asyncio
 from datetime import UTC, datetime
 import json
 import os
@@ -13,13 +14,19 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from monitor_prices.core import launch_scraper_browser, new_scraper_context
+from monitor_prices.core import (
+    CURRENT_BROWSER_ARGS, STEALTH_JS, USER_AGENTS,
+    get_browser_profile, launch_scraper_browser, new_scraper_context,
+)
 from catalog_scrape.adapters.amazon import AMAZON_GB, AmazonCatalogAdapter, _page_rejection_reason
 from catalog_scrape.adapters.currys import CurrysCatalogAdapter, CurrysCatalogIncomplete
 from monitor_prices.adapters.boulanger import BoulangerAdapter
 
 
 class BrowserFactoryTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.enterContext(patch.dict(os.environ, {'SCRAPER_BROWSER_PROFILE': 'native'}))
+
     async def test_fixed_chromium_without_identity_or_certificate_overrides(self):
         launch = AsyncMock()
         playwright = SimpleNamespace(chromium=SimpleNamespace(launch=launch))
@@ -51,6 +58,91 @@ class BrowserFactoryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual('fr-FR', browser.new_context.await_args.kwargs['locale'])
         self.assertNotIn('user_agent', browser.new_context.await_args.kwargs)
         browser.new_context.return_value.add_init_script.assert_not_awaited()
+
+
+class CurrentBrowserProfileTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.enterContext(patch.dict(os.environ, {'SCRAPER_BROWSER_PROFILE': 'current'}))
+
+    async def test_default_current_preserves_baseline_launch_and_context(self):
+        browser = AsyncMock()
+        launch = AsyncMock(return_value=browser)
+        playwright = SimpleNamespace(chromium=SimpleNamespace(launch=launch))
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual('current', get_browser_profile())
+            self.assertIs(browser, await launch_scraper_browser(playwright))
+            context = await new_scraper_context(browser, country='IT')
+        self.assertEqual('chrome', launch.await_args.kwargs['channel'])
+        self.assertEqual(list(CURRENT_BROWSER_ARGS), launch.await_args.kwargs['args'])
+        self.assertIn(browser.new_context.await_args.kwargs['user_agent'], USER_AGENTS)
+        self.assertEqual('it-IT', browser.new_context.await_args.kwargs['locale'])
+        context.add_init_script.assert_awaited_once_with(STEALTH_JS)
+
+    async def test_profile_is_frozen_for_whole_browser_run(self):
+        browser = AsyncMock()
+        launch = AsyncMock(return_value=browser)
+        await launch_scraper_browser(SimpleNamespace(chromium=SimpleNamespace(launch=launch)))
+        with patch.dict(os.environ, {'SCRAPER_BROWSER_PROFILE': 'native'}):
+            self.assertEqual('current', get_browser_profile(browser))
+            context = await new_scraper_context(browser, country='GB')
+        self.assertIn('user_agent', browser.new_context.await_args.kwargs)
+        context.add_init_script.assert_awaited_once()
+        launch.assert_awaited_once()
+
+    async def test_current_startup_fallback_keeps_current_profile(self):
+        browser = AsyncMock()
+        launch = AsyncMock(side_effect=[RuntimeError('system Chrome missing'), browser])
+        await launch_scraper_browser(SimpleNamespace(chromium=SimpleNamespace(launch=launch)))
+        self.assertEqual('chrome', launch.await_args_list[0].kwargs['channel'])
+        self.assertNotIn('channel', launch.await_args_list[1].kwargs)
+        self.assertEqual(list(CURRENT_BROWSER_ARGS), launch.await_args_list[1].kwargs['args'])
+        self.assertEqual('current', get_browser_profile(browser))
+
+    async def test_current_keeps_existing_native_identity_exception(self):
+        browser = AsyncMock()
+        context = await new_scraper_context(browser, country='NO', native_identity=True)
+        self.assertNotIn('user_agent', browser.new_context.await_args.kwargs)
+        self.assertEqual('nb-NO', browser.new_context.await_args.kwargs['locale'])
+        context.add_init_script.assert_not_awaited()
+
+    async def test_initialization_error_and_cancellation_close_context_then_reraise(self):
+        for original in (RuntimeError('initialization failed'), asyncio.CancelledError()):
+            with self.subTest(error=type(original).__name__):
+                browser = AsyncMock()
+                context = browser.new_context.return_value
+                context.add_init_script.side_effect = original
+                with self.assertRaises(type(original)) as caught:
+                    await new_scraper_context(browser, country='GB')
+                self.assertIs(original, caught.exception)
+                context.close.assert_awaited_once()
+                self.assertEqual('current', get_browser_profile(browser))
+
+    async def test_cleanup_error_does_not_replace_initialization_error(self):
+        browser = AsyncMock()
+        original = RuntimeError('original initialization failure')
+        browser.new_context.return_value.add_init_script.side_effect = original
+        with patch('monitor_prices.core.close_playwright_resource',
+                   new=AsyncMock(side_effect=RuntimeError('cleanup failed'))):
+            with self.assertRaises(RuntimeError) as caught:
+                await new_scraper_context(browser, country='GB')
+        self.assertIs(original, caught.exception)
+
+    async def test_elkjop_catalog_passes_native_identity_to_factory(self):
+        from catalog_scrape.adapters.elkjop import ElkjopCatalogAdapter
+        from catalog_scrape.run_weekly import run_one_adapter
+        adapter = ElkjopCatalogAdapter()
+        adapter.fetch_catalog = AsyncMock(return_value=[])
+        context = AsyncMock()
+        with patch('catalog_scrape.run_weekly.new_scraper_context', new=AsyncMock(return_value=context)) as factory, patch(
+            'catalog_scrape.diagnostics.capture_failure', new=AsyncMock(return_value=None),
+        ):
+            await run_one_adapter(AsyncMock(), adapter)
+        self.assertTrue(factory.await_args.kwargs['native_identity'])
+
+    def test_unknown_profile_is_rejected_before_launch(self):
+        with patch.dict(os.environ, {'SCRAPER_BROWSER_PROFILE': 'retry-alternate'}):
+            with self.assertRaises(ValueError):
+                get_browser_profile()
 
 
 class AmazonPriceBaselineTests(unittest.TestCase):
@@ -198,7 +290,10 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.enterContext(patch.dict(os.environ, {'CURRYS_CATALOG_DIAGNOSTICS_DIR': self.temp.name}))
+        self.enterContext(patch.dict(os.environ, {
+            'CURRYS_CATALOG_DIAGNOSTICS_DIR': self.temp.name,
+            'SCRAPER_BROWSER_PROFILE': 'native',
+        }))
         self.enterContext(patch('catalog_scrape.adapters.currys.asyncio.sleep', new=AsyncMock()))
         self.enterContext(patch('catalog_scrape.diagnostics.capture_failure', new=AsyncMock(return_value=Path('evidence.json'))))
         self.adapter = CurrysCatalogAdapter()
@@ -255,6 +350,25 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.adapter._last_page_info['blocked'])
         self.assertFalse(self.adapter._last_page_info['retryable'])
         page.evaluate.assert_not_awaited()
+
+    async def test_current_uses_separate_page_contexts_and_stops_at_403(self):
+        context1, context2 = AsyncMock(), AsyncMock()
+        page1, page2 = AsyncMock(), AsyncMock()
+        context1.new_page.return_value = page1
+        context2.new_page.return_value = page2
+        page1.goto.return_value = SimpleNamespace(status=200)
+        page1.is_visible.return_value = False
+        page1.evaluate.side_effect = [{}, [self.card(1)]]
+        page2.goto.return_value = SimpleNamespace(status=403)
+        self.adapter._new_context = AsyncMock(side_effect=[context1, context2])
+        with patch.dict(os.environ, {'SCRAPER_BROWSER_PROFILE': 'current'}):
+            items = await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.assertEqual(1, len(items))
+        self.assertEqual(2, self.adapter._new_context.await_count)
+        context1.close.assert_awaited_once()
+        context2.close.assert_awaited_once()
+        self.assertTrue(self.adapter.catalog_report['blocked'])
+        self.assertFalse(self.adapter.catalog_report['complete'])
 
     async def test_page_limit_cannot_be_called_complete(self):
         self.adapter._scrape_page = AsyncMock(return_value=(200, [self.card(1)]))

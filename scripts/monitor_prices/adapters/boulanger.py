@@ -41,6 +41,8 @@ class BoulangerAdapter(BaseAdapter):
         """按五大品牌 facet 批量取价，未命中的少量链接再回退 PDP。"""
         from catalog_scrape.adapters.boulanger import BoulangerCatalogAdapter
 
+        self.batch_candidate_prices = {}  # 每轮重置，只交接本轮可比候选，不能借前次快照。
+
         ctx = await new_scraper_context(browser, country='FR', locale_override=self.locale_override)
         page = await ctx.new_page()
         try:
@@ -56,6 +58,7 @@ class BoulangerAdapter(BaseAdapter):
             if key:
                 price_map[key] = (float(item.price_hint_eur), "EUR")
 
+        self.batch_candidate_prices = dict(price_map)
         requested_keys = {self.batch_price_key(s["url"]) for s in skus}
         matched = sum(1 for key in requested_keys if key in price_map)
         coverage = matched / len(requested_keys) if requested_keys else 0.0

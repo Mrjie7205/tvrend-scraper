@@ -15,6 +15,10 @@ on:
 permissions:
   contents: read
 
+# 原生浏览器仍属受控兼容性试验；生产工作流默认保留 current 配置，不在访问受阻后换身份。
+env:
+  SCRAPER_BROWSER_PROFILE: native
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -32,6 +36,8 @@ jobs:
       - name: Install Chromium
         run: python -m playwright install chromium --with-deps
       - name: Run unit and Git publication tests
+        env:
+          SCRAPER_BROWSER_PROFILE: current
         run: python -m pytest tests -q
       - name: Verify real-browser snapshots on synthetic failure pages
         run: python scripts/verify_failure_evidence.py

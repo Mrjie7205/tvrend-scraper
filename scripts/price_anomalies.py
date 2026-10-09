@@ -74,7 +74,7 @@ async def _record_price_change(*, baseline: dict | None, observation: dict, page
         return None
     source = _source()
     identity = {**source, **{k: observation.get(k) for k in
-        ("platform", "country", "product", "asin", "listing_id", "url", "observed_at", "price", "currency")}}
+        ("platform", "country", "product", "asin", "listing_id", "url", "observed_at", "price", "currency", "observation_source")}}
     event_id = hashlib.sha256(json.dumps(identity, sort_keys=True, default=str).encode()).hexdigest()[:24]
     root = Path(output_dir or default_output_dir()).resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -121,7 +121,7 @@ def _screenshot_limit():
 def _safe_verification(value):
     if not isinstance(value, dict):
         return None
-    result = {key: redact_text(value[key], 100) for key in ("status", "currency", "observed_at", "error_type") if key in value}
+    result = {key: redact_text(value[key], 100) for key in ("status", "currency", "observed_at", "error_type", "guard") if key in value}
     result["url"] = sanitize_url(value.get("url"))
     for key in ("price", "http_status"):
         number = value.get(key)
@@ -177,7 +177,7 @@ def summarize(output_dir: Path | None = None, *, write=True) -> dict:
     for path in sorted(root.glob("price_change_*.json")):
         try:
             event = json.loads(path.read_text(encoding="utf-8"))
-            events.append({**{key: event.get(key) for key in ("product", "platform", "country", "old_price", "new_price", "currency", "change_percent", "new_observed_at", "ingestion_status")},
+            events.append({**{key: event.get(key) for key in ("product", "platform", "country", "old_price", "new_price", "currency", "change_percent", "new_observed_at", "ingestion_status", "observation_source")},
                            "event_file": path.name, "screenshot": event.get("screenshot", {})})
         except (ValueError, OSError):
             unreadable += 1
@@ -235,12 +235,13 @@ def write_github_summary(path: Path, summary: dict) -> None:
     lines = ["\n### 价格波动留证\n",
              f"已留存事件 {summary['events']}；取得截图 {summary['screenshots_saved']}；不可读取事件 {summary['unreadable_events']}；写盘失败 {summary['write_failures']}。\n",
              "未触发时无需截图；已触发但未取得截图的原因见下表。写盘失败另有 price_evidence_write_failed 日志。\n",
-             "| 型号 | 旧价 | 新价 | 币种 | 变化% | 截图状态 | 事件文件 |",
-             "|---|---:|---:|---|---:|---|---|"]
+             "采集验收只表示价格门禁结果；是否已发布以独立发布任务为准。\n",
+             "| 型号 | 旧价 | 新价 | 币种 | 变化% | 采集验收 | 截图状态 | 事件文件 |",
+             "|---|---:|---:|---|---:|---|---|---|"]
     for event in summary["items"][:100]:
         lines.append("| " + " | ".join(cell(x) for x in (
             event.get("product"), event.get("old_price"), event.get("new_price"), event.get("currency"),
-            event.get("change_percent"), event.get("screenshot", {}).get("status"), event["event_file"])) + " |")
+            event.get("change_percent"), event.get("ingestion_status"), event.get("screenshot", {}).get("status"), event["event_file"])) + " |")
     if len(summary["items"]) > 100:
         lines.append(f"\n另有 {len(summary['items']) - 100} 条事件，详见价格附件中的 summary.json。")
     try:

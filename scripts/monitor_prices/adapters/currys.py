@@ -34,6 +34,7 @@ class CurrysAdapter(BaseAdapter):
         # 环境里对 Currys 最稳定的访问方式。
         from catalog_scrape.adapters.currys import CurrysCatalogAdapter
 
+        self.batch_candidate_prices = {}
         catalog_adapter = CurrysCatalogAdapter()
         self.catalog_report = {}
         try:
@@ -48,6 +49,7 @@ class CurrysAdapter(BaseAdapter):
             if key:
                 price_map[key] = (float(item.price_hint_eur), "GBP")
 
+        self.batch_candidate_prices = dict(price_map)
         requested_keys = {self.batch_price_key(s["url"]) for s in skus}
         matched = sum(1 for key in requested_keys if key in price_map)
         coverage = matched / len(requested_keys) if requested_keys else 0.0

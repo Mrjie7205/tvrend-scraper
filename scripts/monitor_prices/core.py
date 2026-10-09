@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import random
 import re
 
 
@@ -161,28 +162,78 @@ def locale_for(country: str) -> tuple[str, str]:
     return COUNTRY_LOCALE.get(country.upper(), DEFAULT_LOCALE)
 
 
-# 使用当前 Playwright 配套 Chromium；禁止按访问挑战切换身份或浏览器来源。
+# current 保留 811717f 的生产策略；native 仅显式试验。不能在访问挑战后切换。
 SCRAPER_BROWSER_ARGS = ("--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage")
+CURRENT_BROWSER_ARGS = (
+    "--disable-blink-features=AutomationControlled", "--no-sandbox",
+    "--disable-setuid-sandbox", "--disable-infobars",
+    "--ignore-certificate-errors", "--disable-dev-shm-usage",
+)
+
+
+def get_browser_profile(browser=None) -> str:
+    """运行开始时选定，并在 browser 上冻结；后续环境变化不能切换当前运行。"""
+    if browser is not None:
+        frozen = vars(browser).get('_tvrend_browser_profile')
+        if frozen in ('current', 'native'):
+            return frozen
+    profile = os.environ.get('SCRAPER_BROWSER_PROFILE', 'current').strip().lower()
+    if profile not in ('current', 'native'):
+        raise ValueError('SCRAPER_BROWSER_PROFILE 仅允许 current 或 native')
+    if browser is not None:
+        browser._tvrend_browser_profile = profile
+    return profile
 
 
 async def launch_scraper_browser(playwright, *, headless: bool = True):
-    """正式抓取和诊断共用固定引擎，不自动回退系统 Chrome。"""
-    browser = await playwright.chromium.launch(headless=headless, args=list(SCRAPER_BROWSER_ARGS))
+    """正式与诊断共用开关；current 的启动失败 fallback 与基线一致，不涉及站点挑战。"""
+    profile = get_browser_profile()
+    source = 'Playwright Chromium'
+    if profile == 'current':
+        try:
+            browser = await playwright.chromium.launch(
+                headless=headless, channel='chrome', args=list(CURRENT_BROWSER_ARGS),
+            )
+            source = 'system Chrome'
+        except Exception:
+            browser = await playwright.chromium.launch(headless=headless, args=list(CURRENT_BROWSER_ARGS))
+    else:
+        browser = await playwright.chromium.launch(headless=headless, args=list(SCRAPER_BROWSER_ARGS))
+    browser._tvrend_browser_profile = profile
+    browser._tvrend_browser_source = source
     version = getattr(browser, 'version', None)
-    if isinstance(version, str):
-        print(f"[browser] Playwright Chromium {version}; native identity; headless={headless}")
+    print(f"[browser] profile={profile}; source={source}; "
+          f"version={version if isinstance(version, str) else 'unknown'}; headless={headless}")
     return browser
 
 
 async def new_scraper_context(browser, *, country: str,
                               locale_override: tuple[str, str] | None = None,
-                              viewport: dict | None = None):
-    """按真实市场设置语言/时区，不覆盖 UA、浏览器属性或所有站点的语言。"""
+                              viewport: dict | None = None, native_identity: bool = False):
+    """current 复用基线上下文，native 才采用无 UA/初始化覆盖的试验配置。"""
     locale, timezone = locale_override or locale_for(country)
-    return await browser.new_context(
-        locale=locale, timezone_id=timezone,
-        viewport=viewport or {'width': 1366, 'height': 900},
-    )
+    profile = get_browser_profile(browser)
+    options = {'locale': locale, 'timezone_id': timezone}
+    if profile == 'current':
+        options['viewport'] = viewport or {
+            'width': random.choice(VIEWPORT_WIDTHS), 'height': random.choice(VIEWPORT_HEIGHTS),
+        }
+        if not native_identity:
+            options['user_agent'] = random.choice(USER_AGENTS)
+    else:
+        options['viewport'] = viewport or {'width': 1366, 'height': 900}
+    context = await browser.new_context(**options)
+    try:
+        if profile == 'current' and not native_identity:
+            await context.add_init_script(STEALTH_JS)
+    except BaseException:
+        # 初始化异常或取消时，仍按既有有界清理释放已创建的 context。
+        try:
+            await close_playwright_resource(context, 'browser context initialization')
+        except BaseException:
+            pass
+        raise
+    return context
 
 
 # ============================================================

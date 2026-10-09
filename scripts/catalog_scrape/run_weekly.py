@@ -31,7 +31,7 @@ from typing import TextIO
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from monitor_prices.core import (  # noqa: E402
-    SCRAPER_BROWSER_ARGS,
+    CURRENT_BROWSER_ARGS,
     channels_in_scope,
     close_playwright_resource,
     launch_scraper_browser,
@@ -42,7 +42,7 @@ from catalog_scrape.diagnostics import capture_catalog_failure  # noqa: E402
 from failure_evidence import redact_text  # noqa: E402
 
 HEADLESS = os.environ.get("HEADLESS_MODE", "true").lower() != "false"
-BROWSER_ARGS = SCRAPER_BROWSER_ARGS
+BROWSER_ARGS = CURRENT_BROWSER_ARGS
 
 OUTPUT_COLUMNS = (
     "brand_raw",
@@ -184,6 +184,7 @@ async def run_one_adapter(browser, adapter) -> AdapterRunResult:
     try:
         ctx = await new_scraper_context(
             browser, country=adapter.country, locale_override=adapter.locale_override,
+            native_identity=bool(getattr(adapter, 'native_browser_identity', False)),
         )
         page = await ctx.new_page()
         items = await adapter.fetch_catalog(page)

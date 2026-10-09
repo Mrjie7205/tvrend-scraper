@@ -3,7 +3,8 @@
 抓取策略(2026-06 实测确定):
 - 入口 = /tv-and-audio/televisions/tvs?start=N&sz=50(总 ~500 台, 每页 50, 约 11 页)
 - Currys 是客户端渲染,plain requests 拿不到商品 → 必须用 Playwright
-- 整轮使用同一真实市场会话；遇到 403/访问校验停止，暂错缺页只有限补抓一次。
+- current 保留基线每页 context，native 才整轮共用；配置在运行开始时冻结。
+- 两种配置遇到 403/访问校验均停止，暂错缺页只有限补抓一次，不在失败后切换配置。
 - 翻页 URL 由 Currys 自己生成:?start=0/50/100/...&sz=50。循环到某页无新增或够 total 为止。
 
 DOM 关键点:
@@ -27,7 +28,7 @@ from typing import Sequence
 
 from .base import BaseCatalogAdapter, CatalogItem
 from catalog_scrape.diagnostics import capture_catalog_failure
-from monitor_prices.core import close_playwright_resource, new_scraper_context
+from monitor_prices.core import close_playwright_resource, get_browser_profile, new_scraper_context
 
 LISTING_URL = "https://www.currys.co.uk/tv-and-audio/televisions/tvs"
 PAGE_SIZE = 50
@@ -144,7 +145,7 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
     locale_override = ("en-GB", "Europe/London")
 
     async def _new_context(self, browser):
-        """整轮分页复用真实市场会话，不在 403 后重置身份。"""
+        """配置在运行开始时冻结；current 延续每页 context，native 才整轮共用。"""
         return await new_scraper_context(browser, country=self.country, locale_override=self.locale_override)
 
     async def _scrape_page(self, browser, start: int) -> tuple[int, list[dict]]:
@@ -264,7 +265,8 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
 
         self._catalog_context = None
         try:
-            self._catalog_context = await self._new_context(browser)
+            if get_browser_profile(browser) == 'native':
+                self._catalog_context = await self._new_context(browser)
             consecutive_transient = 0
             for index in range(MAX_PAGES):
                 start = index * PAGE_SIZE
