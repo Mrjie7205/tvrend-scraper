@@ -12,6 +12,10 @@ on:
         description: "同时执行 Amazon 四国最小入口诊断（不采集完整目录、不发布价格）"
         type: boolean
         default: false
+      probe_currys_tail:
+        description: "只读检查 Currys start=400 的分页与末页依据（不发布）"
+        type: boolean
+        default: false
       browser_profile:
         description: "入口诊断采用的固定浏览器配置；current 为生产配置"
         type: choice
@@ -71,6 +75,37 @@ jobs:
           path: scripts/price_artifacts/verification/
           if-no-files-found: warn
           retention-days: 90
+
+  currys_tail:
+    if: inputs.probe_currys_tail
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SCRAPER_BROWSER_PROFILE: current
+      FAILURE_EVIDENCE_DIR: scripts/catalog_artifacts/currys-tail/failure
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install existing runtime
+        run: pip install -r requirements.txt
+      - name: Install Chromium
+        run: python -m playwright install chromium --with-deps
+      - name: Inspect a single Currys tail page without publishing
+        run: python scripts/diagnose_currys_catalog.py --start 400 --output scripts/catalog_artifacts/currys-tail
+      - name: Upload Currys pagination evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: currys-tail-${{ github.run_id }}-${{ github.run_attempt }}
+          path: scripts/catalog_artifacts/currys-tail/
+          if-no-files-found: error
+          retention-days: 14
 
   queue_contract:
     name: Verify queued publisher slot ${{ matrix.slot }}
