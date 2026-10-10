@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, Mock, MagicMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from catalog_scrape.adapters.amazon import (
     AMAZON_DE, AMAZON_GB, AMAZON_IT, AMAZON_ES, AmazonCatalogAdapter, AmazonCatalogIncomplete,
-    _JS_SEARCH_STATE, _JS_CONTINUE_PAGE_INSPECTION,
+    _JS_SEARCH_STATE, _JS_CONTINUE_PAGE_INSPECTION, _JS_DETAIL,
     _checked_page_state, _plain_continue_entry_control, _continue_inspection_summary,
     set_amazon_market_location, set_amazon_location_via_popup,
 )
@@ -112,7 +112,7 @@ class ContinueEntryNavigationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.enterContext(patch('catalog_scrape.diagnostics.capture_failure', new=AsyncMock(return_value=None)))
 
-    def page(self, market, states, inspected=None):
+    def page(self, market, states, inspected=None, detail=None):
         page = AsyncMock()
         page.url = market.base_url + '/'
         states = list(states)
@@ -122,6 +122,8 @@ class ContinueEntryNavigationTests(unittest.IsolatedAsyncioTestCase):
                 return states.pop(0)
             if script == _JS_CONTINUE_PAGE_INSPECTION:
                 return inspected.pop(0) if isinstance(inspected, list) else inspected
+            if script == _JS_DETAIL:
+                return detail if detail is not None else {'price': '£199.00' if market.code == 'GB' else '199,00 €'}
             raise AssertionError('不允许读取隐藏字段或直接提交表单 token')
         page.evaluate.side_effect = evaluate
         button = MagicMock()
@@ -149,6 +151,107 @@ class ContinueEntryNavigationTests(unittest.IsolatedAsyncioTestCase):
             page.goto.assert_not_awaited()
             page.context.clear_cookies.assert_not_awaited()
             page.locator.return_value.nth.assert_called_once_with(0)
+
+    async def test_home_and_one_target_product_have_separate_single_use_budgets(self):
+        asin = 'B0GXZQL9W2'
+        url = AMAZON_DE.base_url + '/dp/' + asin
+        inspected_product = inspection(AMAZON_DE)
+        inspected_product['current']['path'] = '/dp/' + asin
+        entry = entry_state(AMAZON_DE) | {'currentUrl': url}
+        normal = normal_state(AMAZON_DE, currentUrl=url, productAsin=asin, deliveryText='26935')
+        page, button = self.page(AMAZON_DE, [entry_state(AMAZON_DE), normal_state(AMAZON_DE),
+                                           entry, normal, entry],
+                                 [inspection(AMAZON_DE), inspected_product, inspected_product])
+        await _checked_page_state(page, AMAZON_DE, 200)
+        await _checked_page_state(page, AMAZON_DE, 200, target_url=url, asin=asin)
+        summary = vars(page)['_amazon_continue_navigation_summary']
+        self.assertEqual((2, 1, 1), (summary['attempts'], summary['home_attempts'], summary['product_attempts']))
+        self.assertTrue(summary['verified_product_identity'])
+        self.assertTrue(summary['verified_delivery'])
+        self.assertTrue(summary['verified_currency'])
+        with self.assertRaisesRegex(AmazonCatalogIncomplete, '重复'):
+            await _checked_page_state(page, AMAZON_DE, 200, target_url=url, asin=asin)
+        self.assertEqual(2, button.click.await_count)
+
+    async def test_second_distinct_product_entry_cannot_spend_another_budget(self):
+        first, second = 'B0GXZQL9W2', 'B000000002'
+        urls = [AMAZON_DE.base_url + '/dp/' + asin for asin in (first, second)]
+        inspections = []
+        for asin in (first, second):
+            inspected = inspection(AMAZON_DE)
+            inspected['current']['path'] = '/dp/' + asin
+            inspections.append(inspected)
+        page, button = self.page(AMAZON_DE, [entry_state(AMAZON_DE) | {'currentUrl': urls[0]},
+            normal_state(AMAZON_DE, currentUrl=urls[0], productAsin=first, deliveryText='26935'),
+            entry_state(AMAZON_DE) | {'currentUrl': urls[1]}], inspections)
+        await _checked_page_state(page, AMAZON_DE, 200, target_url=urls[0], asin=first)
+        with self.assertRaisesRegex(AmazonCatalogIncomplete, '重复'):
+            await _checked_page_state(page, AMAZON_DE, 200, target_url=urls[1], asin=second)
+        button.click.assert_awaited_once()
+
+    async def test_product_return_requires_asin_postcode_and_original_currency(self):
+        asin = 'B0GXZQL9W2'
+        url = AMAZON_DE.base_url + '/dp/' + asin
+        inspected = inspection(AMAZON_DE)
+        inspected['current']['path'] = '/dp/' + asin
+        good = normal_state(AMAZON_DE, currentUrl=url, productAsin=asin, deliveryText='26935')
+        for after, price in ((good | {'productAsin': 'B000000002'}, '199,00 €'),
+                             (good | {'productAsin': ''}, '199,00 €'),
+                             (good | {'currentUrl': AMAZON_DE.base_url + '/'}, '199,00 €'),
+                             (good | {'deliveryText': '10115'}, '199,00 €'),
+                             (good, '£199.00'),
+                             (entry_state(AMAZON_DE) | {'currentUrl': url}, '199,00 €')):
+            with self.subTest(after=after, price=price):
+                page, button = self.page(AMAZON_DE, [entry_state(AMAZON_DE) | {'currentUrl': url}] + [after] * 8,
+                                         inspected, detail={'price': price})
+                with self.assertRaises(AmazonCatalogIncomplete):
+                    await _checked_page_state(page, AMAZON_DE, 200, target_url=url, asin=asin)
+                button.click.assert_awaited_once()
+
+    async def test_product_scope_keeps_form_and_human_control_restrictions(self):
+        asin = 'B0GXZQL9W2'
+        url = AMAZON_DE.base_url + '/dp/' + asin
+        base = inspection(AMAZON_DE)
+        base['current']['path'] = '/dp/' + asin
+        for mutate in ('wrong_asin', 'search_path', 'post', 'cross_action', 'captcha'):
+            candidate = deepcopy(base)
+            if mutate == 'wrong_asin':
+                candidate['current']['path'] = '/dp/B000000002'
+            elif mutate == 'search_path':
+                candidate['current']['path'] = '/s'
+            elif mutate == 'post':
+                candidate['controls'][0]['formMethod'] = 'post'
+            elif mutate == 'cross_action':
+                candidate['controls'][0]['formAction']['origin'] = AMAZON_IT.base_url
+            else:
+                candidate['visibleChallengeControls'] = True
+            page, button = self.page(AMAZON_DE, [entry_state(AMAZON_DE) | {'currentUrl': url}], candidate)
+            with self.assertRaises(AmazonCatalogIncomplete):
+                await _checked_page_state(page, AMAZON_DE, 200, target_url=url, asin=asin)
+            button.click.assert_not_awaited()
+
+    async def test_variant_and_optional_detail_reach_checked_product_continue(self):
+        asin = 'B0GXZQL9W2'
+        url = AMAZON_DE.base_url + '/dp/' + asin
+        inspected = inspection(AMAZON_DE)
+        inspected['current']['path'] = '/dp/' + asin
+        normal = normal_state(AMAZON_DE, currentUrl=url, productAsin=asin, deliveryText='26935')
+        for kind in ('variant', 'detail'):
+            with self.subTest(kind=kind):
+                page, button = self.page(AMAZON_DE,
+                    [entry_state(AMAZON_DE) | {'currentUrl': url}, normal, normal], inspected,
+                    detail={'title': 'Sony 55 Zoll TV', 'price': '199,00 €', 'variantRefs': []})
+                page.goto.return_value = SimpleNamespace(status=200)
+                adapter = AmazonCatalogAdapter(AMAZON_DE)
+                adapter._record_price_observation = AsyncMock()
+                seed = adapter._build_item(asin, 'Sony 55 Zoll TV', 'Sony', 55, '199,00 €')
+                if kind == 'variant':
+                    self.assertEqual(0, await adapter._expand_variants_from_seed(page, seed, {asin: seed}))
+                else:
+                    self.assertEqual(199, (await adapter._detail_item(page, asin, 'Sony')).price_local)
+                button.click.assert_awaited_once()
+                self.assertEqual('product', adapter.continue_navigation_summary['scope'])
+                self.assertTrue(adapter.continue_navigation_summary['verified_currency'])
 
     async def test_pure_entry_waits_once_for_accessible_label_to_settle(self):
         initial = inspection(AMAZON_IT)
@@ -279,7 +382,7 @@ class ExistingHomePopupTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(await set_amazon_market_location(page, AMAZON_IT))
         page.goto.assert_awaited_once_with(AMAZON_IT.base_url + '/', wait_until='domcontentloaded', timeout=45000)
         element.fill.assert_awaited_once_with(AMAZON_IT.postcode, timeout=5000)
-        verify.assert_awaited_once_with(page, AMAZON_IT, refresh=True)
+        verify.assert_awaited_once_with(page, AMAZON_IT, after_popup=True)
 
     async def test_reusing_home_still_rejects_unconfirmed_postcode(self):
         page, _ = self.popup_page(AMAZON_IT)

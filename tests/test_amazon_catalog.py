@@ -172,7 +172,7 @@ class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
             new=AsyncMock(return_value=False),
         ) as verify:
             self.assertFalse(await set_amazon_location_via_popup(page, AMAZON_ES))
-        verify.assert_awaited_once_with(page, AMAZON_ES, refresh=True)
+        verify.assert_awaited_once_with(page, AMAZON_ES, after_popup=True)
 
     async def test_session_does_not_use_canary_as_delivery_substitute(self) -> None:
         adapter = AmazonCatalogAdapter(AMAZON_IT)
@@ -246,6 +246,7 @@ class AmazonDeliveryRecoveryTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.enterContext(patch('catalog_scrape.diagnostics.capture_failure',
                                 new=AsyncMock(return_value=None)))
+        self.enterContext(patch('catalog_scrape.adapters.amazon._DELIVERY_OBSERVATION_DELAYS_MS', (0, 1500)))
 
     """模拟短时配送栏缺失；任何页面/配送/挑战校验失败都不能输出价格。"""
 
@@ -255,6 +256,7 @@ class AmazonDeliveryRecoveryTest(unittest.IsolatedAsyncioTestCase):
         return {
             'currentUrl': f'{market.base_url}/dp/{self.ASIN}',
             'productAsin': self.ASIN,
+            'normalPage': True,
             'deliveryText': delivery,
             **extra,
         }
@@ -365,7 +367,7 @@ class AmazonDeliveryRecoveryTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_search_recovery_requires_original_query_and_page(self):
         target = f'{AMAZON_IT.base_url}/s?k=tcl+televisore&page=2'
-        blank = {'currentUrl': target, 'deliveryText': ''}
+        blank = {'currentUrl': target, 'deliveryText': '', 'normalPage': True}
         wrong = {'currentUrl': target.replace('page=2', 'page=1'), 'deliveryText': 'Milano 20121'}
         page = AsyncMock()
         page.goto.return_value = SimpleNamespace(status=200)
@@ -446,7 +448,7 @@ class AmazonDeliveryRecoveryTest(unittest.IsolatedAsyncioTestCase):
         async def evaluate(script, *args):
             nonlocal extractions
             if script == _JS_SEARCH_STATE:
-                return {'currentUrl': current_url, 'deliveryText': 'Milano 20121' if restored else ''}
+                return {'currentUrl': current_url, 'normalPage': True, 'deliveryText': 'Milano 20121' if restored else ''}
             if script == _JS_EXTRACT:
                 self.assertTrue(restored, '不能保存恢复前搜索页报价')
                 self.assertEqual(2, page.goto.await_count)

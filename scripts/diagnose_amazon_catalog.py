@@ -188,6 +188,9 @@ async def run(args: argparse.Namespace) -> int:
             dict(entry_summary) if isinstance(entry_summary, dict)
             else {'attempts': 0, 'result': 'not_attempted'}
         )
+        summary['popup_delivery_verification'] = dict(
+            getattr(adapter, 'popup_delivery_summary', None) or {'result': 'not_attempted'}
+        )
         try:
             (args.output / 'summary.json').write_text(
                 json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8',
