@@ -12,15 +12,15 @@ from unittest.mock import AsyncMock, Mock, MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from catalog_scrape.adapters.amazon import (
-    AMAZON_DE, AMAZON_GB, AMAZON_IT, AmazonCatalogAdapter, AmazonCatalogIncomplete,
+    AMAZON_DE, AMAZON_GB, AMAZON_IT, AMAZON_ES, AmazonCatalogAdapter, AmazonCatalogIncomplete,
     _JS_SEARCH_STATE, _JS_CONTINUE_PAGE_INSPECTION,
-    _checked_page_state, _plain_continue_entry_control,
+    _checked_page_state, _plain_continue_entry_control, _continue_inspection_summary,
     set_amazon_market_location, set_amazon_location_via_popup,
 )
 
 
 def inspection(market):
-    labels = {'DE': 'Weiter shoppen', 'GB': 'Continue shopping', 'IT': 'Continua con gli acquisti'}
+    labels = {'DE': 'Weiter shoppen', 'GB': 'Continue shopping', 'IT': 'Continua con gli acquisti', 'ES': 'Seguir comprando'}
     return {
         'current': {'origin': market.base_url, 'path': '/'},
         'normalPage': False, 'visibleChallengeControls': False, 'challengeLanguage': False,
@@ -30,6 +30,9 @@ def inspection(market):
             'tag': 'button', 'type': 'submit', 'label': labels[market.code],
             'href': None, 'formMethod': 'get',
             'formAction': {'origin': market.base_url, 'path': '/errors_page/validateCaptcha'},
+            'nativeSubmit': True, 'nativeIndex': 0, 'formIndex': 0, 'surfaceIndex': 0,
+            'kind': 'native_submit', 'disabled': False, 'namedSubmit': False,
+            'labelSource': 'visible-text',
         }],
     }
 
@@ -44,8 +47,8 @@ def normal_state(market, **kwargs):
 
 
 class ContinueEntryShapeTests(unittest.TestCase):
-    def test_three_observed_market_buttons_are_allowlisted(self):
-        for market in (AMAZON_DE, AMAZON_GB, AMAZON_IT):
+    def test_four_observed_market_buttons_are_allowlisted(self):
+        for market in (AMAZON_DE, AMAZON_GB, AMAZON_IT, AMAZON_ES):
             self.assertIsNotNone(_plain_continue_entry_control(inspection(market), market))
 
     def test_unknown_or_human_verification_shapes_are_rejected(self):
@@ -55,7 +58,9 @@ class ContinueEntryShapeTests(unittest.TestCase):
             {'visibleInputCount': 1}, {'visibleFrameCount': 1},
             {'formCount': 2}, {'continueShoppingInstruction': False}, {'normalPage': True},
             {'current': {'origin': 'https://www.amazon.it', 'path': '/'}},
-            {'controls': base['controls'] * 2},
+            {'controls': [base['controls'][0], base['controls'][0] | {
+                'nativeIndex': 1, 'surfaceIndex': 1, 'namedSubmit': True,
+            }]},
         ]
         for change in changes:
             with self.subTest(change=change):
@@ -69,6 +74,38 @@ class ContinueEntryShapeTests(unittest.TestCase):
             candidate = deepcopy(base)
             candidate['controls'][0].update(change)
             self.assertIsNone(_plain_continue_entry_control(candidate, AMAZON_GB))
+
+    def test_same_submit_aui_wrappers_are_one_operation(self):
+        candidate = inspection(AMAZON_IT)
+        native = candidate['controls'][0] | {'surfaceIndex': 2, 'hasAriaLabelledBy': True, 'labelSource': 'aria-labelledby'}
+        wrapper = native | {'tag': 'span', 'type': '', 'surfaceIndex': 1, 'kind': 'aui_wrapper'}
+        candidate['controls'] = [wrapper, native]
+        selected = _plain_continue_entry_control(candidate, AMAZON_IT)
+        self.assertEqual(2, selected['surfaceIndex'])
+        self.assertEqual('native_submit', selected['kind'])
+        summary = _continue_inspection_summary(candidate, AMAZON_IT)
+        self.assertTrue(summary['unique_allowed_operation'])
+        self.assertTrue(summary['duplicate_representations'])
+        self.assertTrue(summary['same_form'])
+
+    def test_same_form_anonymous_duplicate_submits_are_equivalent(self):
+        candidate = inspection(AMAZON_GB)
+        candidate['controls'].append(candidate['controls'][0] | {'nativeIndex': 1, 'surfaceIndex': 1})
+        self.assertIsNotNone(_plain_continue_entry_control(candidate, AMAZON_GB))
+        candidate['controls'][1]['formIndex'] = 1
+        self.assertIsNone(_plain_continue_entry_control(candidate, AMAZON_GB))
+
+    def test_rejection_summary_keeps_no_unknown_label_url_or_reference_value(self):
+        candidate = inspection(AMAZON_IT)
+        candidate['controls'][0].update(label='private-person@example.test', hasAriaLabelledBy=True, formIndex=0)
+        candidate['controls'][0]['formAction'] = {'origin': 'https://unknown.test', 'path': '/secret-token'}
+        summary = _continue_inspection_summary(candidate, AMAZON_IT)
+        self.assertEqual('label_reference_unresolved', summary['rejection_reason'])
+        raw = json.dumps(summary)
+        self.assertNotIn('private-person', raw)
+        self.assertNotIn('unknown.test', raw)
+        self.assertNotIn('secret-token', raw)
+        self.assertTrue(summary['controls'][0]['has_aria_labelledby'])
 
 
 class ContinueEntryNavigationTests(unittest.IsolatedAsyncioTestCase):
@@ -84,11 +121,14 @@ class ContinueEntryNavigationTests(unittest.IsolatedAsyncioTestCase):
             if script == _JS_SEARCH_STATE:
                 return states.pop(0)
             if script == _JS_CONTINUE_PAGE_INSPECTION:
-                return inspected
+                return inspected.pop(0) if isinstance(inspected, list) else inspected
             raise AssertionError('不允许读取隐藏字段或直接提交表单 token')
         page.evaluate.side_effect = evaluate
-        button = SimpleNamespace(click=AsyncMock())
+        button = MagicMock()
+        button.click = AsyncMock()
+        button.and_.return_value = button
         page.get_by_role = Mock(return_value=button)
+        page.locator = Mock()
         future = asyncio.get_running_loop().create_future()
         future.set_result(SimpleNamespace(status=200))
         navigation = MagicMock()
@@ -98,7 +138,7 @@ class ContinueEntryNavigationTests(unittest.IsolatedAsyncioTestCase):
         return page, button
 
     async def test_one_visible_click_returns_verified_normal_market_page(self):
-        for market in (AMAZON_DE, AMAZON_GB, AMAZON_IT):
+        for market in (AMAZON_DE, AMAZON_GB, AMAZON_IT, AMAZON_ES):
             page, button = self.page(market, [entry_state(market), normal_state(market)])
             result = await _checked_page_state(page, market, 200, stage='location_home')
             self.assertTrue(result['normalPage'])
@@ -108,6 +148,23 @@ class ContinueEntryNavigationTests(unittest.IsolatedAsyncioTestCase):
             )
             page.goto.assert_not_awaited()
             page.context.clear_cookies.assert_not_awaited()
+            page.locator.return_value.nth.assert_called_once_with(0)
+
+    async def test_pure_entry_waits_once_for_accessible_label_to_settle(self):
+        initial = inspection(AMAZON_IT)
+        initial['controls'][0].update(label='', hasAriaLabelledBy=True, labelSource='unresolved-reference')
+        ready = inspection(AMAZON_IT)
+        ready['controls'][0].update(hasAriaLabelledBy=True, labelSource='aria-labelledby')
+        page, button = self.page(
+            AMAZON_IT, [entry_state(AMAZON_IT), normal_state(AMAZON_IT)], [initial, ready],
+        )
+        self.assertTrue((await _checked_page_state(page, AMAZON_IT, 200))['normalPage'])
+        page.wait_for_timeout.assert_awaited_once_with(1200)
+        button.click.assert_awaited_once()
+        summary = vars(page)['_amazon_continue_navigation_summary']['inspection']
+        self.assertEqual(2, summary['checks'])
+        self.assertTrue(summary['waited_for_structure'])
+        self.assertEqual('label_reference_unresolved', summary['initial_rejection_reason'])
 
     async def test_real_captcha_stops_without_inspection_or_click(self):
         page, button = self.page(AMAZON_GB, [entry_state(AMAZON_GB) | {'captcha': True}])
@@ -123,6 +180,7 @@ class ContinueEntryNavigationTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(AmazonCatalogIncomplete):
             await _checked_page_state(page, AMAZON_GB, 200)
         button.click.assert_not_awaited()
+        page.wait_for_timeout.assert_not_awaited()
 
     async def test_entry_without_visible_action_control_is_not_clicked(self):
         # opacity:0/collapse 的按钮会被只读 DOM 检查剔除，不能再盲点同名控件。

@@ -17,6 +17,11 @@ on:
         type: choice
         options: [current, native]
         default: current
+      country:
+        description: "入口诊断国家；排查单国时避免重复访问其他市场"
+        type: choice
+        options: [all, DE, GB, IT, ES]
+        default: all
 
 permissions:
   contents: read
@@ -100,7 +105,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        country: [DE, GB, IT, ES]
+        country: ${{ fromJSON(inputs.country && inputs.country != 'all' && format('["{0}"]', inputs.country) || '["DE","GB","IT","ES"]') }}
     env:
       SCRAPER_BROWSER_PROFILE: ${{ inputs.browser_profile || 'current' }}
       ENTRY_COUNTRY: ${{ matrix.country }}
