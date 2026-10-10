@@ -30,6 +30,7 @@ from catalog_scrape.adapters.amazon import (  # noqa: E402
     AmazonCatalogIncomplete,
     ensure_amazon_page_delivery,
     _JS_SEARCH_STATE,
+    _JS_CONTINUE_PAGE_INSPECTION,
     _JS_DETAIL,
     _JS_EXTRACT,
 )
@@ -238,7 +239,7 @@ class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
             result = await set_amazon_market_location(page, AMAZON_GB)
 
         self.assertTrue(result)
-        popup.assert_awaited_once_with(page, AMAZON_GB)
+        popup.assert_awaited_once_with(page, AMAZON_GB, reuse_current_page=True)
 
 
 class AmazonDeliveryRecoveryTest(unittest.IsolatedAsyncioTestCase):
@@ -418,7 +419,11 @@ class AmazonDeliveryRecoveryTest(unittest.IsolatedAsyncioTestCase):
                     with self.assertRaises(AmazonCatalogIncomplete):
                         await setter(page, AMAZON_IT)
                 cookie.assert_not_awaited()
-                page.evaluate.assert_awaited_once()
+                self.assertEqual(2, page.evaluate.await_count)
+                self.assertEqual(
+                    [_JS_SEARCH_STATE, _JS_CONTINUE_PAGE_INSPECTION],
+                    [call.args[0] for call in page.evaluate.await_args_list],
+                )
 
     async def test_search_extracts_fresh_cards_only_after_delivery_recovery(self):
         adapter = AmazonCatalogAdapter(AMAZON_IT)

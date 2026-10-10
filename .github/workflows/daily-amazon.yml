@@ -57,6 +57,11 @@ jobs:
         run: python -m playwright install chromium --with-deps
 
       - name: Run scraper safety tests
+        # 测试制造的故障必须与随后真实抓取的现场分开，避免混入国家诊断附件。
+        env:
+          FAILURE_EVIDENCE_DIR: ${{ runner.temp }}/scraper-tests-${{ matrix.country }}/failures
+          PRICE_ARTIFACTS_DIR: ${{ runner.temp }}/scraper-tests-${{ matrix.country }}/price-changes
+          CURRYS_CATALOG_DIAGNOSTICS_DIR: ${{ runner.temp }}/scraper-tests-${{ matrix.country }}/catalogs
         run: python -m pytest tests -q
 
       - name: Record current scrape identity
@@ -165,6 +170,8 @@ jobs:
           --scrape-result "${{ needs.scrape.result }}"
 
       - name: Commit catalog（清理旧份 + rebase 重试，防并发）
+        # 分支全量验收只保存本轮产物，正式目录统一在 main 发布。
+        if: github.ref == 'refs/heads/main'
         run: |
           set -e
           git config user.name "tvrend-scraper bot"
@@ -182,10 +189,10 @@ jobs:
             echo "本轮无通过验收的数据变化，跳过提交；最终状态由独立门禁判定。"
           else
             git commit -m "chore: daily amazon catalog ${{ github.run_id }} [skip ci]"
-            BR="${{ github.ref_name }}"
+            BR="$GITHUB_REF_NAME"
             pushed=false
             for i in 1 2 3 4 5; do
-              if git pull --rebase -X theirs origin "$BR" && git push origin "HEAD:$BR"; then
+              if git pull --rebase origin "$BR" && git push origin "HEAD:$BR"; then
                 pushed=true
                 break
               fi
@@ -197,6 +204,15 @@ jobs:
               exit 1
             fi
           fi
+
+      - name: Upload current market validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amazon-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: _amazon_validation/
+          retention-days: 14
+          if-no-files-found: warn
 
       - name: Require all four current markets to succeed
         if: ${{ always() && steps.collect.outcome == 'success' }}
