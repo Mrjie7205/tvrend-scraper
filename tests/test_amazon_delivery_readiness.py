@@ -77,11 +77,12 @@ class AmazonDeliveryReadinessTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual('header_unconfirmed', vars(page)['_amazon_popup_delivery_summary']['result'])
 
     def confirmation_page(self, *, closes=True, control=True):
+        self.enterContext(patch.object(amazon.asyncio, 'sleep', new=AsyncMock()))
         page = self.page()
         opened = {'visible_dialog_count': 1, 'matching_dialog_count': 1, 'dialog_index': 0,
                   'control_index': 0 if control else -1, 'control_count': int(control),
                   'control_source': 'known_done_label', 'known_label': 'fatto'}
-        page.evaluate.side_effect = [state(), opened] + ([{'visible_dialog_count': 0}] if closes else [opened] * 4)
+        page.evaluate.side_effect = [state(), opened] + ([{'visible_dialog_count': 0}, state()] if closes else [opened] * 16)
         dialog, button = Mock(), Mock()
         button.click = AsyncMock()
         dialog.locator.return_value.nth.return_value = button
@@ -103,6 +104,54 @@ class AmazonDeliveryReadinessTests(unittest.IsolatedAsyncioTestCase):
         button.click.assert_awaited_once()
         self.assertEqual('popup_confirmation_unfinished', vars(page)['_amazon_failure_reason'])
         self.assertEqual('dialog_still_visible', vars(page)['_amazon_popup_confirmation_summary']['result'])
+
+    async def test_confirmation_document_change_only_waits_and_rereads_without_second_click(self):
+        page, _, button = self.confirmation_page()
+        opened = {'visible_dialog_count': 1, 'matching_dialog_count': 1, 'dialog_index': 0,
+                  'control_index': 0, 'control_count': 1, 'control_source': 'known_done_label', 'known_label': 'fatto'}
+        changed = RuntimeError('Execution context was destroyed, most likely because of a navigation')
+        page.evaluate.side_effect = [state(), opened, changed, {'visible_dialog_count': 0}, state()]
+        self.assertTrue(await amazon._complete_amazon_location_popup(page, amazon.AMAZON_IT))
+        button.click.assert_awaited_once()
+        page.goto.assert_not_awaited()
+        page.wait_for_load_state.assert_awaited_once_with('domcontentloaded')
+        summary = vars(page)['_amazon_popup_confirmation_summary']
+        self.assertTrue(summary['click_command_completed'])
+        self.assertEqual(1, summary['document_change_recoveries'])
+        self.assertEqual('after_confirm_inspection', summary['transient_errors'][0]['stage'])
+        self.assertEqual('document_changed', summary['transient_errors'][0]['error_kind'])
+
+    async def test_empty_new_document_is_not_confirmation_success(self):
+        page, _, button = self.confirmation_page()
+        opened = {'visible_dialog_count': 1, 'matching_dialog_count': 1, 'dialog_index': 0, 'control_index': 0}
+        page.evaluate.side_effect = [state(), opened] + [{'visible_dialog_count': 0}, state(normal=False)] * 16
+        self.assertFalse(await amazon._complete_amazon_location_popup(page, amazon.AMAZON_IT))
+        button.click.assert_awaited_once()
+        self.assertEqual('normal_page_unconfirmed', vars(page)['_amazon_popup_confirmation_summary']['result'])
+
+    async def test_unknown_confirmation_error_is_preserved_and_redacted_not_retried(self):
+        page, _, button = self.confirmation_page()
+        error = RuntimeError('unknown browser failure token=private-secret user@example.test')
+        button.click.side_effect = error
+        self.assertFalse(await amazon._complete_amazon_location_popup(page, amazon.AMAZON_IT))
+        button.click.assert_awaited_once()
+        page.wait_for_load_state.assert_not_awaited()
+        self.assertIs(error, self.capture.await_args.kwargs['error'])
+        summary = vars(page)['_amazon_popup_confirmation_summary']
+        self.assertEqual('confirmation_click', summary['stage'])
+        self.assertEqual('other', summary['error_kind'])
+        self.assertNotIn('private-secret', json.dumps(summary))
+        self.assertNotIn('user@example.test', json.dumps(summary))
+
+    async def test_post_click_challenge_is_not_a_document_change_retry(self):
+        page, _, button = self.confirmation_page()
+        opened = {'visible_dialog_count': 1, 'matching_dialog_count': 1, 'dialog_index': 0, 'control_index': 0}
+        page.evaluate.side_effect = [state(), opened, {'visible_dialog_count': 0}, state(captcha=True)]
+        with self.assertRaises(amazon.AmazonCatalogIncomplete):
+            await amazon._complete_amazon_location_popup(page, amazon.AMAZON_IT)
+        button.click.assert_awaited_once()
+        page.wait_for_load_state.assert_not_awaited()
+        self.assertEqual('verify_new_document', vars(page)['_amazon_popup_confirmation_summary']['stage'])
 
     async def test_unconfirmed_dialog_button_is_not_clicked(self):
         page, _, button = self.confirmation_page(control=False)

@@ -35,6 +35,7 @@ from monitor_prices.fx import ECB_RATE_DATE, price_to_eur
 
 from .base import BaseCatalogAdapter, CatalogItem
 from catalog_scrape.diagnostics import AmazonCatalogDiagnostics, capture_catalog_failure
+from failure_evidence import redact_text
 
 
 # 追踪的 5 大品牌。Amazon 搜某品牌仍会混入别牌，品牌以标题为准。
@@ -1227,43 +1228,95 @@ _JS_LOCATION_CONFIRMATION = r"""({dialogSelector, controlSelector}) => {
 
 async def _complete_amazon_location_popup(page, market: AmazonMarket) -> bool:
     """确认按钮只在已识别配送对话框内点击一次，未关闭就不能核验背景配送栏。"""
-    summary = {'attempts': 0, 'result': 'pending', 'observations': []}
+    summary = {'attempts': 0, 'result': 'pending', 'stage': 'initial_page',
+               'click_command_completed': False, 'document_change_recoveries': 0,
+               'observations': [], 'transient_errors': []}
     vars(page)['_amazon_popup_confirmation_summary'] = summary
     args = {'dialogSelector': _LOCATION_DIALOG_SELECTOR, 'controlSelector': _LOCATION_DONE_SELECTOR}
+    # 包含原有3秒点击和关闭观察；换文档只消耗此预算，不增加动作或另开一轮。
+    deadline = asyncio.get_running_loop().time() + 8.0
+    failure_error = None
+    async def bounded(awaitable):
+        remaining = deadline - asyncio.get_running_loop().time()
+        return await asyncio.wait_for(awaitable, timeout=max(0.001, min(3.0, remaining)))
+    def error_details(error, stage):
+        message = str(error)
+        changed = bool(re.search(r'execution context (?:was )?destroyed|cannot find context with (?:specified|given) id', message, re.I))
+        return {'stage': stage, 'error_type': type(error).__name__,
+                'error_kind': 'document_changed' if changed else 'other',
+                'error_message': redact_text(message, 240)}
     try:
-        state = await asyncio.wait_for(page.evaluate(_JS_SEARCH_STATE), timeout=3.0)
+        state = await bounded(page.evaluate(_JS_SEARCH_STATE))
         if _page_rejection_reason(None, state) or not _normal_market_page(state, market):
             raise AmazonCatalogIncomplete(f'Amazon {market.code} 配送确认页面异常，停止采集')
-        for check in range(5):
-            info = await asyncio.wait_for(page.evaluate(_JS_LOCATION_CONFIRMATION, args), timeout=3.0)
-            safe = {key: info.get(key) for key in (
-                'visible_dialog_count', 'matching_dialog_count', 'control_count', 'control_source', 'known_label',
-            )}
-            summary['observations'].append(safe)
-            if info.get('visible_dialog_count') == 0:
-                summary['result'] = 'closed_after_confirmation' if summary['attempts'] else 'already_closed'
-                print(f'  [set-loc/{market.code}] 配送弹窗确认 {summary["result"]} (attempts={summary["attempts"]})')
-                return True
-            if summary['attempts'] == 0:
-                if (info.get('matching_dialog_count') != 1 or info.get('dialog_index', -1) < 0
-                        or info.get('control_index', -1) < 0):
-                    summary['result'] = 'completion_control_unconfirmed'
+        for check in range(17):
+            if asyncio.get_running_loop().time() >= deadline:
+                summary['result'] = 'confirmation_deadline'
+                break
+            try:
+                summary['stage'] = 'after_confirm_inspection' if summary['attempts'] else 'dialog_inspection'
+                info = await bounded(page.evaluate(_JS_LOCATION_CONFIRMATION, args))
+                safe = {key: info.get(key) for key in (
+                    'visible_dialog_count', 'matching_dialog_count', 'control_count', 'control_source', 'known_label',
+                )}
+                summary['observations'].append(safe)
+                if info.get('visible_dialog_count') == 0:
+                    # 空白的新文档同样没有dialog，必须等同市场正常DOM，不能据“没有弹窗”放行。
+                    summary['stage'] = 'verify_new_document'
+                    state = await bounded(page.evaluate(_JS_SEARCH_STATE))
+                    current = urlparse(str(state.get('currentUrl') or ''))
+                    if (_page_rejection_reason(None, state) or current.scheme != 'https'
+                            or f'{current.scheme}://{current.netloc}' != market.base_url
+                            or current.path.startswith(('/errors', '/ap/'))):
+                        raise AmazonCatalogIncomplete(f'Amazon {market.code} 配送确认后页面异常，停止采集')
+                    safe['normal_market_page'] = _normal_market_page(state, market)
+                    if safe['normal_market_page']:
+                        summary['result'] = 'closed_after_confirmation' if summary['attempts'] else 'already_closed'
+                        summary['stage'] = 'complete'
+                        print(f'  [set-loc/{market.code}] 配送弹窗确认 {summary["result"]} (attempts={summary["attempts"]})')
+                        return True
+                    summary['result'] = 'normal_page_unconfirmed'
+                elif summary['attempts'] == 0:
+                    if (info.get('matching_dialog_count') != 1 or info.get('dialog_index', -1) < 0
+                            or info.get('control_index', -1) < 0):
+                        summary['result'] = 'completion_control_unconfirmed'
+                        break
+                    # 点击前扣额。即使click因换文档报错，也只能观察，不能点击第二次。
+                    summary['attempts'] = 1
+                    summary['stage'] = 'confirmation_click'
+                    dialog = page.locator(_LOCATION_DIALOG_SELECTOR).nth(info['dialog_index'])
+                    await bounded(dialog.locator(_LOCATION_DONE_SELECTOR).nth(info['control_index']).click(timeout=3000))
+                    summary['click_command_completed'] = True
+                if check < 16:
+                    summary['stage'] = 'wait_for_close'
+                    # 本地轮询计时无需浏览器RPC，预算到期取消不会留下待处理的协议future。
+                    await bounded(asyncio.sleep(0.5))
+            except Exception as error:
+                details = error_details(error, summary['stage'])
+                if summary['attempts'] != 1 or details['error_kind'] != 'document_changed':
+                    raise
+                failure_error = error
+                summary['transient_errors'].append(details)
+                summary['document_change_recoveries'] += 1
+                summary['stage'] = 'wait_for_document'
+                # 只等刚才点击引发的原页面导航；不goto/reload、不换身份、不重填地址。
+                await bounded(page.wait_for_load_state('domcontentloaded'))
+                if check == 16:
+                    summary['result'] = 'document_not_ready'
                     break
-                # 只用这次只读检查选中的弹窗/控件；不全页点击同名按钮，不重复填写地址。
-                summary['attempts'] = 1
-                dialog = page.locator(_LOCATION_DIALOG_SELECTOR).nth(info['dialog_index'])
-                await dialog.locator(_LOCATION_DONE_SELECTOR).nth(info['control_index']).click(timeout=3000)
-            if check < 4:
-                await page.wait_for_timeout(500)
         if summary['result'] == 'pending':
             summary['result'] = 'dialog_still_visible'
-    except AmazonCatalogIncomplete:
-        summary['result'] = 'page_rejected'
+    except AmazonCatalogIncomplete as error:
+        summary.update(result='page_rejected', **error_details(error, summary['stage']))
+        await _capture_amazon_failure(
+            page, market, stage='location_popup_confirmation', reason='popup_confirmation_unfinished', error=error,
+        )
         raise
     except Exception as error:
-        summary.update(result='confirmation_error', error_type=type(error).__name__)
+        failure_error = error
+        summary.update(result='confirmation_error', **error_details(error, summary['stage']))
     await _capture_amazon_failure(
-        page, market, stage='location_popup_confirmation', reason='popup_confirmation_unfinished',
+        page, market, stage='location_popup_confirmation', reason='popup_confirmation_unfinished', error=failure_error,
     )
     print(f'  [set-loc/{market.code}] 配送弹窗未完成 ({summary["result"]}, attempts={summary["attempts"]})')
     return False
