@@ -8,12 +8,82 @@ from __future__ import annotations
 
 import os
 import re
+from collections import Counter
+from datetime import datetime, timezone
 
 from .base import BaseAdapter
 from ..core import clean_price, get_price_from_schema
 
 
 RE_PRODUCT_ID = re.compile(r"(\d{7,9})(?:\.html)?(?:[?#]|$)", re.IGNORECASE)
+
+
+class CurrysPdpGuard:
+    """每轮独立的商品页保护；目录403不计数，只有连续不同SKU的确认拒绝触发停止。"""
+    def __init__(self, limit: int = 6):
+        self.limit = limit
+        self.consecutive_skus: dict[tuple[str, str], dict] = {}
+        self.maximum_consecutive = 0
+        self.outcomes = Counter()
+        self.requests = Counter()
+        self.skipped = Counter()
+        self.stop_reason = None
+        self.trigger = None
+        self.resets = 0
+
+    @property
+    def stopped(self):
+        return self.stop_reason is not None
+
+    def start_request(self, purpose="price_lookup") -> bool:
+        # 无await的检查和计数使并发任务不能在确认停止后又发出新请求。
+        if self.stopped:
+            return False
+        self.requests[purpose] += 1
+        return True
+
+    def record_skip(self, purpose="price_lookup") -> str:
+        self.skipped[purpose] += 1
+        return "pdp_rate_limited" if "rate_limited" in (self.stop_reason or "") else "pdp_access_suspended"
+
+    def _stop(self, reason, trigger):
+        if not self.stopped:
+            self.stop_reason = reason
+            self.trigger = {**trigger, "observed_at": datetime.now(timezone.utc).isoformat(),
+                            "consecutive_skus": list(self.consecutive_skus.values())}
+
+    def catalog_rate_limited(self):
+        # 目录明确429是限流指令；与目录403的可恢复局部失败分开处理。
+        self._stop("catalog_rate_limited", {"source": "catalog", "http_status": 429})
+
+    def observe(self, sku, *, http_status=None, reason=None):
+        kind = reason or "reachable_product"
+        self.outcomes[kind] += 1
+        if http_status == 429 or reason == "rate_limited":
+            self._stop("pdp_rate_limited", {"source": "pdp", "http_status": http_status,
+                                           "reason": kind, "product": sku["product_name"]})
+            return
+        if http_status in {401, 403} or reason in {"access_blocked", "challenge_unresolved"}:
+            identity = (sku["product_name"], sku["country"])
+            self.consecutive_skus.setdefault(identity, {"product": identity[0], "country": identity[1]})
+            self.maximum_consecutive = max(self.maximum_consecutive, len(self.consecutive_skus))
+            if len(self.consecutive_skus) >= self.limit:
+                self._stop("consecutive_pdp_access_denials", {"source": "pdp", "http_status": http_status,
+                                                            "reason": kind, "product": sku["product_name"]})
+            return
+        # 可达目标200/404、重定向、无价或其它非拒绝结果都不能累积为连续封禁证据。
+        if self.consecutive_skus:
+            self.resets += 1
+        self.consecutive_skus.clear()
+        # 一旦触发，本轮保持停止。允许已开始请求收尾，但不会据此重新放开队列。
+
+    def report(self):
+        return {"scope": "currys_pdp", "limit": self.limit, "stopped": self.stopped,
+                "stop_reason": self.stop_reason, "trigger": self.trigger,
+                "consecutive_distinct_skus": len(self.consecutive_skus),
+                "maximum_consecutive_distinct_skus": self.maximum_consecutive,
+                "reachable_resets": self.resets, "outcomes": dict(self.outcomes),
+                "requests_started": dict(self.requests), "skipped": dict(self.skipped)}
 
 
 class CurrysAdapter(BaseAdapter):
@@ -75,7 +145,7 @@ class CurrysAdapter(BaseAdapter):
         return super().is_unavailable_response(status, requested_url, final_url)
 
     def classify_response(self, status: int, requested_url: str, final_url: str, title: str = "") -> str | None:
-        if status == 403:
+        if status in {401, 403}:
             return "access_blocked"
         if status == 429:
             return "rate_limited"

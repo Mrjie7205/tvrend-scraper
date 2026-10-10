@@ -5,12 +5,18 @@ on:
   push:
     branches:
       - "codex/channel-hardening-*"
+      - "codex/currys-recovery-*"
   workflow_dispatch:
     inputs:
       probe_amazon:
-        description: "同时执行 GB/IT 最小入口诊断（不采集完整目录、不发布价格）"
+        description: "同时执行 Amazon 四国最小入口诊断（不采集完整目录、不发布价格）"
         type: boolean
         default: false
+      browser_profile:
+        description: "入口诊断采用的固定浏览器配置；current 为生产配置"
+        type: choice
+        options: [current, native]
+        default: current
 
 permissions:
   contents: read
@@ -87,15 +93,16 @@ jobs:
           PY
 
   amazon_entry:
-    if: github.event_name == 'push' || inputs.probe_amazon
+    if: inputs.probe_amazon
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        country: [GB, IT]
+        country: [DE, GB, IT, ES]
     env:
+      SCRAPER_BROWSER_PROFILE: ${{ inputs.browser_profile || 'current' }}
       ENTRY_COUNTRY: ${{ matrix.country }}
       ENTRY_OUTPUT: ${{ github.workspace }}/scripts/failure_artifacts/entry-${{ matrix.country }}
     steps:

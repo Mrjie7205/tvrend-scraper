@@ -294,7 +294,7 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
             'CURRYS_CATALOG_DIAGNOSTICS_DIR': self.temp.name,
             'SCRAPER_BROWSER_PROFILE': 'native',
         }))
-        self.enterContext(patch('catalog_scrape.adapters.currys.asyncio.sleep', new=AsyncMock()))
+        self.sleep = self.enterContext(patch('catalog_scrape.adapters.currys.asyncio.sleep', new=AsyncMock()))
         self.enterContext(patch('catalog_scrape.diagnostics.capture_failure', new=AsyncMock(return_value=Path('evidence.json'))))
         self.adapter = CurrysCatalogAdapter()
         self.context = AsyncMock()
@@ -305,14 +305,14 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         return {'slug': f'tcl-55-tv-{number}', 'title': f'TCL 55 TV MODEL {number}',
                 'price': '£300', 'href': f'/products/tcl-55-tv-{number}.html'}
 
-    async def test_transient_gap_is_recorded_and_recovered_once_after_initial_scan(self):
+    async def test_transient_page_is_recorded_and_retried_at_most_once(self):
         self.adapter._scrape_page = AsyncMock(side_effect=[
-            (200, [self.card(1)]), (503, []), (200, [self.card(3)]), (200, []),
-            (200, [self.card(2)]),
+            (200, [self.card(1)]), (503, []), (200, [self.card(2)]),
+            (200, [self.card(3)]), (200, []),
         ])
         await self.adapter.fetch_catalog_from_browser(AsyncMock())
         starts = [call.args[1] for call in self.adapter._scrape_page.await_args_list]
-        self.assertEqual([0, 50, 100, 150, 50], starts)
+        self.assertEqual([0, 50, 50, 100, 150], starts)
         self.assertTrue(self.adapter.catalog_report['complete'])
         self.assertEqual([], self.adapter.catalog_report['missing_pages'])
         self.assertEqual(2, len(self.adapter.catalog_report['pages']['50']['attempts']))
@@ -322,7 +322,7 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unrecovered_gap_keeps_daily_observations_but_rejects_weekly_catalog(self):
         self.adapter._scrape_page = AsyncMock(side_effect=[
-            (200, [self.card(1)]), (503, []), (200, []), (503, []),
+            (200, [self.card(1)]), (503, []), (503, []), (200, []),
         ])
         page = AsyncMock()
         with self.assertRaises(CurrysCatalogIncomplete):
@@ -331,13 +331,80 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, self.adapter.catalog_report['observed_items'])
         self.assertFalse(self.adapter.catalog_report['complete'])
 
-    async def test_403_stops_without_new_identity_or_recovery(self):
-        self.adapter._scrape_page = AsyncMock(side_effect=[(200, [self.card(1)]), (403, [])])
+    async def test_old_successful_sequence_keeps_later_pages_after_isolated_403(self):
+        serial = 0
+        def cards(count):
+            nonlocal serial
+            rows = [self.card(index) for index in range(serial + 1, serial + count + 1)]
+            serial += count
+            return rows
+        # 回放 37875492135 的目录轨迹：start=50 两次403；start=250 首次403后恢复。
+        self.adapter._scrape_page = AsyncMock(side_effect=[
+            (200, cards(50)), (403, []), (403, []),
+            (200, cards(50)), (200, cards(50)), (200, cards(45)),
+            (403, []), (200, cards(50)), (200, cards(50)),
+            (200, cards(48)), (200, cards(1)), (200, cards(6)),
+            (200, cards(2)), (200, []),
+        ])
         items = await self.adapter.fetch_catalog_from_browser(AsyncMock())
-        self.assertEqual(1, len(items))
-        self.assertEqual(2, self.adapter._scrape_page.await_count)
-        self.assertTrue(self.adapter.catalog_report['blocked'])
+        self.assertEqual(352, len(items))
+        self.assertEqual([50], self.adapter.catalog_report['missing_pages'])
+        self.assertTrue(self.adapter.catalog_report['had_access_denials'])
+        self.assertFalse(self.adapter.catalog_report['blocked'])
         self.assertFalse(self.adapter.catalog_report['complete'])
+        self.assertEqual(200, self.adapter.catalog_report['pages']['250']['status'])
+        self.assertTrue(all(len(row['attempts']) <= 2 for row in self.adapter.catalog_report['pages'].values()))
+
+    async def test_first_403_recovers_and_does_not_poison_complete_catalog(self):
+        self.adapter._scrape_page = AsyncMock(side_effect=[
+            (403, []), (200, [self.card(1)]), (200, []),
+        ])
+        items = await self.adapter.fetch_catalog(AsyncMock())
+        self.assertEqual(1, len(items))
+        self.assertTrue(self.adapter.catalog_report['had_access_denials'])
+        self.assertFalse(self.adapter.catalog_report['blocked'])
+        self.assertTrue(self.adapter.catalog_report['complete'])
+        self.assertEqual([], self.adapter.catalog_report['missing_pages'])
+        self.assertEqual(2, len(self.adapter.catalog_report['pages']['0']['attempts']))
+
+    async def test_two_consecutive_final_403_pages_stop_with_four_total_attempts(self):
+        self.adapter._scrape_page = AsyncMock(return_value=(403, []))
+        items = await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.assertEqual([], items)
+        self.assertEqual([0, 0, 50, 50], [call.args[1] for call in self.adapter._scrape_page.await_args_list])
+        self.assertTrue(self.adapter.catalog_report['blocked'])
+        self.assertTrue(self.adapter.catalog_report['had_access_denials'])
+        self.assertEqual('consecutive_access_denials', self.adapter.catalog_report['termination'])
+        self.assertFalse(self.adapter.catalog_report['complete'])
+
+    async def test_429_stops_immediately_without_retrying_or_scanning_next_page(self):
+        self.adapter._scrape_page = AsyncMock(return_value=(429, []))
+        await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.adapter._scrape_page.assert_awaited_once()
+        self.sleep.assert_not_awaited()
+        self.assertTrue(self.adapter.catalog_report['rate_limited'])
+        self.assertFalse(self.adapter.catalog_report['blocked'])
+        self.assertFalse(self.adapter.catalog_report['had_access_denials'])
+        self.assertEqual('rate_limited', self.adapter.catalog_report['termination'])
+
+    async def test_429_on_retry_never_causes_third_attempt(self):
+        self.adapter._scrape_page = AsyncMock(side_effect=[(403, []), (429, [])])
+        await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.assertEqual(2, self.adapter._scrape_page.await_count)
+        self.assertEqual(1, self.sleep.await_count)
+        self.assertTrue(self.adapter.catalog_report['rate_limited'])
+        self.assertTrue(self.adapter.catalog_report['had_access_denials'])
+        self.assertFalse(self.adapter.catalog_report['blocked'])
+
+    async def test_mixed_consecutive_failures_do_not_claim_persistent_access_denial(self):
+        self.adapter._scrape_page = AsyncMock(side_effect=[
+            (403, []), (403, []), (503, []), (503, []),
+        ])
+        await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.assertEqual(4, self.adapter._scrape_page.await_count)
+        self.assertFalse(self.adapter.catalog_report['blocked'])
+        self.assertTrue(self.adapter.catalog_report['had_access_denials'])
+        self.assertEqual('consecutive_failed_pages', self.adapter.catalog_report['termination'])
 
     async def test_http_403_is_classified_even_when_dom_unreadable(self):
         page = AsyncMock()
@@ -348,32 +415,49 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(403, status)
         self.assertEqual([], cards)
         self.assertTrue(self.adapter._last_page_info['blocked'])
-        self.assertFalse(self.adapter._last_page_info['retryable'])
+        self.assertTrue(self.adapter._last_page_info['retryable'])
         page.evaluate.assert_not_awaited()
 
-    async def test_current_uses_separate_page_contexts_and_stops_at_403(self):
-        context1, context2 = AsyncMock(), AsyncMock()
-        page1, page2 = AsyncMock(), AsyncMock()
+    async def test_current_keeps_separate_contexts_for_bounded_page_attempts(self):
+        context1, context2, context3 = AsyncMock(), AsyncMock(), AsyncMock()
+        page1, page2, page3 = AsyncMock(), AsyncMock(), AsyncMock()
         context1.new_page.return_value = page1
         context2.new_page.return_value = page2
-        page1.goto.return_value = SimpleNamespace(status=200)
-        page1.is_visible.return_value = False
-        page1.evaluate.side_effect = [{}, [self.card(1)]]
-        page2.goto.return_value = SimpleNamespace(status=403)
-        self.adapter._new_context = AsyncMock(side_effect=[context1, context2])
+        context3.new_page.return_value = page3
+        page1.goto.return_value = SimpleNamespace(status=403)
+        page2.goto.return_value = SimpleNamespace(status=200)
+        page2.is_visible.return_value = False
+        page2.evaluate.side_effect = [{}, [self.card(1)]]
+        page3.goto.return_value = SimpleNamespace(status=200)
+        page3.is_visible.return_value = False
+        page3.evaluate.side_effect = [{}, [], []]
+        self.adapter._new_context = AsyncMock(side_effect=[context1, context2, context3])
         with patch.dict(os.environ, {'SCRAPER_BROWSER_PROFILE': 'current'}):
             items = await self.adapter.fetch_catalog_from_browser(AsyncMock())
         self.assertEqual(1, len(items))
-        self.assertEqual(2, self.adapter._new_context.await_count)
+        self.assertEqual(3, self.adapter._new_context.await_count)
         context1.close.assert_awaited_once()
         context2.close.assert_awaited_once()
-        self.assertTrue(self.adapter.catalog_report['blocked'])
-        self.assertFalse(self.adapter.catalog_report['complete'])
+        context3.close.assert_awaited_once()
+        self.assertFalse(self.adapter.catalog_report['blocked'])
+        self.assertTrue(self.adapter.catalog_report['had_access_denials'])
+        self.assertTrue(self.adapter.catalog_report['complete'])
 
     async def test_page_limit_cannot_be_called_complete(self):
-        self.adapter._scrape_page = AsyncMock(return_value=(200, [self.card(1)]))
+        self.adapter._scrape_page = AsyncMock(side_effect=[
+            (200, [self.card(1)]), (200, [self.card(2)]),
+        ])
         with patch('catalog_scrape.adapters.currys.MAX_PAGES', 2):
             await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.assertFalse(self.adapter.catalog_report['complete'])
+        self.assertFalse(self.adapter.catalog_report['end_observed'])
+        self.assertEqual('page_limit', self.adapter.catalog_report['termination'])
+
+    async def test_repeated_page_stops_without_claiming_normal_end(self):
+        self.adapter._scrape_page = AsyncMock(return_value=(200, [self.card(1)]))
+        await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.assertEqual(2, self.adapter._scrape_page.await_count)
+        self.assertEqual('repeated_page', self.adapter.catalog_report['termination'])
         self.assertFalse(self.adapter.catalog_report['complete'])
         self.assertFalse(self.adapter.catalog_report['end_observed'])
 
