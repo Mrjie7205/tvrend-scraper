@@ -30,7 +30,9 @@ from typing import Sequence
 from .base import BaseCatalogAdapter, CatalogItem
 from catalog_scrape.diagnostics import capture_catalog_failure
 from monitor_prices.core import close_playwright_resource, get_browser_profile, new_scraper_context
-from monitor_prices.adapters.currys import currys_navigation_state, currys_recovery_failure_reason, track_currys_document, wait_currys_automatic_check
+from monitor_prices.adapters.currys import (_currys_target_matches, currys_navigation_state, currys_pagination_state,
+                                          currys_recovery_failure_reason, track_currys_document, wait_currys_automatic_check)
+from catalog_scrape.currys_pagination import JS_PAGINATION_METADATA, completion_proof, verify_page_position
 
 LISTING_URL = "https://www.currys.co.uk/tv-and-audio/televisions/tvs"
 PAGE_SIZE = 50
@@ -235,6 +237,21 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
                 # 正常页一次短等只处理渲染延迟，不导航或清会话。
                 await page.wait_for_timeout(1200)
                 cards = await page.evaluate(_JS_EXTRACT)
+            try:
+                before = currys_navigation_state(page)
+                metadata = await asyncio.wait_for(page.evaluate(JS_PAGINATION_METADATA), timeout=3)
+                pagination = currys_pagination_state(url, page.url, await asyncio.wait_for(page.title(), timeout=1))
+                after = currys_navigation_state(page)
+                document_verified = (before == after and after['http_status'] == 200 and not after['in_flight']
+                                     and after['navigation_count'] <= navigation_budget
+                                     and _currys_target_matches(url, page.url, 'catalog'))
+                self._last_page_info.update(pagination_metadata=metadata, pagination_after_render=pagination,
+                    pagination_evidence=verify_page_position(start, PAGE_SIZE, pagination, metadata,
+                                                            document_verified=document_verified))
+            except Exception as exc:
+                # 页序证据缺失只拒绝周目录完整性，不丢弃同页已取得的明确商品报价。
+                self._last_page_info.update(pagination_error_type=type(exc).__name__,
+                    pagination_evidence={'verified': False, 'reasons': ['pagination_metadata_unavailable'], 'trusted_total': None})
             return status, cards or []
         except Exception as error:
             self._last_page_info.update(reason='navigation_or_extraction_error',
@@ -311,6 +328,10 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
                      'navigation_count': navigation_count, 'initial_http_status': info.get('initial_http_status', status),
                      'connection_recovery': info.get('connection_recovery'),
                      'pagination': info.get('pagination'),
+                     'pagination_after_render': info.get('pagination_after_render'),
+                     'pagination_metadata': info.get('pagination_metadata'),
+                     'pagination_evidence': info.get('pagination_evidence'),
+                     'pagination_error_type': info.get('pagination_error_type'),
                      'retryable': retryable, 'reason': info.get('reason'),
                      'error_type': info.get('error_type'), 'observed_at': datetime.now(UTC).isoformat()}
             row['attempts'].append(event)
@@ -318,7 +339,8 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
             row.update(status=status, missing=status != 200, access_denied=denied,
                        retryable=retryable and len(row['attempts']) < 2 and row['navigation_count'] < 2)
             # 明确商品观测仍交给日价原门禁；未知页位只限制完整周目录，不计连续抓取失败。
-            row['pagination_verified'] = (info.get('pagination') or {}).get('position_verified', True)
+            row['pagination_evidence'] = info.get('pagination_evidence') or {}
+            row['pagination_verified'] = row['pagination_evidence'].get('verified') is True
             for card in cards if status == 200 else []:
                 slug = card.get('slug')
                 if slug and len((card.get('title') or '').strip()) >= 8 and slug not in by_slug:
@@ -345,9 +367,15 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
                     break
                 if status == 200:
                     consecutive_failed = consecutive_denied = 0
+                    proof = completion_proof(self.catalog_report['pages'], by_slug, current_start=start, size=PAGE_SIZE)
+                    self.catalog_report['completion_proof'] = proof
+                    if proof['complete']:
+                        self.catalog_report['end_observed'] = True
+                        self.catalog_report['termination'] = 'verified_last_window'
+                        break
                     if not cards:
-                        self.catalog_report['end_observed'] = start > 0
-                        self.catalog_report['termination'] = 'empty_page_after_bounded_wait'
+                        self.catalog_report['end_observed'] = False
+                        self.catalog_report['termination'] = 'empty_page_without_complete_proof'
                         break
                     signature = tuple(sorted({card.get('slug') for card in cards if card.get('slug')}))
                     if signature and signature in seen_page_signatures:
@@ -383,6 +411,7 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
                 self.catalog_report['end_observed'] and not self.catalog_report['missing_pages']
                 and not self.catalog_report['pagination_unverified_pages']
                 and not self.catalog_report['blocked'] and not self.catalog_report['rate_limited']
+                and self.catalog_report.get('completion_proof', {}).get('complete') is True
             )
             self.catalog_report['finished_at'] = datetime.now(UTC).isoformat()
             self.catalog_report['observed_items'] = len(by_slug)
