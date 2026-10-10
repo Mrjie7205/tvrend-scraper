@@ -46,7 +46,7 @@ class Page:
 
     async def screenshot(self, **kwargs):
         assert not self.closed, "截图必须发生在既有PDP关闭之前"
-        assert kwargs["mask"] and kwargs["mask_color"] == "#000000"
+        assert kwargs["full_page"] is False
         return b"\x89PNG\r\n\x1a\nunit-test-candidate"
 
 

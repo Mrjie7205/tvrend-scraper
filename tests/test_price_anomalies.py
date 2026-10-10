@@ -4,6 +4,7 @@ import csv
 import json
 from pathlib import Path
 import sys
+import time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -11,6 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import price_anomalies as anomalies
+import failure_evidence as evidence
 from monitor_prices import prices_io, run_daily
 from monitor_prices.adapters.currys import CurrysAdapter
 
@@ -40,8 +42,10 @@ def test_float_boundary_representation_does_not_hide_exact_alert():
 class Page:
     url = "https://www.currys.co.uk/products/tv-10280001.html?token=PRIVATE"
 
-    def __init__(self, broken=False):
+    def __init__(self, broken=False, redaction=True, screenshot_hang=False):
         self.broken, self.count = broken, 0
+        self.redaction, self.screenshot_hang = redaction, screenshot_hang
+        self.screenshot_options = []
         self.goto = AsyncMock(return_value=SimpleNamespace(status=200))
         self.title = AsyncMock(return_value="LG TV")
         self.close = AsyncMock()
@@ -54,12 +58,14 @@ class Page:
         return selector
 
     async def evaluate(self, script):
-        return {"redaction_ready": True, "title": "TV", "headings": [], "buttons": [], "private": "NEVER_SAVE"}
+        return {"redaction_ready": self.redaction, "title": "TV", "headings": [], "buttons": [], "private": "NEVER_SAVE"}
 
     async def screenshot(self, **kwargs):
         self.count += 1
-        assert kwargs["mask"] and kwargs["mask_color"] == "#000000"
+        self.screenshot_options.append(kwargs)
         assert not kwargs["full_page"]
+        if self.screenshot_hang:
+            await asyncio.Event().wait()
         if self.broken:
             raise RuntimeError("capture unavailable")
         return b"\x89PNG\r\n\x1a\nunit-test"
@@ -77,10 +83,14 @@ def temporary_evidence(tmp_path, monkeypatch):
     monkeypatch.setenv("PRICE_ARTIFACTS_DIR", str(tmp_path / "prices"))
     monkeypatch.setenv("FAILURE_EVIDENCE_DIR", str(tmp_path / "failures"))
     monkeypatch.delenv("PRICE_SCREENSHOT_LIMIT", raising=False)
+    monkeypatch.delenv("SCRAPER_SCREENSHOT_REDACT", raising=False)
     monkeypatch.setattr(anomalies, "_WRITE_FAILURES", 0)
 
 
-def test_each_listing_gets_json_and_snapshot_without_failure_two_image_limit(tmp_path):
+@pytest.mark.parametrize("redact", [False, True])
+def test_each_listing_gets_json_and_snapshot_without_failure_two_image_limit(tmp_path, monkeypatch, redact):
+    if redact:
+        monkeypatch.setenv("SCRAPER_SCREENSHOT_REDACT", "1")
     async def run():
         page = Page()
         paths = []
@@ -95,9 +105,46 @@ def test_each_listing_gets_json_and_snapshot_without_failure_two_image_limit(tmp
         assert document["baseline_source_file"] == "prices.csv"
         assert document["old_observed_at"] == BASELINE["observed_at"]
         assert document["screenshot"]["status"] == "saved"
+        assert document["screenshot"]["redacted"] is redact
+        for options in page.screenshot_options:
+            assert ("mask" in options) is redact and ("mask_color" in options) is redact
+            if redact:
+                assert options["mask"] == [evidence._MASK_SELECTORS] and options["mask_color"] == "#000000"
         assert "PRIVATE" not in paths[0].read_text(encoding="utf-8")
         assert "NEVER_SAVE" not in paths[0].read_text(encoding="utf-8")
         assert not (tmp_path / "failures").exists()
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("redact", [False, True])
+def test_price_snapshot_incomplete_scan_respects_only_png_mode(monkeypatch, redact):
+    monkeypatch.setenv("SCRAPER_SCREENSHOT_REDACT", "1" if redact else "0")
+    page = Page(redaction=False)
+    path = asyncio.run(anomalies.record_price_change(baseline=BASELINE, observation=OBSERVATION, page=page))
+    document = json.loads(path.read_text())
+    assert document["new_price"] == 200 and document["ingestion_status"] == "accepted"
+    assert document["screenshot"]["status"] == ("redaction_not_ready" if redact else "saved")
+    assert page.count == (0 if redact else 1)
+    if not redact:
+        assert document["screenshot"]["redacted"] is False
+        assert "mask" not in page.screenshot_options[0] and "mask_color" not in page.screenshot_options[0]
+    assert "PRIVATE" not in path.read_text() and "NEVER_SAVE" not in path.read_text()
+
+
+@pytest.mark.parametrize("redact", [False, True])
+def test_shared_snapshot_limit_and_timeout_stay_bounded(tmp_path, monkeypatch, redact):
+    monkeypatch.setenv("SCRAPER_SCREENSHOT_REDACT", "1" if redact else "0")
+    async def run():
+        first = await evidence.capture_redacted_snapshot(Page(), output_dir=tmp_path / "limited", event_type="diagnostic",
+            event_id="a" * 16, screenshot_limit=1)
+        omitted = await evidence.capture_redacted_snapshot(Page(), output_dir=tmp_path / "limited", event_type="diagnostic",
+            event_id="b" * 16, screenshot_limit=1)
+        assert first["status"] == "saved" and first["redacted"] is redact
+        assert omitted["status"] == "omitted_explicit_limit"
+        started = time.monotonic()
+        timeout = await evidence.capture_redacted_snapshot(Page(screenshot_hang=True), output_dir=tmp_path / "timeout",
+            event_type="price_change", event_id="c" * 16, timeout_seconds=0.025)
+        assert time.monotonic() - started < 0.3 and timeout["status"] == "capture_timeout"
     asyncio.run(run())
 
 

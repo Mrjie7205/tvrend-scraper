@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timedelta, timezone
 import json
+import os
 from pathlib import Path
 
 from monitor_prices.core import launch_scraper_browser, new_scraper_context
@@ -21,11 +22,17 @@ async def main() -> int:
                 "identity_precision": "synthetic_fixture"}
     cases = (("UP-100", 200, 100), ("DOWN-50", 50, -50))
     reports = []
+    run_root = ROOT / now.strftime('%Y%m%dT%H%M%S%fZ')
     async with async_playwright() as playwright:
         browser = await launch_scraper_browser(playwright, headless=True)
         context = await new_scraper_context(browser, country="GB")
+        await context.set_offline(True)
         try:
-            for name, price, change in cases:
+            for redact, name, price, change in (
+                (redact, *case) for redact in (False, True) for case in cases
+            ):
+                mode = 'masked' if redact else 'original'
+                os.environ['SCRAPER_SCREENSHOT_REDACT'] = '1' if redact else '0'
                 page = await context.new_page()
                 try:
                     await page.set_content(
@@ -42,7 +49,7 @@ async def main() -> int:
                                    "url": f"https://www.currys.co.uk/products/synthetic-{name}.html",
                                    "observation_source": "synthetic_fixture", "ingestion_status": "not_published"}
                     report = await record_price_change(baseline=baseline, observation=observation,
-                                                       page=page, output_dir=ROOT,
+                                                       page=page, output_dir=run_root / mode,
                                                        evidence_source="synthetic_same_page")
                     if report is None:
                         raise RuntimeError(f"{name} 达到边界却未留证")
@@ -51,13 +58,17 @@ async def main() -> int:
                         raise RuntimeError("涨跌比例错误")
                     if document["screenshot"]["status"] != "saved":
                         raise RuntimeError("有效页面未取得截图")
+                    if document['screenshot'].get('redacted') is not redact:
+                        raise RuntimeError('波动截图模式记录与配置不一致')
                     screenshot = report.parent / document["screenshot"]["file"]
                     if not screenshot.is_file() or not screenshot.read_bytes().startswith(b"\x89PNG"):
                         raise RuntimeError("截图文件缺失或格式不符")
                     if "fixture-do-not-persist" in report.read_text(encoding="utf-8"):
                         raise RuntimeError("快照 JSON 混入输入框值")
                     reports.append({"case": name, "change_percent": change,
-                                    "report": report.name, "image": screenshot.name, "synthetic": True})
+                                    "mode": mode, "redacted": redact,
+                                    "report": report.relative_to(ROOT).as_posix(),
+                                    "image": screenshot.relative_to(ROOT).as_posix(), "synthetic": True})
                 finally:
                     await page.close()
         finally:
@@ -70,9 +81,10 @@ async def main() -> int:
         raise RuntimeError("跨币种价格被错误比较")
     if classify_change(0, 200, old_currency="GBP", currency="GBP") is not None:
         raise RuntimeError("零基线被错误比较")
-    summary = summarize(ROOT)
+    summary = {mode: summarize(run_root / mode) for mode in ('original', 'masked')}
     result = {"synthetic": True, "market_requests": 0, "writes_price_history": False,
               "inclusive_boundaries_passed": True, "normal_moves_skipped": True,
+              "original_and_masked_modes_verified": True,
               "incomparable_baselines_skipped": True, "reports": reports,
               "snapshot_summary": summary}
     (ROOT / "verification-result.json").write_text(

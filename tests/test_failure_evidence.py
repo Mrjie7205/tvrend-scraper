@@ -19,16 +19,20 @@ import failure_evidence as evidence
 class FakePage:
     url = "https://www.currys.co.uk/products/test-tv.html?token=PRIVATE#account"
 
-    def __init__(self, *, hang=False, screenshot_error=False, redaction=True):
+    def __init__(self, *, hang=False, screenshot_error=False, screenshot_hang=False, redaction=True):
         self.hang = hang
         self.screenshot_error = screenshot_error
         self.redaction = redaction
         self.screenshots = 0
+        self.screenshot_hang = screenshot_hang
+        self.screenshot_options = []
+        self.locator_calls = []
 
     def is_closed(self):
         return False
 
     def locator(self, selector):
+        self.locator_calls.append(selector)
         return selector
 
     async def evaluate(self, script):
@@ -45,9 +49,10 @@ class FakePage:
 
     async def screenshot(self, **kwargs):
         self.screenshots += 1
+        self.screenshot_options.append(kwargs)
         assert kwargs["full_page"] is False
-        assert kwargs["mask"] == [evidence._MASK_SELECTORS]
-        assert kwargs["mask_color"] == "#000000"
+        if self.screenshot_hang:
+            await asyncio.Event().wait()
         if self.screenshot_error:
             raise RuntimeError("token=PRIVATE")
         return b"\x89PNG\r\n\x1a\nsynthetic-test"
@@ -57,7 +62,7 @@ class FailureEvidenceTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
-        self.environment = patch.dict(os.environ, {"FAILURE_EVIDENCE_DIR": str(self.root)})
+        self.environment = patch.dict(os.environ, {"FAILURE_EVIDENCE_DIR": str(self.root), "SCRAPER_SCREENSHOT_REDACT": ""})
         self.environment.start()
 
     def tearDown(self):
@@ -88,6 +93,10 @@ class FailureEvidenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(path, again)
         self.assertEqual(1, page.screenshots)
         self.assertEqual("saved", report["screenshot"]["status"])
+        self.assertFalse(report["screenshot"]["redacted"])
+        self.assertNotIn("mask", page.screenshot_options[0])
+        self.assertNotIn("mask_color", page.screenshot_options[0])
+        self.assertEqual([], page.locator_calls)
         self.assertEqual("https://www.currys.co.uk/continue", report["visible_structure"]["buttons"][0]["url"])
         self.assertIsNone(report["visible_structure"]["buttons"][1]["url"])
         for secret in ("PRIVATE", "NEVER-SAVE", "test-person@example.com", "hidden_values"):
@@ -120,9 +129,54 @@ class FailureEvidenceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_incomplete_redaction_never_takes_screenshot(self):
         page = FakePage(redaction=False)
-        path = await self.capture(page)
+        with patch.dict(os.environ, {"SCRAPER_SCREENSHOT_REDACT": "1"}):
+            path = await self.capture(page)
         self.assertEqual(0, page.screenshots)
         self.assertEqual("redaction_unavailable", json.loads(path.read_text())["screenshot"]["status"])
+
+    async def test_incomplete_scan_does_not_block_unmasked_screenshot(self):
+        page = FakePage(redaction=False)
+        path = await self.capture(page)
+        report = json.loads(path.read_text())
+        self.assertEqual("saved", report["screenshot"]["status"])
+        self.assertFalse(report["screenshot"]["redacted"])
+        self.assertEqual(1, page.screenshots)
+        self.assertNotIn("mask", page.screenshot_options[0])
+        self.assertNotIn("mask_color", page.screenshot_options[0])
+        for secret in ("PRIVATE", "NEVER-SAVE", "test-person@example.com"):
+            self.assertNotIn(secret, path.read_text())
+
+    async def test_only_explicit_one_enables_failure_png_masks(self):
+        for index, (value, enabled) in enumerate([(None, False), ("0", False), ("true", False), ("1", True)]):
+            with self.subTest(value=value), patch.dict(os.environ, {"SCRAPER_SCREENSHOT_REDACT": value or ""}):
+                if value is None:
+                    os.environ.pop("SCRAPER_SCREENSHOT_REDACT", None)
+                page = FakePage()
+                path = await evidence.capture_failure(page, platform="Currys", country="GB", stage="switch",
+                                                      reason=f"mode_{index}", error=RuntimeError("token=PRIVATE"))
+                report = json.loads(path.read_text())
+                self.assertEqual(enabled, report["screenshot"]["redacted"])
+                options = page.screenshot_options[0]
+                if enabled:
+                    self.assertEqual([evidence._MASK_SELECTORS], options["mask"])
+                    self.assertEqual("#000000", options["mask_color"])
+                else:
+                    self.assertNotIn("mask", options)
+                    self.assertNotIn("mask_color", options)
+                self.assertNotIn("PRIVATE", path.read_text())
+
+    async def test_both_png_modes_keep_limits_and_screenshot_timeout(self):
+        for value in ("0", "1"):
+            with self.subTest(value=value), patch.dict(os.environ, {"SCRAPER_SCREENSHOT_REDACT": value}):
+                paths = [await evidence.capture_failure(FakePage(), platform="Currys", country="GB", stage="limit",
+                    reason=f"limited_{value}") for _ in range(3)]
+                self.assertEqual(["saved", "saved", "omitted_limit"],
+                                 [json.loads(path.read_text())["screenshot"]["status"] for path in paths])
+                started = time.monotonic()
+                path = await evidence.capture_failure(FakePage(screenshot_hang=True), platform="Currys", country="GB",
+                    stage="timeout", reason=f"timeout_{value}", timeout_seconds=0.025)
+                self.assertLess(time.monotonic() - started, 0.3)
+                self.assertEqual("capture_timeout", json.loads(path.read_text())["screenshot"]["status"])
 
     async def test_forty_dead_links_leave_two_images_and_omission_counts(self):
         for _ in range(40):
@@ -259,7 +313,8 @@ class FailureEvidenceTests(unittest.IsolatedAsyncioTestCase):
                 page = await browser.new_page(viewport={"width": 640, "height": 360})
                 await page.route("**/*", lambda route: route.fulfill(status=200, content_type="text/html", body=html))
                 await page.goto(FakePage.url)
-                path = await self.capture(page)
+                with patch.dict(os.environ, {"SCRAPER_SCREENSHOT_REDACT": "1"}):
+                    path = await self.capture(page)
                 report = json.loads(path.read_text(encoding="utf-8"))
                 self.assertEqual("saved", report["screenshot"]["status"])
                 encoded = base64.b64encode((path.parent / report["screenshot"]["file"]).read_bytes()).decode()

@@ -1,4 +1,4 @@
-"""失败现场的有界旁路采集：最小摘要先落盘，页面截图先遮挡，不改变抓取结果。"""
+"""失败现场的有界旁路采集：摘要始终脱敏，PNG默认原样，显式开关恢复遮挡。"""
 from __future__ import annotations
 
 import asyncio
@@ -35,7 +35,7 @@ _MASK_SELECTORS = (
     '[class*="delivery" i],[id*="greeting" i],[class*="greeting" i],[id*="username" i]'
 )
 
-# 不取 body 全文、HTML、表单值或隐藏字段。先标记个人区域，随后 screenshot 的 mask 覆盖这些节点。
+# 不取 body 全文、HTML、表单值或隐藏字段。标记仅用于JSON过滤；PNG遮挡由独立开关决定。
 _VISIBLE_STRUCTURE_JS = r"""() => {
   const attr = 'data-tvrend-failure-mask';
   const visible = el => {
@@ -66,7 +66,7 @@ _VISIBLE_STRUCTURE_JS = r"""() => {
       if (visibleLanguage.length < 20000) visibleLanguage += ' ' + text.slice(0, 20000 - visibleLanguage.length);
     }
   }
-  // 未完成全页检查时拒绝截图，不能把遍历上限变成脱敏漏洞。
+  // 完整性标志供启用PNG遮挡时的安全门禁使用；JSON仍只返回既有脱敏白名单。
   const ready = !node;
   const publicText = el => el.closest('[' + attr + ']') ? '[redacted]' : (el.innerText || '').trim().slice(0, 160);
   const headings = [...document.querySelectorAll('h1,h2,[role="alert"]')].filter(visible).slice(0, 16)
@@ -232,6 +232,18 @@ async def _bounded(awaitable, seconds: float):
             task.add_done_callback(_consume)
 
 
+def _screenshot_redaction_enabled() -> bool:
+    """每次捕获只读取一次；仅显式1恢复原PNG遮挡，不影响JSON/URL/错误文本过滤。"""
+    return os.environ.get("SCRAPER_SCREENSHOT_REDACT", "").strip() == "1"
+
+
+def _screenshot_options(page, remaining: float, *, redact: bool) -> dict:
+    options = {"full_page": False, "animations": "disabled", "timeout": max(1, int(remaining * 1000))}
+    if redact:
+        options.update(mask=[page.locator(_MASK_SELECTORS)], mask_color="#000000")
+    return options
+
+
 def _visible_payload(raw) -> dict:
     raw = raw if isinstance(raw, dict) else {}
     flags = ("normal_page", "captcha_language", "robot_language", "challenge_language",
@@ -255,6 +267,7 @@ async def capture_failure(page, *, platform, country, stage, reason, url=None, h
     """先持久化最小现场，再限时采集已脱敏结构/真实页面截图；任何采集异常均旁路处理。"""
     path = None
     document = None
+    redact_screenshot = _screenshot_redaction_enabled()
     try:
         root = _root()
         try:
@@ -315,19 +328,18 @@ async def capture_failure(page, *, platform, country, stage, reason, url=None, h
         deadline = asyncio.get_running_loop().time() + seconds
         raw = await _bounded(page.evaluate(_VISIBLE_STRUCTURE_JS), min(1.5, seconds))
         document["visible_structure"] = _visible_payload(raw)
-        if not isinstance(raw, dict) or raw.get("redaction_ready") is not True:
+        if redact_screenshot and (not isinstance(raw, dict) or raw.get("redaction_ready") is not True):
             document["screenshot"]["status"] = "redaction_unavailable"
             return path
         remaining = deadline - asyncio.get_running_loop().time()
         if remaining <= 0:
             raise asyncio.TimeoutError()
-        screenshot = await _bounded(page.screenshot(full_page=False, animations="disabled", mask_color="#000000",
-                         mask=[page.locator(_MASK_SELECTORS)], timeout=max(1, int(remaining * 1000))), remaining)
+        screenshot = await _bounded(page.screenshot(**_screenshot_options(page, remaining, redact=redact_screenshot)), remaining)
         if not isinstance(screenshot, bytes) or not screenshot.startswith(b"\x89PNG\r\n\x1a\n"):
             raise ValueError("screenshot_not_png")
         image_path = path.with_suffix(".png")
         image_path.write_bytes(screenshot)
-        document["screenshot"] = {"status": "saved", "file": image_path.name, "redacted": True}
+        document["screenshot"] = {"status": "saved", "file": image_path.name, "redacted": redact_screenshot}
         with _LOCK:
             group["screenshots"] += 1
             state["screenshots"] += 1
@@ -351,8 +363,9 @@ _SNAPSHOT_ATTEMPTS: dict[tuple[str, str], int] = {}
 
 async def capture_redacted_snapshot(page, *, output_dir: Path, event_type: str, event_id: str,
                                     screenshot_limit: int | None = None, timeout_seconds: float = 4.0) -> dict:
-    """独立事件的安全截图接口；显式目录和额度，不复用故障类每组两张的限额。"""
+    """独立事件截图共用PNG遮挡开关；目录和额度独立，结构摘要始终脱敏。"""
     result = {"status": "not_attempted", "file": None, "page_url": None}
+    redact_screenshot = _screenshot_redaction_enabled()
     try:
         result["page_url"] = sanitize_url(getattr(page, "url", None))
         if page is None or (callable(getattr(page, "is_closed", None)) and page.is_closed() is True):
@@ -375,19 +388,18 @@ async def capture_redacted_snapshot(page, *, output_dir: Path, event_type: str, 
         deadline = asyncio.get_running_loop().time() + seconds
         raw = await _bounded(page.evaluate(_VISIBLE_STRUCTURE_JS), min(1.5, seconds))
         result["visible_structure"] = _visible_payload(raw)
-        if not isinstance(raw, dict) or raw.get("redaction_ready") is not True:
+        if redact_screenshot and (not isinstance(raw, dict) or raw.get("redaction_ready") is not True):
             result["status"] = "redaction_not_ready"
             return result
         remaining = deadline - asyncio.get_running_loop().time()
         if remaining <= 0:
             raise asyncio.TimeoutError()
-        pixels = await _bounded(page.screenshot(full_page=False, animations="disabled", mask=[page.locator(_MASK_SELECTORS)],
-                                                mask_color="#000000", timeout=max(1, int(remaining * 1000))), remaining)
+        pixels = await _bounded(page.screenshot(**_screenshot_options(page, remaining, redact=redact_screenshot)), remaining)
         if not isinstance(pixels, bytes) or not pixels.startswith(b"\x89PNG\r\n\x1a\n"):
             raise ValueError("screenshot_not_png")
         path = root / f"{event_type}_{event_id}.png"
         path.write_bytes(pixels)
-        result.update(status="saved", file=path.name, redacted=True)
+        result.update(status="saved", file=path.name, redacted=redact_screenshot)
     except (Exception, asyncio.CancelledError) as exc:
         result.update(status="capture_timeout" if isinstance(exc, asyncio.TimeoutError) else "capture_failed",
                       error_type=type(exc).__name__)

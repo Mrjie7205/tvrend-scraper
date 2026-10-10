@@ -1,4 +1,4 @@
-"""Currys 分页只读诊断：最多两页，只落安全元数据和脱敏图片，不发布或判定完整目录。"""
+"""Currys 分页只读诊断：最多两页，保存安全元数据及按统一开关遮挡的截图，不发布目录。"""
 from __future__ import annotations
 
 import argparse
