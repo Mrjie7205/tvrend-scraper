@@ -252,6 +252,13 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
         finally:
             if page is not None:
                 self._last_page_info['navigation_count'] = max(1, currys_navigation_state(page)['navigation_count'])
+                observer = getattr(self, 'page_observation_callback', None)
+                if callable(observer):
+                    try:
+                        # 只读诊断需在真实页关闭前执行；旁路故障不能改写目录抓取结果。
+                        await asyncio.wait_for(observer(page, dict(self._last_page_info)), timeout=10)
+                    except (Exception, asyncio.CancelledError) as exc:
+                        self._last_page_info['observation_error_type'] = type(exc).__name__
             if owns_context:
                 await close_playwright_resource(ctx, f"Currys catalog page {start} context")
             else:
