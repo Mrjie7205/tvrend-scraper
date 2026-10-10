@@ -17,6 +17,11 @@ on:
         required: false
         default: "7"
 
+concurrency:
+  group: weekly-catalog-${{ github.ref }}
+  queue: max
+  cancel-in-progress: false
+
 jobs:
   catalog:
     runs-on: ubuntu-latest
@@ -41,6 +46,7 @@ jobs:
         run: python -m playwright install chromium --with-deps
 
       - name: Scrape catalog（默认 B/C;dispatch 可填 Amazon 做全规模验)
+        id: scrape
         working-directory: scripts
         env:
           HEADLESS_MODE: "true"
@@ -48,6 +54,45 @@ jobs:
           CHANNELS: ${{ inputs.channels || 'Boulanger,Currys' }}
           AMAZON_MAX_PAGES: ${{ inputs.amazon_max_pages || '7' }}
         run: python -m catalog_scrape.run_weekly
+
+      - name: Stage only catalog files changed by this run
+        if: always()
+        env:
+          SCRAPE_OUTCOME: ${{ steps.scrape.outcome }}
+          WEEKLY_ARTIFACT_DIR: ${{ runner.temp }}/weekly-current-catalog
+        run: |
+          python - <<'PY'
+          import csv, hashlib, json, os, shutil, subprocess
+          from pathlib import Path
+          out = Path(os.environ['WEEKLY_ARTIFACT_DIR'])
+          out.mkdir(parents=True, exist_ok=True)
+          changed = subprocess.check_output(['git', 'ls-files', '-z', '--modified', '--others', '--exclude-standard', '--', 'catalog/']).decode('utf-8').split('\0')
+          files = []
+          for name in sorted(set(filter(None, changed))):
+              source = Path(name)
+              if source.suffix != '.csv' or not source.is_file():
+                  continue
+              target = out / source.name
+              shutil.copyfile(source, target)
+              with source.open(encoding='utf-8-sig', newline='') as handle:
+                  rows = sum(1 for _ in csv.DictReader(handle))
+              files.append({'file': source.name, 'rowCount': rows, 'sha256': hashlib.sha256(source.read_bytes()).hexdigest()})
+          report = {'schemaVersion': 1, 'runId': os.environ['GITHUB_RUN_ID'],
+                    'runAttempt': os.environ['GITHUB_RUN_ATTEMPT'], 'headSha': os.environ['GITHUB_SHA'],
+                    'sourceRef': os.environ['GITHUB_REF'], 'scrapeOutcome': os.environ['SCRAPE_OUTCOME'],
+                    'files': files, 'notice': '只交接本次新增或变更的目录；旧checkout文件不充当本轮结果。'}
+          (out / 'manifest.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(report, ensure_ascii=False))
+          PY
+
+      - name: Upload current catalog result and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-catalog-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/weekly-current-catalog/
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload catalog failure evidence（失败也保留现场）
         if: always()
@@ -61,6 +106,7 @@ jobs:
           retention-days: 14
 
       - name: Commit catalog（rebase 重试，防并发）
+        if: github.ref == 'refs/heads/main'
         run: |
           set -e
           git config user.name "tvrend-scraper bot"
@@ -71,9 +117,9 @@ jobs:
             exit 0
           fi
           git commit -m "chore: weekly catalog ${{ github.run_id }} [skip ci]"
-          BR="${{ github.ref_name }}"
+          BR="$GITHUB_REF_NAME"
           for i in 1 2 3 4 5; do
-            if git pull --rebase -X theirs origin "$BR" && git push origin "HEAD:$BR"; then
+            if git pull --rebase origin "$BR" && git push origin "HEAD:$BR"; then
               exit 0
             fi
             git rebase --abort 2>/dev/null || true

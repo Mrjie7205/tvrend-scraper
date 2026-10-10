@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import asyncio
+from collections import Counter
 from datetime import UTC, datetime
 import json
 import os
@@ -302,18 +303,23 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
 
     @staticmethod
     def card(number):
-        return {'slug': f'tcl-55-tv-{number}', 'title': f'TCL 55 TV MODEL {number}',
-                'price': '£300', 'href': f'/products/tcl-55-tv-{number}.html'}
+        product_id = 10280000 + number
+        return {'slug': f'tcl-55-tv-{product_id}', 'title': f'TCL 55 TV MODEL {number}',
+                'price': '£300', 'href': f'/products/tcl-55-tv-{product_id}.html'}
 
     async def test_transient_page_is_recorded_and_retried_at_most_once(self):
-        self.adapter._scrape_page = AsyncMock(side_effect=[
-            (200, [self.card(1)]), (503, []), (200, [self.card(2)]),
-            (200, [self.card(3)]), (200, []),
-        ])
+        seen = Counter()
+        async def page_result(browser, start, **kwargs):
+            seen[start] += 1
+            if start == 50 and seen[start] == 1:
+                return 503, []
+            self.adapter._last_page_info = {'pagination_evidence': {'verified': True, 'trusted_total': 101}}
+            return 200, [self.card(index) for index in range(start, min(start + 50, 101))]
+        self.adapter._scrape_page = AsyncMock(side_effect=page_result)
         await self.adapter.fetch_catalog_from_browser(AsyncMock())
         starts = [call.args[1] for call in self.adapter._scrape_page.await_args_list]
-        self.assertEqual([0, 50, 50, 100, 150], starts)
-        self.assertEqual([2, 2, 1, 2, 2], [call.kwargs['navigation_budget'] for call in self.adapter._scrape_page.await_args_list])
+        self.assertEqual([0, 50, 50, 100], starts)
+        self.assertEqual([2, 2, 1, 2], [call.kwargs['navigation_budget'] for call in self.adapter._scrape_page.await_args_list])
         self.assertTrue(self.adapter.catalog_report['complete'])
         self.assertEqual([], self.adapter.catalog_report['missing_pages'])
         self.assertEqual(2, len(self.adapter.catalog_report['pages']['50']['attempts']))
@@ -351,7 +357,7 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
     async def test_unverified_page_position_keeps_prices_and_later_pages_but_not_complete_weekly(self):
         async def page_result(browser, start, **kwargs):
             self.adapter._last_page_info = {'http_status': 200, 'navigation_count': 1,
-                                           'pagination': {'position_verified': start != 50}}
+                                           'pagination_evidence': {'verified': start != 50, 'trusted_total': 151}}
             return 200, [self.card(start + 1)] if start < 150 else []
         self.adapter._scrape_page = AsyncMock(side_effect=page_result)
         items = await self.adapter.fetch_catalog_from_browser(AsyncMock())
@@ -359,7 +365,7 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([0, 50, 100, 150], [call.args[1] for call in self.adapter._scrape_page.await_args_list])
         self.assertEqual([], self.adapter.catalog_report['missing_pages'])
         self.assertEqual([50], self.adapter.catalog_report['pagination_unverified_pages'])
-        self.assertTrue(self.adapter.catalog_report['end_observed'])
+        self.assertFalse(self.adapter.catalog_report['end_observed'], '空页不能代替显式完整性证明')
         self.assertFalse(self.adapter.catalog_report['complete'])
         self.assertFalse(self.adapter.catalog_report['blocked'])
         with self.assertRaises(CurrysCatalogIncomplete):
@@ -390,9 +396,15 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(len(row['attempts']) <= 2 for row in self.adapter.catalog_report['pages'].values()))
 
     async def test_first_403_recovers_and_does_not_poison_complete_catalog(self):
-        self.adapter._scrape_page = AsyncMock(side_effect=[
-            (403, []), (200, [self.card(1)]), (200, []),
-        ])
+        calls = 0
+        async def page_result(browser, start, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return 403, []
+            self.adapter._last_page_info = {'pagination_evidence': {'verified': True, 'trusted_total': 1}}
+            return 200, [self.card(1)]
+        self.adapter._scrape_page = AsyncMock(side_effect=page_result)
         items = await self.adapter.fetch_catalog(AsyncMock())
         self.assertEqual(1, len(items))
         self.assertTrue(self.adapter.catalog_report['had_access_denials'])
@@ -480,7 +492,7 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         context3.close.assert_awaited_once()
         self.assertFalse(self.adapter.catalog_report['blocked'])
         self.assertFalse(self.adapter.catalog_report['had_access_denials'])
-        self.assertTrue(self.adapter.catalog_report['complete'])
+        self.assertFalse(self.adapter.catalog_report['complete'], '该fixture只有空页，没有可信总数/页序证据')
 
     async def test_page_limit_cannot_be_called_complete(self):
         self.adapter._scrape_page = AsyncMock(side_effect=[
