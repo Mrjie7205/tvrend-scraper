@@ -183,6 +183,11 @@ async def run(args: argparse.Namespace) -> int:
         await capture('diagnostic_runner_error', error)
         return 1
     finally:
+        entry_summary = getattr(adapter, 'continue_navigation_summary', None)
+        summary['continue_navigation'] = (
+            dict(entry_summary) if isinstance(entry_summary, dict)
+            else {'attempts': 0, 'result': 'not_attempted'}
+        )
         try:
             (args.output / 'summary.json').write_text(
                 json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8',

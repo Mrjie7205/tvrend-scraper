@@ -238,7 +238,8 @@ _JS_SEARCH_STATE = r"""() => {
       || document.querySelector('#glow-ingress-block')?.textContent || '').trim().replace(/\s+/g, ' '),
     captcha: /captcha|enter the characters you see below|api-services-support@amazon.com/i.test(text),
     robotCheck: /robot check|not a robot|automated access|unusual traffic|access denied|accesso negato|verify you are human|security check/i.test(text),
-    continueShopping: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfläche unten, um mit dem Einkaufen fortzufahren/i.test(text)
+    normalPage: Array.from(document.querySelectorAll('#nav-main, #glow-ingress-block, #productTitle, [data-component-type=s-search-result]')).some(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'),
+    continueShopping: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfläche unten, um mit dem Einkauf(?:en)? fortzufahren|Haz clic en el botón de abajo para seguir comprando/i.test(text)
     ,accessChallengeTarget: Array.from(document.querySelectorAll('form, button, input[type=submit]')).some(el => {
       if (!el.getClientRects().length) return false;
       const raw = el.getAttribute('action') || el.getAttribute('formaction') || el.form?.getAttribute('action');
@@ -249,10 +250,12 @@ _JS_SEARCH_STATE = r"""() => {
 
 _JS_CONTINUE_PAGE_INSPECTION = r"""() => {
   const visible = el => {
-    if (!el) return false;
+    if (!el || !el.getClientRects().length) return false;
     const box = el.getBoundingClientRect();
     const style = getComputedStyle(el);
-    return box.width > 0 && box.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+    return box.width > 0 && box.height > 0 && style.display !== 'none' &&
+      style.visibility !== 'hidden' && style.visibility !== 'collapse' && Number(style.opacity) > 0 &&
+      (!el.checkVisibility || el.checkVisibility({checkOpacity: true, checkVisibilityCSS: true}));
   };
   const clean = s => (s || '').trim().replace(/\s+/g, ' ');
   const destination = raw => {
@@ -261,20 +264,50 @@ _JS_CONTINUE_PAGE_INSPECTION = r"""() => {
     catch { return {invalid: true}; }
   };
   const text = clean(document.body?.innerText || '');
-  const controls = Array.from(document.querySelectorAll('button, input[type=submit], input[type=button], a[role=button]'))
-    .filter(visible).map(el => ({
+  const name = el => {
+    const refs = (el.getAttribute('aria-labelledby') || '').trim().split(/\s+/).filter(Boolean);
+    const labelled = clean(refs.map(id => document.getElementById(id)?.textContent || '').join(' '));
+    if (labelled) return {label: labelled, source: 'aria-labelledby'};
+    const aria = clean(el.getAttribute('aria-label'));
+    if (aria) return {label: aria, source: 'aria-label'};
+    return {label: clean(el.innerText || (el.matches('input[type=submit],input[type=button]') ? el.getAttribute('value') : '')),
+            source: refs.length ? 'unresolved-reference' : 'visible-text'};
+  };
+  const nodes = Array.from(document.querySelectorAll('button,input[type=submit],input[type=button],[role=button]'));
+  const submits = Array.from(document.querySelectorAll('button,input[type=submit]')).filter(el => el.type === 'submit');
+  const forms = Array.from(document.forms);
+  const controls = nodes.filter(visible).map(el => {
+    const direct = submits.includes(el);
+    const widget = !direct && ['SPAN','DIV'].includes(el.tagName) && el.getAttribute('role') === 'button'
+      ? el.closest('.a-button') : null;
+    const contained = widget ? submits.filter(candidate => widget.contains(candidate)) : [];
+    const native = direct ? el : contained.length === 1 ? contained[0] : null;
+    const form = native?.form;
+    const label = name(el);
+    return {
       tag: el.tagName.toLowerCase(), type: el.getAttribute('type') || '',
-      label: clean(el.textContent || el.getAttribute('value') || el.getAttribute('aria-label')),
+      label: label.label, labelSource: label.source,
       href: destination(el.getAttribute('href')),
-      formMethod: el.form?.method || '',
-      formAction: destination(el.getAttribute('formaction') || el.form?.getAttribute('action')),
-    }));
+      formMethod: native?.getAttribute('formmethod') || form?.method || '',
+      formAction: destination(native?.getAttribute('formaction') || form?.getAttribute('action')),
+      formTarget: native?.getAttribute('formtarget') || form?.target || '',
+      hasAriaLabelledBy: !!el.getAttribute('aria-labelledby'),
+      nativeSubmit: !!native, nativeIndex: submits.indexOf(native), formIndex: forms.indexOf(form),
+      surfaceIndex: nodes.indexOf(el), kind: direct ? 'native_submit' : native ? 'aui_wrapper' : 'other',
+      namedSubmit: !!native?.getAttribute('name'),
+      disabled: !!native?.disabled || el.getAttribute('aria-disabled') === 'true',
+    };
+  });
   return {
     current: {origin: location.origin, path: location.pathname},
     normalPage: Array.from(document.querySelectorAll('#nav-main, #glow-ingress-block, #productTitle, [data-component-type=s-search-result]')).some(visible),
     visibleChallengeControls: Array.from(document.querySelectorAll('input[name*=captcha i], input[id*=captcha i], input[type=checkbox], iframe[src*=captcha i], [class*=g-recaptcha], [class*=h-captcha]')).some(visible),
     challengeLanguage: /captcha|robot|unusual traffic|automated access|access denied|accesso negato|verify you are human|security check/i.test(text),
-    continueShoppingInstruction: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfläche unten, um mit dem Einkaufen fortzufahren/i.test(text),
+    continueShoppingInstruction: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfläche unten, um mit dem Einkauf(?:en)? fortzufahren|Haz clic en el botón de abajo para seguir comprando/i.test(text),
+    formCount: document.forms.length,
+    visibleInputCount: Array.from(document.querySelectorAll('input, textarea, select, [contenteditable=true]')).filter(el =>
+      visible(el) && !['hidden','submit','button'].includes((el.type || '').toLowerCase())).length,
+    visibleFrameCount: Array.from(document.querySelectorAll('iframe')).filter(visible).length,
     controls,
   };
 }"""
@@ -534,6 +567,217 @@ def _page_rejection_reason(http_status: int | None, state: dict) -> str | None:
     return None
 
 
+_CONTINUE_LABELS = {
+    'DE': 'Weiter shoppen', 'GB': 'Continue shopping',
+    'IT': 'Continua con gli acquisti', 'ES': 'Seguir comprando',
+}
+
+
+def _plain_continue_entry_control(inspection: dict, market: AmazonMarket) -> dict | None:
+    """仅接受已见过的单按钮入口，不读取/拼接隐藏参数，也不处理人机输入。"""
+    if not isinstance(inspection, dict):
+        return None
+    current = inspection.get('current') or {}
+    if not isinstance(current, dict):
+        return None
+    if (
+        current.get('origin') != market.base_url or current.get('path') not in ('', '/')
+        or inspection.get('normalPage') is not False
+        or inspection.get('visibleChallengeControls') is not False
+        or inspection.get('challengeLanguage') is not False
+        or inspection.get('continueShoppingInstruction') is not True
+        or inspection.get('formCount') != 1
+        or inspection.get('visibleInputCount') != 0
+        or inspection.get('visibleFrameCount') != 0
+    ):
+        return None
+    controls = inspection.get('controls') or []
+    if not controls:
+        return None
+    for control in controls:
+        if not isinstance(control, dict) or (
+            control.get('kind') not in ('native_submit', 'aui_wrapper')
+            or control.get('nativeSubmit') is not True
+            or control.get('disabled') is not False
+            or not isinstance(control.get('surfaceIndex'), int) or control['surfaceIndex'] < 0
+            or not isinstance(control.get('nativeIndex'), int) or control['nativeIndex'] < 0
+            or not isinstance(control.get('formIndex'), int) or control['formIndex'] < 0
+            or control.get('label') != _CONTINUE_LABELS.get(market.code)
+            or str(control.get('formMethod') or '').lower() != 'get'
+            or control.get('formAction') != {'origin': market.base_url, 'path': '/errors_page/validateCaptcha'}
+            or control.get('formTarget', '') not in ('', '_self')
+            or control.get('href') is not None
+        ):
+            return None
+    if len({control['formIndex'] for control in controls}) != 1:
+        return None
+    # 同一个 native submit 的AUI外层/内层是一个操作；不同submit只有不带各自name值才等价。
+    if len({control['nativeIndex'] for control in controls}) != 1 and any(
+        control.get('namedSubmit') for control in controls
+    ):
+        return None
+    return min(controls, key=lambda control: (control['kind'] != 'native_submit', control['surfaceIndex']))
+
+
+def _continue_inspection_summary(inspection, market: AmazonMarket) -> dict:
+    """拒绝原因仅留枚举、计数和已知按钮名，不记录 URL、引用 ID 或隐藏值。"""
+    if not isinstance(inspection, dict):
+        return {'rejection_reason': 'invalid_inspection'}
+    current = inspection.get('current') or {}
+    controls = inspection.get('controls') or []
+    safe_controls = []
+    for control in controls[:8]:
+        if not isinstance(control, dict):
+            continue
+        action = control.get('formAction') or {}
+        safe_controls.append({
+            'tag': control.get('tag') if control.get('tag') in ('button', 'input', 'a', 'span', 'div') else 'other',
+            'type': control.get('type') if control.get('type') in ('', 'button', 'submit') else 'other',
+            'known_label': control.get('label') in _CONTINUE_LABELS.values(),
+            'label': control.get('label') if control.get('label') in _CONTINUE_LABELS.values() else '[unrecognized]',
+            'has_aria_labelledby': control.get('hasAriaLabelledBy') is True,
+            'label_source': control.get('labelSource') if control.get('labelSource') in (
+                'aria-labelledby', 'aria-label', 'unresolved-reference', 'visible-text',
+            ) else 'unknown',
+            'native_submit': control.get('nativeSubmit') is True,
+            'kind': control.get('kind') if control.get('kind') in ('native_submit', 'aui_wrapper') else 'other',
+            'disabled': control.get('disabled') is True,
+            'method_get': str(control.get('formMethod') or '').lower() == 'get',
+            'same_market_action': action == {'origin': market.base_url, 'path': '/errors_page/validateCaptcha'},
+        })
+    same_market = isinstance(current, dict) and current.get('origin') == market.base_url
+    root_path = isinstance(current, dict) and current.get('path') in ('', '/')
+    reason = 'allowed'
+    checks = [
+        (not same_market or not root_path, 'wrong_market_or_path'),
+        (inspection.get('normalPage') is not False, 'not_entry_page'),
+        (inspection.get('visibleChallengeControls') is not False or inspection.get('challengeLanguage') is not False, 'visible_challenge'),
+        (inspection.get('continueShoppingInstruction') is not True, 'instruction_unrecognized'),
+        (inspection.get('formCount') != 1, 'form_count_mismatch'),
+        (inspection.get('visibleInputCount') != 0 or inspection.get('visibleFrameCount') != 0, 'visible_input_or_frame'),
+        (not controls, 'no_visible_control'),
+    ]
+    for failed, code in checks:
+        if failed:
+            reason = code
+            break
+    if reason == 'allowed' and _plain_continue_entry_control(inspection, market) is None:
+        control = next((control for control in controls if isinstance(control, dict)
+                        and control.get('label') != _CONTINUE_LABELS.get(market.code)), {})
+        if control:
+            reason = 'label_reference_unresolved' if control.get('hasAriaLabelledBy') else 'label_unrecognized'
+        elif len(controls) > 1:
+            reason = 'multiple_actions_or_unsupported_controls'
+        else:
+            reason = 'action_or_method_rejected'
+    indexes = [control.get('formIndex') for control in controls if isinstance(control, dict)]
+    return {
+        'rejection_reason': reason, 'control_count': len(controls),
+        'form_count': inspection.get('formCount'), 'visible_input_count': inspection.get('visibleInputCount'),
+        'visible_frame_count': inspection.get('visibleFrameCount'), 'same_market': same_market,
+        'root_path': root_path, 'same_form': bool(indexes and all(index == indexes[0] and isinstance(index, int) and index >= 0 for index in indexes)),
+        'unique_allowed_operation': reason == 'allowed',
+        'duplicate_representations': reason == 'allowed' and len(controls) > 1,
+        'controls': safe_controls,
+    }
+
+
+def _continue_structure_may_settle(inspection: dict, market: AmazonMarket) -> bool:
+    """只在已明确识别的纯继续页上短等结构，不等待或处理人工验证。"""
+    current = inspection.get('current') or {}
+    for control in inspection.get('controls') or []:
+        if not isinstance(control, dict) or (
+            control.get('formAction') not in (None, {'origin': market.base_url, 'path': '/errors_page/validateCaptcha'})
+            or str(control.get('formMethod') or '').lower() not in ('', 'get')
+            or control.get('href') is not None
+        ):
+            return False
+    return bool(
+        isinstance(current, dict) and current.get('origin') == market.base_url
+        and current.get('path') in ('', '/') and inspection.get('normalPage') is False
+        and inspection.get('continueShoppingInstruction') is True
+        and inspection.get('visibleChallengeControls') is False
+        and inspection.get('challengeLanguage') is False
+        and inspection.get('visibleInputCount') == 0 and inspection.get('visibleFrameCount') == 0
+        and inspection.get('formCount') in (0, 1)
+    )
+
+
+def _normal_market_page(state: dict, market: AmazonMarket) -> bool:
+    if not isinstance(state, dict):
+        return False
+    current = urlparse(str(state.get('currentUrl') or ''))
+    expected = urlparse(market.base_url)
+    return bool(
+        state.get('normalPage') is True and current.scheme == 'https'
+        and current.netloc == expected.netloc
+        and not current.path.startswith(('/errors', '/ap/'))
+        and _page_rejection_reason(None, state) is None
+    )
+
+
+async def _follow_plain_continue_entry(page, market: AmazonMarket, http_status: int | None):
+    if http_status != 200:
+        return None
+    try:
+        inspection = await inspect_amazon_continue_page(page)
+        control = _plain_continue_entry_control(inspection, market)
+        safe_inspection = _continue_inspection_summary(inspection, market)
+        safe_inspection.update(checks=1, waited_for_structure=False)
+        if control is None and safe_inspection['rejection_reason'] in {
+            'no_visible_control', 'label_reference_unresolved', 'form_count_mismatch',
+        } and _continue_structure_may_settle(inspection, market):
+            initial_reason = safe_inspection['rejection_reason']
+            await page.wait_for_timeout(1200)
+            inspection = await inspect_amazon_continue_page(page)
+            control = _plain_continue_entry_control(inspection, market)
+            safe_inspection = _continue_inspection_summary(inspection, market)
+            safe_inspection.update(checks=2, waited_for_structure=True, initial_rejection_reason=initial_reason)
+    except Exception:
+        return None
+    existing = vars(page).get('_amazon_continue_navigation_summary') or {'attempts': 0, 'result': 'not_attempted'}
+    existing['inspection'] = safe_inspection
+    vars(page)['_amazon_continue_navigation_summary'] = existing
+    if control is None:
+        return None
+    if vars(page).get('_amazon_continue_navigation_used'):
+        summary = vars(page).get('_amazon_continue_navigation_summary')
+        if isinstance(summary, dict):
+            summary['repeat_rejected'] = True
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 继续入口重复出现，本轮停止')
+    # 限额在点击前扣除；超时或再次出现中间页都不能再点第二次。
+    vars(page)['_amazon_continue_navigation_used'] = True
+    summary = {
+        'attempts': 1, 'result': 'attempted', 'verified_normal_page': False,
+        'verified_same_market': False, 'repeat_rejected': False,
+        'inspection': safe_inspection,
+    }
+    vars(page)['_amazon_continue_navigation_summary'] = summary
+    try:
+        async with page.expect_navigation(wait_until='domcontentloaded', timeout=30000) as navigation:
+            approved = page.locator('button,input[type=submit],input[type=button],[role=button]').nth(control['surfaceIndex'])
+            await page.get_by_role('button', name=control['label'], exact=True).and_(approved).click(timeout=5000)
+        response = await navigation.value
+        status = response.status if response else None
+        state = await page.evaluate(_JS_SEARCH_STATE)
+        if status == 200 and not _page_rejection_reason(status, state) and not state.get('normalPage'):
+            await page.wait_for_timeout(1200)
+            state = await page.evaluate(_JS_SEARCH_STATE)
+        if status != 200 or not _normal_market_page(state, market):
+            raise AmazonCatalogIncomplete(f'Amazon {market.code} 继续入口后未得到同市场正常商店页面')
+        summary.update(result='normal_page_restored', verified_normal_page=True, verified_same_market=True)
+        print(f'[catalog/Amazon/{market.code}] 已完成一次站点继续入口，恢复正常页后仍须配送与价格校验')
+        return state
+    except Exception as error:
+        summary.update(result='rejected', error_type=type(error).__name__)
+        await _capture_amazon_failure(
+            page, market, stage='continue_entry', reason='continue_navigation_rejected', error=error,
+        )
+        if isinstance(error, AmazonCatalogIncomplete):
+            raise
+        raise AmazonCatalogIncomplete(f'Amazon {market.code} 继续入口导航失败，本轮停止') from error
+
+
 async def _checked_page_state(page, market: AmazonMarket, http_status: int | None = None,
                               *, stage: str = 'delivery') -> dict:
     """恢复配送会话前后都先排除错误页，不通过重试绕过访问验证。"""
@@ -541,6 +785,10 @@ async def _checked_page_state(page, market: AmazonMarket, http_status: int | Non
     if not isinstance(state, dict):
         raise AmazonCatalogIncomplete(f'Amazon {market.code} 无法读取页面状态，停止采集')
     reason = _page_rejection_reason(http_status, state)
+    if reason and not state.get('captcha') and not state.get('robotCheck'):
+        resumed = await _follow_plain_continue_entry(page, market, http_status)
+        if resumed is not None:
+            return resumed
     if reason:
         error = AmazonCatalogIncomplete(f'Amazon {market.code} 页面不可用于配送恢复 ({reason})')
         error.retryable = reason.startswith('http_5')
@@ -591,7 +839,8 @@ async def _ensure_amazon_page_delivery(
 ) -> dict:
     """配送栏迟到时短等一次；仍不符只重设一次地址，失败则整轮拒绝。
 
-    此处不清 cookie、不切换 IP、不点击继续购物页。地址恢复成功后重新
+    此处不清 cookie、不切换 IP；只有结构白名单确认的普通继续入口可整轮导航一次。
+    真实人机验证或重复中间页仍立即停止。地址恢复成功后重新
     导航并核对目标页面，调用方只能抽取返回后页面，不能复用旧行或旧价格。
     """
     state = state if state is not None else await _checked_page_state(page, market, http_status)
@@ -666,11 +915,16 @@ async def verify_amazon_delivery_location(page, market: AmazonMarket, *, refresh
     return ok
 
 
-async def set_amazon_location_via_popup(page, market: AmazonMarket) -> bool:
+async def set_amazon_location_via_popup(page, market: AmazonMarket, *, reuse_current_page: bool = False) -> bool:
     """旧 glow toaster 接口为空时，用顶部配送地弹窗填邮编作为 fallback。"""
     try:
-        response = await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
-        await _checked_page_state(page, market, response.status if response else None, stage='location_popup')
+        if reuse_current_page:
+            state = await _checked_page_state(page, market, stage='location_popup')
+            if not _normal_market_page(state, market):
+                raise AmazonCatalogIncomplete(f'Amazon {market.code} 无法确认可复用的同市场正常配送页面')
+        else:
+            response = await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
+            await _checked_page_state(page, market, response.status if response else None, stage='location_popup')
         await _accept_cookie(page)
         location_entry = page.locator(
             "#nav-global-location-popover-link, #glow-ingress-block, "
@@ -805,7 +1059,7 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
             page, market, stage='location_api', reason='location_token_missing',
         )
         print(f"  [set-loc/{market.code}] 没找到 CSRF token，Amazon glow 可能改版")
-        ok = await set_amazon_location_via_popup(page, market)
+        ok = await set_amazon_location_via_popup(page, market, reuse_current_page=True)
         if ok:
             return True
         return False
@@ -858,7 +1112,7 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
     if not ok:
         # glow POST 经常返回 200 但 isAddressUpdated=0。此时仍应尝试可见弹窗，
         # 特别是 GB 必须设置本地邮编后才能验证原生 GBP。
-        popup_ok = await set_amazon_location_via_popup(page, market)
+        popup_ok = await set_amazon_location_via_popup(page, market, reuse_current_page=True)
         if popup_ok:
             return True
     return ok
@@ -962,6 +1216,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         self.diagnostics: AmazonCatalogDiagnostics | None = None
         self._price_baseline = {}
         self._price_change_paths = []
+        self.continue_navigation_summary = {'attempts': 0, 'result': 'not_attempted'}
 
     def _load_price_baseline(self, started_at: datetime, catalog_dir: Path | None = None) -> dict:
         """只从开始前最新合格正式目录取同市场 ASIN 原币价，不回退到诊断候选。"""
@@ -1061,6 +1316,24 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 pass
 
     async def _prepare_market_session(self, page) -> bool:
+        try:
+            return await self._prepare_market_session_impl(page)
+        finally:
+            # 只写内部产生的次数/结果/布尔标志；不把 URL、表单或隐藏值带入摘要。
+            raw = vars(page).get('_amazon_continue_navigation_summary') or {}
+            keys = ('attempts', 'result', 'verified_normal_page', 'verified_same_market',
+                    'repeat_rejected', 'error_type', 'inspection')
+            self.continue_navigation_summary = {
+                key: raw[key] for key in keys if key in raw
+            } or {'attempts': 0, 'result': 'not_attempted'}
+            if self.diagnostics is not None:
+                self.diagnostics.report['continueNavigation'] = dict(self.continue_navigation_summary)
+                try:
+                    self.diagnostics._save_report()
+                except Exception:
+                    pass
+
+    async def _prepare_market_session_impl(self, page) -> bool:
         """仅传输暂错可在同一会话退避；配送/币种拒绝或访问挑战不能靠重置身份恢复。"""
         market = self.market
         for attempt in range(1, SESSION_PREP_ATTEMPTS + 1):
