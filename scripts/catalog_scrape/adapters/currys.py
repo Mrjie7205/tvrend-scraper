@@ -30,6 +30,7 @@ from typing import Sequence
 from .base import BaseCatalogAdapter, CatalogItem
 from catalog_scrape.diagnostics import capture_catalog_failure
 from monitor_prices.core import close_playwright_resource, get_browser_profile, new_scraper_context
+from monitor_prices.adapters.currys import currys_navigation_state, currys_recovery_failure_reason, track_currys_document, wait_currys_automatic_check
 
 LISTING_URL = "https://www.currys.co.uk/tv-and-audio/televisions/tvs"
 PAGE_SIZE = 50
@@ -149,25 +150,55 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
         """配置在运行开始时冻结；current 延续每页 context，native 才整轮共用。"""
         return await new_scraper_context(browser, country=self.country, locale_override=self.locale_override)
 
-    async def _scrape_page(self, browser, start: int) -> tuple[int, list[dict]]:
+    async def _scrape_page(self, browser, start: int, *, navigation_budget: int = 2) -> tuple[int, list[dict]]:
         """返回 HTTP/逻辑状态及卡片；留证发生在真正分页页面关闭之前。"""
         url = f"{LISTING_URL}?start={start}&sz={PAGE_SIZE}"
         ctx = getattr(self, '_catalog_context', None)
         owns_context = ctx is None
         page = None
-        self._last_page_info = {'http_status': None, 'blocked': False, 'retryable': False}
+        self._last_page_info = {'http_status': None, 'blocked': False, 'retryable': False, 'navigation_count': 0}
         try:
             if owns_context:
                 ctx = await self._new_context(browser)
             page = await ctx.new_page()
             resp = await page.goto(url, wait_until="domcontentloaded", timeout=50000)
             status = resp.status if resp else 0
+            self._last_page_info['initial_http_status'] = status
+            self._last_page_info['http_status'] = status
+            track_currys_document(page, status)
+            recovery = None
+            if status in {200, 403}:
+                recovery = await wait_currys_automatic_check(page, requested_url=url, initial_status=status,
+                                                            expected_kind='catalog', remaining_navigations=max(0, navigation_budget - 1))
+                if recovery['retry_allowed']:
+                    await asyncio.sleep(2.5)
+                    current = currys_navigation_state(page)
+                    if current['navigation_count'] < navigation_budget:
+                        resp = await page.goto(url, wait_until='domcontentloaded', timeout=50000)
+                        status = resp.status if resp else 0
+                    else:
+                        status = current['http_status'] or 0
+                    recovery = await wait_currys_automatic_check(page, requested_url=url, initial_status=status,
+                                                                expected_kind='catalog', remaining_navigations=0)
+                status = recovery['final_status'] or status
+                self._last_page_info['connection_recovery'] = recovery
+                self._last_page_info['navigation_count'] = max(1, recovery['navigation_count'])
+                if status == 200 and not recovery['target_verified']:
+                    reason = currys_recovery_failure_reason(recovery)
+                    reason = {'redirect_unverified': 'navigation_target_mismatch', 'challenge_unresolved': 'access_challenge'}.get(reason, reason)
+                    self._last_page_info.update(http_status=status, blocked=reason == 'access_challenge', reason=reason, retryable=False)
+                    if recovery.get('error_type'):
+                        self._last_page_info['error_type'] = recovery['error_type']
+                    await capture_catalog_failure(page, platform=self.platform_name, country=self.country,
+                                                  stage='catalog_page', reason=reason, url=url, http_status=status, adapter=self)
+                    return (403 if reason == 'access_challenge' else 0), []
+            self._last_page_info['navigation_count'] = max(1, currys_navigation_state(page)['navigation_count'])
             self._last_page_info['http_status'] = status
             if status != 200:
                 blocked = status in {401, 403, 429}
                 reason = 'rate_limited' if status == 429 else 'access_challenge' if blocked else 'http_error'
                 self._last_page_info.update(blocked=blocked, reason=reason,
-                                            retryable=(status in {0, 403, 408} or status >= 500))
+                                            retryable=(status in {0, 408} or status >= 500) and self._last_page_info['navigation_count'] < navigation_budget)
                 await capture_catalog_failure(
                     page, platform=self.platform_name, country=self.country,
                     stage='catalog_page', reason=reason, url=url,
@@ -178,7 +209,7 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
             state = await page.evaluate(_JS_PAGE_STATUS)
             blocked = status in {401, 403, 429} or (isinstance(state, dict) and state.get('challenge') is True)
             if blocked:
-                self._last_page_info.update(blocked=True, retryable=True, reason='access_challenge')
+                self._last_page_info.update(blocked=True, retryable=False, reason='access_challenge')
                 await capture_catalog_failure(
                     page, platform=self.platform_name, country=self.country,
                     stage='catalog_page', reason=self._last_page_info['reason'],
@@ -206,11 +237,13 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
             await capture_catalog_failure(
                 page, platform=self.platform_name, country=self.country,
                 stage='catalog_page', reason='navigation_or_extraction_error',
-                url=url, error=error, adapter=self,
+                url=url, http_status=self._last_page_info['http_status'], error=error, adapter=self,
             )
             print(f"    [Currys] start={start} 异常: {type(error).__name__}")
             return 0, []
         finally:
+            if page is not None:
+                self._last_page_info['navigation_count'] = max(1, currys_navigation_state(page)['navigation_count'])
             if owns_context:
                 await close_playwright_resource(ctx, f"Currys catalog page {start} context")
             else:
@@ -247,27 +280,31 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
 
         async def attempt(start):
             row = self.catalog_report['pages'].setdefault(str(start), {'start': start, 'attempts': []})
-            if len(row['attempts']) >= 2:
+            if len(row['attempts']) >= 2 or row.get('navigation_count', 0) >= 2:
                 raise RuntimeError(f'Currys start={start} 已达到本轮两次尝试上限')
             self._last_page_info = {}
-            status, cards = await self._scrape_page(browser, start)
+            status, cards = await self._scrape_page(browser, start, navigation_budget=max(0, 2 - row.get('navigation_count', 0)))
             info = dict(self._last_page_info)
             rate_limited = status == 429 or info.get('reason') == 'rate_limited'
             denied = not rate_limited and (bool(info.get('blocked')) or status in {401, 403})
-            retryable = not rate_limited and (status in {0, 403, 408} or status >= 500)
+            retryable = not rate_limited and info.get('retryable', status in {0, 403, 408} or status >= 500)
+            navigation_count = max(1, int(info.get('navigation_count', 1)))
             event = {'attempt': len(row['attempts']) + 1, 'status': status,
                      'http_status': info.get('http_status', status), 'card_count': len(cards),
                      'blocked': denied, 'rate_limited': rate_limited,
+                     'navigation_count': navigation_count, 'initial_http_status': info.get('initial_http_status', status),
+                     'connection_recovery': info.get('connection_recovery'),
                      'retryable': retryable, 'reason': info.get('reason'),
                      'error_type': info.get('error_type'), 'observed_at': datetime.now(UTC).isoformat()}
             row['attempts'].append(event)
+            row['navigation_count'] = sum(item['navigation_count'] for item in row['attempts'])
             row.update(status=status, missing=status != 200, access_denied=denied,
-                       retryable=retryable and len(row['attempts']) < 2)
+                       retryable=retryable and len(row['attempts']) < 2 and row['navigation_count'] < 2)
             for card in cards if status == 200 else []:
                 slug = card.get('slug')
                 if slug and len((card.get('title') or '').strip()) >= 8 and slug not in by_slug:
                     by_slug[slug] = card
-            self.catalog_report['had_access_denials'] |= denied
+            self.catalog_report['had_access_denials'] |= denied or info.get('initial_http_status') in {401, 403}
             self.catalog_report['rate_limited'] |= rate_limited
             self._save_catalog_report()
             return status, cards, row

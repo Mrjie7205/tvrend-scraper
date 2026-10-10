@@ -121,6 +121,31 @@ def test_concurrent_requests_do_not_start_after_guard_has_tripped(monkeypatch):
     assert hist.currys_pdp_guard.stopped
 
 
+@pytest.mark.parametrize('adopted_document', [False, True])
+@pytest.mark.parametrize('phase,reason', [('dom_unavailable', 'dom_read_error'),
+                                        ('response_observer_unavailable', 'navigation_observer_error')])
+def test_recovery_200_software_failure_does_not_count_as_sixth_pdp_denial(monkeypatch, adopted_document, phase, reason):
+    _, hist, skus, _ = worker(monkeypatch, ['403'])
+    for index in range(5):
+        hist.currys_pdp_guard.observe({'product_name': f'prior{index}', 'country': 'GB'},
+                                     http_status=403, reason='access_blocked')
+    monkeypatch.setattr(run_daily, 'currys_navigation_state', lambda page: {
+        'navigation_count': 2 if adopted_document else 1, 'http_status': 200 if adopted_document else 403,
+    })
+    monkeypatch.setattr(run_daily, 'wait_currys_automatic_check', AsyncMock(return_value={
+        'initial_status': 403, 'final_status': 200, 'target_verified': False, 'retry_allowed': False,
+        'automatic_check': True, 'human_controls': False, 'hard_block': False,
+        'phase': phase, 'error_type': 'ValueError', 'outcome': 'unresolved',
+    }))
+    result = process_all(hist, skus)[0]
+    assert result['Status'] == f'Failed: {reason}' and result['Price'] is None
+    report = hist.currys_pdp_guard.report()
+    assert not report['stopped'] and report['maximum_consecutive_distinct_skus'] == 5
+    assert report['outcomes']['access_blocked'] == 5
+    assert run_daily.capture_failure.await_args.kwargs['http_status'] == 200
+    assert run_daily.capture_failure.await_args.kwargs['reason'] == reason
+
+
 @pytest.mark.parametrize("rate_limited,keep_batch", [(False, False), (False, True), (True, True)])
 def test_full_daily_pipeline_separates_catalog_report_from_pdp_guard(tmp_path, monkeypatch, rate_limited, keep_batch):
     import playwright.async_api

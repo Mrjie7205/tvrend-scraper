@@ -8,14 +8,227 @@ from __future__ import annotations
 
 import os
 import re
+import asyncio
+from urllib.parse import parse_qs, urlparse
 from collections import Counter
 from datetime import datetime, timezone
 
 from .base import BaseAdapter
-from ..core import clean_price, get_price_from_schema
+from ..core import clean_price, close_playwright_resource, get_price_from_schema
+from failure_evidence import capture_failure, sanitize_url
 
 
 RE_PRODUCT_ID = re.compile(r"(\d{7,9})(?:\.html)?(?:[?#]|$)", re.IGNORECASE)
+
+
+_JS_AUTOMATIC_CONNECTION_CHECK = r"""() => {
+  const visible = el => {
+    const s = getComputedStyle(el), r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && s.display !== 'none' && !['hidden','collapse'].includes(s.visibility)
+      && Number(s.opacity) !== 0 && (!el.checkVisibility || el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}));
+  };
+  const text = (document.body?.innerText || '').replace(/\s+/g, ' '), title = document.title || '';
+  const shell = /bear with us|just a moment/i.test(title + ' ' + text);
+  const connection = /checking your connection(?: is secure)?|checking the security of your connection before letting you onto our site|check your connection is secure/i.test(text);
+  const hard = /sorry[, ]+you have been blocked|you are unable to access|access denied/i.test(title + ' ' + text);
+  const explicitHuman = /enter the characters|verify you are human|not a robot|solve.{0,20}captcha/i.test(text);
+  const captchaControls = [...document.querySelectorAll('input[name*=captcha i],input[id*=captcha i],iframe[src*=captcha i],iframe[src*=turnstile i],.cf-turnstile,[class*=g-recaptcha],[class*=h-captcha]')].some(visible);
+  // 普通目录筛选、商品比较或套餐checkbox不是人机验证；只在明确检查上下文中升级。
+  const contextualCheckbox = (shell || explicitHuman) && [...document.querySelectorAll('input[type=checkbox]')].some(visible);
+  const controls = captchaControls || contextualCheckbox;
+  return {automatic_check: shell && connection && !hard && !explicitHuman && !controls,
+          human_controls: controls || explicitHuman, hard_block: hard, connection_shell: shell};
+}"""
+
+
+def _currys_target_matches(requested_url: str, final_url: str, expected_kind: str) -> bool:
+    if not isinstance(requested_url, str) or not isinstance(final_url, str):
+        return False
+    requested, final = urlparse(requested_url), urlparse(final_url)
+    if requested.scheme != 'https' or final.scheme != 'https' or requested.netloc != final.netloc:
+        return False
+    if expected_kind == 'product':
+        left, right = RE_PRODUCT_ID.search(requested.path), RE_PRODUCT_ID.search(final.path)
+        return bool('/products/' in final.path and left and right and left.group(1) == right.group(1))
+    if expected_kind == 'catalog':
+        if requested.path.rstrip('/') != final.path.rstrip('/'):
+            return False
+        wanted, actual = parse_qs(requested.query), parse_qs(final.query)
+        return all(wanted.get(k, [default]) == actual.get(k, [default]) for k, default in (('start', '0'), ('sz', '50')))
+    raise ValueError('expected_kind 必须为 product 或 catalog')
+
+
+def currys_navigation_state(page) -> dict:
+    tracker = vars(page).get('_currys_document_tracker') or {}
+    return {'navigation_count': tracker.get('count', 0), 'http_status': tracker.get('status')}
+
+
+def _currys_document_tracker(page, initial_status):
+    tracker = vars(page).get('_currys_document_tracker')
+    if tracker is not None:
+        return tracker
+    if not callable(getattr(page, 'on', None)) or asyncio.iscoroutinefunction(page.on):
+        raise TypeError('页面没有同步导航事件观察接口')
+    tracker = {'count': 1, 'status': initial_status, 'url': page.url, 'response': None, 'change': asyncio.Event()}
+    def response_seen(response):
+        try:
+            if (response.request.is_navigation_request() and response.frame == page.main_frame
+                    and not 300 <= response.status < 400):
+                tracker['response'] = response
+        except Exception:
+            pass
+    def committed(frame):
+        response = tracker.get('response')
+        if frame != page.main_frame or response is None:
+            return
+        try:
+            if response.url.split('#', 1)[0] != frame.url.split('#', 1)[0]:
+                return
+            tracker.update(response=None, count=tracker['count'] + 1, status=response.status, url=frame.url)
+            tracker['change'].set()
+        except Exception:
+            pass
+    def closed(*args):
+        page.remove_listener('response', response_seen)
+        page.remove_listener('framenavigated', committed)
+        page.remove_listener('close', closed)
+    # 监听保留至page关闭，退避期间的自然导航也必须占用预算。
+    page.on('response', response_seen)
+    page.on('framenavigated', committed)
+    page.on('close', closed)
+    vars(page)['_currys_document_tracker'] = tracker
+    return tracker
+
+
+def track_currys_document(page, initial_status):
+    """首次PDP提交后立即启用预算观察，普通200也不能漏掉后续自然导航。"""
+    try:
+        _currys_document_tracker(page, initial_status)
+    except (AttributeError, TypeError):
+        pass
+
+
+def currys_recovery_failure_reason(report: dict) -> str:
+    """未验证不等于被拒绝；读取/观察器故障不得触发全渠道访问保护。"""
+    phase = report.get('phase')
+    if phase == 'target_mismatch':
+        return 'redirect_unverified'
+    if phase == 'dom_unavailable':
+        return 'dom_read_error'
+    if phase == 'response_observer_unavailable':
+        return 'navigation_observer_error'
+    if report.get('human_controls') or report.get('hard_block') or report.get('automatic_check'):
+        return 'challenge_unresolved'
+    return 'navigation_unverified'
+
+
+async def wait_currys_automatic_check(page, *, requested_url: str, initial_status: int | None,
+                                     expected_kind: str = 'product', timeout_seconds: float = 8.0,
+                                     remaining_navigations: int = 1) -> dict:
+    """只等已知自动连接检查完成，不点击、不主动导航；成功须真实新主文档200及原目标身份。"""
+    report = {'initial_status': initial_status, 'final_status': initial_status,
+              'automatic_check': False, 'human_controls': False, 'hard_block': False,
+              'rate_limited': initial_status == 429, 'followup_navigation_count': 0,
+              'target_verified': False, 'retry_allowed': False, 'phase': 'not_automatic', 'navigation_count': 1,
+              'initial_evidence_path': None, 'outcome': 'pending',
+              'requested_url': sanitize_url(requested_url), 'final_url': sanitize_url(page.url)}
+    remaining_navigations = max(0, int(remaining_navigations))
+    try:
+        tracker = _currys_document_tracker(page, initial_status)
+    except (AttributeError, TypeError) as exc:
+        report.update(phase='response_observer_unavailable', error_type=type(exc).__name__, outcome='unresolved')
+        return report
+    start_count = tracker['count']
+    maximum_count = min(2, start_count + remaining_navigations)
+    change = tracker['change']
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + max(0.05, float(timeout_seconds))
+
+    try:
+        while True:
+            report.update(navigation_count=tracker['count'], final_status=tracker['status'],
+                          followup_navigation_count=max(0, tracker['count'] - start_count), final_url=sanitize_url(tracker['url']))
+            left = deadline - loop.time()
+            if left <= 0:
+                report['phase'] = 'automatic_check_timeout' if report['automatic_check'] else 'dom_unavailable'
+                if report['phase'] == 'dom_unavailable':
+                    report['error_type'] = 'TimeoutError'
+                break
+            change.clear()
+            try:
+                await page.wait_for_load_state('domcontentloaded', timeout=max(1, int(left * 1000)))
+                flags = await asyncio.wait_for(page.evaluate(_JS_AUTOMATIC_CONNECTION_CHECK), timeout=max(0.01, deadline - loop.time()))
+            except Exception as exc:
+                if (report['automatic_check'] or tracker['count'] > start_count or tracker.get('response') is not None) and loop.time() < deadline:
+                    # 初始截图期间可能恰好换文档；继续观察同一导航，不误判超时再主动goto。
+                    try:
+                        await asyncio.wait_for(change.wait(), timeout=max(0.01, min(0.1, deadline - loop.time())))
+                    except asyncio.TimeoutError:
+                        pass
+                    continue
+                report.update(phase='dom_unavailable', error_type=type(exc).__name__)
+                break
+            report['human_controls'] = flags.get('human_controls') is True
+            report['hard_block'] = flags.get('hard_block') is True
+            report['automatic_check'] = report['automatic_check'] or flags.get('automatic_check') is True
+            if flags.get('automatic_check') and not tracker.get('automatic_recorded'):
+                tracker['automatic_recorded'] = True
+                capture_started = loop.time()
+                try:
+                    evidence_path = await capture_failure(
+                        page, platform='Currys', country='GB', stage='initial_connection_check',
+                        reason='automatic_connection_check_pending', url=requested_url,
+                        http_status=initial_status, timeout_seconds=4.0,
+                    )
+                    tracker['initial_evidence_path'] = str(evidence_path) if evidence_path else None
+                except (Exception, asyncio.CancelledError) as exc:
+                    tracker['initial_evidence_error'] = type(exc).__name__
+                # 留证是独立有界旁路，不消耗原有恢复等待预算，也不据旧DOM flags决定新文档结果。
+                deadline += loop.time() - capture_started
+                continue
+            report.update(navigation_count=tracker['count'], final_status=tracker['status'],
+                          followup_navigation_count=max(0, tracker['count'] - start_count), final_url=sanitize_url(tracker['url']))
+            report['rate_limited'] = report['final_status'] == 429
+            if report['rate_limited'] or report['human_controls'] or report['hard_block']:
+                report['phase'] = 'rate_limited' if report['rate_limited'] else 'human_challenge' if report['human_controls'] else 'hard_block'
+                break
+            if tracker['count'] > maximum_count:
+                report['phase'] = 'navigation_budget_exhausted'
+                break
+            target = _currys_target_matches(requested_url, page.url, expected_kind)
+            fresh_200 = (report['final_status'] == 200 and
+                         (initial_status == 200 and not report['automatic_check'] or tracker['count'] > 1))
+            if fresh_200 and not flags.get('automatic_check') and not flags.get('connection_shell'):
+                report['target_verified'] = target
+                report['phase'] = 'normal_page_restored' if target else 'target_mismatch'
+                break
+            if not report['automatic_check']:
+                report['phase'] = 'not_automatic'
+                break
+            if tracker['count'] >= maximum_count:
+                report['phase'] = 'navigation_budget_exhausted'
+                break
+            try:
+                await asyncio.wait_for(change.wait(), timeout=max(0.01, min(0.2, deadline - loop.time())))
+            except asyncio.TimeoutError:
+                pass
+        report['retry_allowed'] = bool(report['automatic_check'] and report['final_status'] == 403
+                                       and not report['human_controls'] and not report['hard_block']
+                                       and not report['rate_limited']
+                                       and tracker['count'] < maximum_count
+                                       and report['phase'] in {'automatic_check_timeout', 'dom_unavailable'})
+        if report['phase'] == 'navigation_budget_exhausted' and report['automatic_check']:
+            # 用尽预算的自动页不能在后续截图等待期间继续自行刷新；最小现场已在识别时保存。
+            await close_playwright_resource(page, 'Currys exhausted navigation page', timeout_seconds=1)
+            report['page_closed_for_budget'] = True
+        report['outcome'] = 'recovered' if report['target_verified'] and (tracker.get('automatic_recorded') or initial_status == 403) else 'normal' if report['target_verified'] else 'unresolved'
+        return report
+    finally:
+        report.update(navigation_count=tracker['count'], final_status=tracker['status'],
+                      followup_navigation_count=max(0, tracker['count'] - start_count), final_url=sanitize_url(tracker['url']))
+        report['initial_evidence_path'] = tracker.get('initial_evidence_path')
+        if tracker.get('initial_evidence_error'):
+            report['initial_evidence_error'] = tracker['initial_evidence_error']
 
 
 class CurrysPdpGuard:
@@ -30,6 +243,7 @@ class CurrysPdpGuard:
         self.stop_reason = None
         self.trigger = None
         self.resets = 0
+        self.connection_recoveries = []
 
     @property
     def stopped(self):
@@ -77,13 +291,19 @@ class CurrysPdpGuard:
         self.consecutive_skus.clear()
         # 一旦触发，本轮保持停止。允许已开始请求收尾，但不会据此重新放开队列。
 
+    def record_recovery(self, sku, summary):
+        self.connection_recoveries.append({'product': sku['product_name'], 'country': sku['country'], **summary})
+
     def report(self):
         return {"scope": "currys_pdp", "limit": self.limit, "stopped": self.stopped,
                 "stop_reason": self.stop_reason, "trigger": self.trigger,
                 "consecutive_distinct_skus": len(self.consecutive_skus),
                 "maximum_consecutive_distinct_skus": self.maximum_consecutive,
                 "reachable_resets": self.resets, "outcomes": dict(self.outcomes),
-                "requests_started": dict(self.requests), "skipped": dict(self.skipped)}
+                "requests_started": dict(self.requests), "skipped": dict(self.skipped),
+                "connection_recovery": {"observations": len(self.connection_recoveries),
+                                        "restored": sum(bool(row.get('target_verified')) for row in self.connection_recoveries),
+                                        "entries": self.connection_recoveries}}
 
 
 class CurrysAdapter(BaseAdapter):

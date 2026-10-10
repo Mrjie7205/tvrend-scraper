@@ -45,7 +45,7 @@ from monitor_prices.prices_io import (  # noqa: E402
     trim_prices_window,
 )
 from monitor_prices.adapters import get_adapter, supported_platforms  # noqa: E402
-from monitor_prices.adapters.currys import CurrysPdpGuard  # noqa: E402
+from monitor_prices.adapters.currys import CurrysPdpGuard, currys_navigation_state, currys_recovery_failure_reason, track_currys_document, wait_currys_automatic_check  # noqa: E402
 from failure_evidence import capture_failure, record_failure  # noqa: E402
 from failure_evidence import _atomic_json, _bounded  # noqa: E402
 from price_anomalies import classify_change, record_price_change, attach_price_verification, update_price_change_status, summarize  # noqa: E402
@@ -393,18 +393,60 @@ async def process_sku(
             # 导航(2 次重试 + 反爬等待)
             MAX_RETRIES = 2
             price_data = None
+            currys_explicit_navigations = 0
+            currys_retrying_automatic = False
             for attempt in range(MAX_RETRIES):
                 try:
                     stage = "navigate"
                     await asyncio.sleep(random.uniform(1.0, 3.0))
-                    if guard is not None and not guard.start_request():
-                        failure_reason = guard.record_skip()
-                        result["Status"] = f"Failed: {failure_reason}"
-                        break
                     timeout_ms = 40000 if attempt == 0 else 60000
                     wait_until = getattr(adapter, "navigation_wait_until", "domcontentloaded")
-                    response = await page.goto(url, wait_until=wait_until, timeout=timeout_ms)
-                    status = response.status if response else 0
+                    document_state = currys_navigation_state(page) if platform.lower() == "currys" else {}
+                    adopted_document = bool(document_state.get('navigation_count', 0) >= MAX_RETRIES)
+                    if adopted_document:
+                        # 等候/退避期间可能已自然恢复，预算耗尽后只检查当前真实文档，不能再goto。
+                        status = document_state.get('http_status') or 0
+                        recovery = await wait_currys_automatic_check(page, requested_url=url, initial_status=status,
+                                                                    remaining_navigations=0)
+                        if guard is not None:
+                            guard.record_recovery(sku, recovery)
+                        status = recovery['final_status'] or 0
+                        if not recovery['target_verified']:
+                            failure_reason = ({401: 'access_blocked', 403: 'access_blocked', 404: 'dead_link', 410: 'dead_link', 429: 'rate_limited'}.get(status, 'http_error')
+                                              if status >= 400 else currys_recovery_failure_reason(recovery))
+                            result['Status'] = f'Failed: {failure_reason}'
+                            if guard is not None:
+                                guard.observe(sku, http_status=status, reason=failure_reason)
+                            break
+                    else:
+                        if guard is not None and not guard.start_request():
+                            failure_reason = guard.record_skip()
+                            result["Status"] = f"Failed: {failure_reason}"
+                            break
+                        if platform.lower() == 'currys':
+                            currys_explicit_navigations += 1
+                        response = await page.goto(url, wait_until=wait_until, timeout=timeout_ms)
+                        status = response.status if response else 0
+                        if platform.lower() == 'currys':
+                            track_currys_document(page, status)
+                    if platform.lower() == 'currys' and (status == 403 or currys_retrying_automatic) and not adopted_document:
+                        used = max(currys_explicit_navigations, currys_navigation_state(page)['navigation_count'])
+                        recovery = await wait_currys_automatic_check(page, requested_url=url, initial_status=status,
+                                                                    remaining_navigations=max(0, MAX_RETRIES - used))
+                        recovery['explicit_retry'] = currys_retrying_automatic
+                        if guard is not None:
+                            guard.record_recovery(sku, recovery)
+                        print('[currys/connection_check] ' + json.dumps({'product': name, **recovery}, ensure_ascii=False))
+                        status = recovery['final_status'] or status
+                        if recovery['retry_allowed'] and attempt < MAX_RETRIES - 1:
+                            currys_retrying_automatic = True
+                            continue  # 已在原页有界等待；下一轮仍受同URL/同context和总文档预算约束。
+                        if status == 200 and not recovery['target_verified']:
+                            failure_reason = currys_recovery_failure_reason(recovery)
+                            result['Status'] = f'Failed: {failure_reason}'
+                            if guard is not None:
+                                guard.observe(sku, http_status=status, reason=failure_reason)
+                            break
                     if status >= 400:
                         # 所有渠道的错误HTTP先归类；错误页面不能继续进入价格选择器。
                         failure_reason = ({403: "access_blocked", 429: "rate_limited", 404: "dead_link", 410: "dead_link"}

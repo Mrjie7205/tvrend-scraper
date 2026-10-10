@@ -313,12 +313,29 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         await self.adapter.fetch_catalog_from_browser(AsyncMock())
         starts = [call.args[1] for call in self.adapter._scrape_page.await_args_list]
         self.assertEqual([0, 50, 50, 100, 150], starts)
+        self.assertEqual([2, 2, 1, 2, 2], [call.kwargs['navigation_budget'] for call in self.adapter._scrape_page.await_args_list])
         self.assertTrue(self.adapter.catalog_report['complete'])
         self.assertEqual([], self.adapter.catalog_report['missing_pages'])
         self.assertEqual(2, len(self.adapter.catalog_report['pages']['50']['attempts']))
         self.adapter._new_context.assert_awaited_once()
         self.context.close.assert_awaited_once()
         self.assertTrue(list(Path(self.temp.name).rglob('report.json')))
+
+    async def test_helper_natural_navigation_consumes_outer_retry_budget(self):
+        calls = []
+        async def page_result(browser, start, *, navigation_budget):
+            calls.append((start, navigation_budget))
+            if start == 0:
+                self.adapter._last_page_info = {'navigation_count': 2, 'http_status': 403, 'blocked': True, 'retryable': True}
+                return 403, []
+            self.adapter._last_page_info = {'navigation_count': 1, 'http_status': 200}
+            return 200, []
+        self.adapter._scrape_page = page_result
+        await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.assertEqual([(0, 2), (50, 2)], calls)
+        self.assertEqual(2, self.adapter.catalog_report['pages']['0']['navigation_count'])
+        self.assertEqual(1, len(self.adapter.catalog_report['pages']['0']['attempts']))
+        self.assertFalse(self.adapter.catalog_report['complete'])
 
     async def test_unrecovered_gap_keeps_daily_observations_but_rejects_weekly_catalog(self):
         self.adapter._scrape_page = AsyncMock(side_effect=[
@@ -408,6 +425,8 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_http_403_is_classified_even_when_dom_unreadable(self):
         page = AsyncMock()
+        page.on = MagicMock()
+        page.url = 'https://www.currys.co.uk/tv-and-audio/televisions/tvs?start=0&sz=50'
         page.goto.return_value = SimpleNamespace(status=403)
         page.evaluate.side_effect = RuntimeError('DOM unreadable')
         self.context.new_page.return_value = page
@@ -415,22 +434,25 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(403, status)
         self.assertEqual([], cards)
         self.assertTrue(self.adapter._last_page_info['blocked'])
-        self.assertTrue(self.adapter._last_page_info['retryable'])
-        page.evaluate.assert_not_awaited()
+        self.assertFalse(self.adapter._last_page_info['retryable'])
+        page.evaluate.assert_awaited_once()
 
     async def test_current_keeps_separate_contexts_for_bounded_page_attempts(self):
         context1, context2, context3 = AsyncMock(), AsyncMock(), AsyncMock()
         page1, page2, page3 = AsyncMock(), AsyncMock(), AsyncMock()
+        for index, page in enumerate((page1, page2, page3)):
+            page.on = MagicMock()
+            page.url = f'https://www.currys.co.uk/tv-and-audio/televisions/tvs?start={50 if index == 2 else 0}&sz=50'
         context1.new_page.return_value = page1
         context2.new_page.return_value = page2
         context3.new_page.return_value = page3
-        page1.goto.return_value = SimpleNamespace(status=403)
+        page1.goto.return_value = SimpleNamespace(status=503)
         page2.goto.return_value = SimpleNamespace(status=200)
         page2.is_visible.return_value = False
-        page2.evaluate.side_effect = [{}, [self.card(1)]]
+        page2.evaluate.side_effect = [{}, {}, [self.card(1)]]
         page3.goto.return_value = SimpleNamespace(status=200)
         page3.is_visible.return_value = False
-        page3.evaluate.side_effect = [{}, [], []]
+        page3.evaluate.side_effect = [{}, {}, [], []]
         self.adapter._new_context = AsyncMock(side_effect=[context1, context2, context3])
         with patch.dict(os.environ, {'SCRAPER_BROWSER_PROFILE': 'current'}):
             items = await self.adapter.fetch_catalog_from_browser(AsyncMock())
@@ -440,7 +462,7 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         context2.close.assert_awaited_once()
         context3.close.assert_awaited_once()
         self.assertFalse(self.adapter.catalog_report['blocked'])
-        self.assertTrue(self.adapter.catalog_report['had_access_denials'])
+        self.assertFalse(self.adapter.catalog_report['had_access_denials'])
         self.assertTrue(self.adapter.catalog_report['complete'])
 
     async def test_page_limit_cannot_be_called_complete(self):
