@@ -161,7 +161,8 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
             if owns_context:
                 ctx = await self._new_context(browser)
             page = await ctx.new_page()
-            resp = await page.goto(url, wait_until="domcontentloaded", timeout=50000)
+            track_currys_document(page)
+            resp = await page.goto(url, wait_until="commit", timeout=50000)
             status = resp.status if resp else 0
             self._last_page_info['initial_http_status'] = status
             self._last_page_info['http_status'] = status
@@ -173,17 +174,24 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
                 if recovery['retry_allowed']:
                     await asyncio.sleep(2.5)
                     current = currys_navigation_state(page)
-                    if current['navigation_count'] < navigation_budget:
-                        resp = await page.goto(url, wait_until='domcontentloaded', timeout=50000)
-                        status = resp.status if resp else 0
+                    if not current.get('in_flight') and current['navigation_count'] < navigation_budget:
+                        try:
+                            resp = await page.goto(url, wait_until='commit', timeout=50000)
+                            status = resp.status if resp else 0
+                        except Exception as exc:
+                            current = currys_navigation_state(page)
+                            if 'net::ERR_ABORTED' not in str(exc) or not (current.get('in_flight') or current['navigation_count'] >= navigation_budget):
+                                raise
+                            status = current['http_status'] or 0
                     else:
                         status = current['http_status'] or 0
                     recovery = await wait_currys_automatic_check(page, requested_url=url, initial_status=status,
                                                                 expected_kind='catalog', remaining_navigations=0)
-                status = recovery['final_status'] or status
+                status = recovery['final_status'] or 0
                 self._last_page_info['connection_recovery'] = recovery
+                self._last_page_info['pagination'] = recovery.get('pagination')
                 self._last_page_info['navigation_count'] = max(1, recovery['navigation_count'])
-                if status == 200 and not recovery['target_verified']:
+                if status in {0, 200} and not recovery['target_verified']:
                     reason = currys_recovery_failure_reason(recovery)
                     reason = {'redirect_unverified': 'navigation_target_mismatch', 'challenge_unresolved': 'access_challenge'}.get(reason, reason)
                     self._last_page_info.update(http_status=status, blocked=reason == 'access_challenge', reason=reason, retryable=False)
@@ -272,6 +280,7 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
             'started_at': now.isoformat(), 'complete': False, 'blocked': False,
             'had_access_denials': False, 'rate_limited': False, 'max_attempts_per_page': 2,
             'pages': {}, 'missing_pages': [], 'end_observed': False,
+            'pagination_unverified_pages': [],
             'notice': '明确商品观测不等于完整目录；失败/缺页数据不得冒充完整周目录。',
         }
         self._save_catalog_report()
@@ -294,12 +303,15 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
                      'blocked': denied, 'rate_limited': rate_limited,
                      'navigation_count': navigation_count, 'initial_http_status': info.get('initial_http_status', status),
                      'connection_recovery': info.get('connection_recovery'),
+                     'pagination': info.get('pagination'),
                      'retryable': retryable, 'reason': info.get('reason'),
                      'error_type': info.get('error_type'), 'observed_at': datetime.now(UTC).isoformat()}
             row['attempts'].append(event)
             row['navigation_count'] = sum(item['navigation_count'] for item in row['attempts'])
             row.update(status=status, missing=status != 200, access_denied=denied,
                        retryable=retryable and len(row['attempts']) < 2 and row['navigation_count'] < 2)
+            # 明确商品观测仍交给日价原门禁；未知页位只限制完整周目录，不计连续抓取失败。
+            row['pagination_verified'] = (info.get('pagination') or {}).get('position_verified', True)
             for card in cards if status == 200 else []:
                 slug = card.get('slug')
                 if slug and len((card.get('title') or '').strip()) >= 8 and slug not in by_slug:
@@ -356,8 +368,13 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
             self.catalog_report['missing_pages'] = sorted(
                 row['start'] for row in self.catalog_report['pages'].values() if row['missing']
             )
+            self.catalog_report['pagination_unverified_pages'] = sorted(
+                row['start'] for row in self.catalog_report['pages'].values()
+                if row['status'] == 200 and not row.get('pagination_verified', True)
+            )
             self.catalog_report['complete'] = bool(
                 self.catalog_report['end_observed'] and not self.catalog_report['missing_pages']
+                and not self.catalog_report['pagination_unverified_pages']
                 and not self.catalog_report['blocked'] and not self.catalog_report['rate_limited']
             )
             self.catalog_report['finished_at'] = datetime.now(UTC).isoformat()
@@ -370,6 +387,7 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
         if not self.catalog_report['complete']:
             error = CurrysCatalogIncomplete(
                 f"Currys 目录不完整: missing_pages={self.catalog_report['missing_pages']}, "
+                f"pagination_unverified_pages={self.catalog_report['pagination_unverified_pages']}, "
                 f"blocked={self.catalog_report['blocked']}, end_observed={self.catalog_report['end_observed']}"
             )
             previous = getattr(self, '_failure_evidence_path', None)

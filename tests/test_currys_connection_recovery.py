@@ -10,7 +10,8 @@ from urllib.parse import urlsplit
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from monitor_prices.adapters.currys import CurrysAdapter, CurrysPdpGuard, wait_currys_automatic_check
+from monitor_prices.adapters.currys import CurrysAdapter, CurrysPdpGuard, currys_navigation_state, track_currys_document, wait_currys_automatic_check
+from monitor_prices.adapters import currys as monitor_module
 from monitor_prices.prices_io import FrozenPriceHistory
 from monitor_prices import run_daily
 from catalog_scrape.adapters import currys as catalog_module
@@ -55,6 +56,8 @@ async def make_fixture(playwright, mode, *, kind='product'):
             traffic['subresources'] += 1
             if parsed.path == '/delay.js':
                 await asyncio.sleep(0.3)
+            if parsed.path == '/late.js':
+                await asyncio.sleep(1.0)
             try:
                 await route.fulfill(status=200, content_type='text/javascript', body='/* offline fixture */')
             except Error:
@@ -62,8 +65,15 @@ async def make_fixture(playwright, mode, *, kind='product'):
             return
         traffic['documents'] += 1
         number = traffic['documents']
-        if mode in {'normal', 'normal_captcha', 'normal_turnstile'} or (number > 1 and mode in {'automatic', 'delayed_dom', 'retry', 'wrong_target'}):
+        if mode in {'normal', 'normal_captcha', 'normal_turnstile', 'normalized_catalog'} or (number > 1 and mode in {'automatic', 'delayed_dom', 'retry', 'wrong_target', 'delayed_200', 'late_dom', 'in_flight_retry'}):
             status, body = 200, normal
+            if number > 1 and mode in {'delayed_200', 'in_flight_retry'}:
+                await asyncio.sleep(0.6)
+            if number > 1 and mode == 'late_dom':
+                body += '<script src="/late.js"></script>'
+            if mode == 'normalized_catalog':
+                body = body.replace('TVs | Currys', 'TVs - Cheap Television Deals | Currys - Page 4')
+                body += '<script>history.replaceState({},"","?page=4&sz=48&token=do-not-save-this-value")</script>'
             if mode == 'normal_captcha':
                 body += '<label>Entry<input name="captcha_code" type="text"></label>'
             if mode == 'normal_turnstile':
@@ -80,6 +90,8 @@ async def make_fixture(playwright, mode, *, kind='product'):
             script = ''
             if mode == 'automatic':
                 script = '<script>setTimeout(()=>location.reload(),80)</script>'
+            elif mode in {'delayed_200', 'late_dom', 'in_flight_retry'}:
+                script = '<script>setTimeout(()=>location.reload(),160)</script>'
             elif mode == 'delayed_dom':
                 script = '<script>setTimeout(()=>location.reload(),80)</script><script src="/delay.js"></script>'
             elif mode == 'wrong_target':
@@ -102,7 +114,7 @@ async def make_fixture(playwright, mode, *, kind='product'):
     ('product', 'hard_block', False, 1), ('product', 'rate_limited', False, 1),
     ('product', 'normal', True, 1), ('product', 'connection_checkbox', False, 1),
     ('product', 'normal_captcha', False, 1), ('product', 'normal_turnstile', False, 1),
-    ('catalog', 'automatic', True, 2), ('catalog', 'wrong_target', False, 2),
+    ('catalog', 'automatic', True, 2), ('catalog', 'wrong_target', True, 2),
     ('catalog', 'normal', True, 1), ('catalog', 'connection_checkbox', False, 1),
 ])
 def test_real_dom_requires_new_main_200_and_exact_target(tmp_path, monkeypatch, kind, mode, verified, documents):
@@ -137,6 +149,8 @@ def test_real_dom_requires_new_main_200_and_exact_target(tmp_path, monkeypatch, 
                     detail = json.loads(initial.read_text(encoding='utf-8'))
                     assert detail['stage'] == 'initial_connection_check'
                     assert detail['reason'] == 'automatic_connection_check_pending'
+                if kind == 'catalog' and mode == 'wrong_target':
+                    assert report['pagination']['position_verified'] is False
             finally:
                 await browser.close()
     asyncio.run(exercise())
@@ -268,3 +282,112 @@ def test_catalog_200_read_failure_keeps_http_status_without_claiming_challenge(m
     assert capture.await_args.kwargs['http_status'] == 200
     assert capture.await_args.kwargs['reason'] == reason
     context.close.assert_awaited_once()
+
+
+@pytest.mark.parametrize('mode', ['delayed_200', 'late_dom'])
+def test_real_new_200_has_independent_ready_budget_after_automatic_budget(tmp_path, monkeypatch, mode):
+    from playwright.async_api import async_playwright
+    monkeypatch.setenv('FAILURE_EVIDENCE_DIR', str(tmp_path / 'failures'))
+    monkeypatch.setattr(monitor_module, 'capture_failure', AsyncMock(return_value=None))
+    async def exercise():
+        async with async_playwright() as playwright:
+            browser, context, page, url, traffic = await make_fixture(playwright, mode)
+            try:
+                track_currys_document(page)
+                response = await page.goto(url, wait_until='commit')
+                report = await wait_currys_automatic_check(page, requested_url=url, initial_status=response.status,
+                    timeout_seconds=0.25, normal_ready_timeout_seconds=1.2, remaining_navigations=1)
+                assert report['target_verified'] and report['final_status'] == 200
+                assert report['navigation_count'] == report['committed_documents'] == 2
+                assert traffic['documents'] == 2 and traffic['external_allowed'] == 0
+                if mode == 'late_dom':
+                    assert await page.evaluate('document.readyState') == 'loading', '商品已可读，无须把迟到的DOMContentLoaded当硬门槛'
+                (tmp_path / 'synthetic-evidence.json').write_text(json.dumps({
+                    'synthetic': True, 'mode': mode, 'context_offline': not await page.evaluate('navigator.onLine'),
+                    'traffic': traffic, 'recovery': report}, ensure_ascii=False, indent=2), encoding='utf-8')
+            finally:
+                await browser.close()
+    asyncio.run(exercise())
+
+
+def test_real_in_flight_auto_navigation_is_adopted_without_second_active_goto(tmp_path, monkeypatch):
+    from playwright.async_api import async_playwright
+    monkeypatch.setenv('FAILURE_EVIDENCE_DIR', str(tmp_path / 'failures'))
+    monkeypatch.setenv('PRICE_ARTIFACTS_DIR', str(tmp_path / 'prices'))
+    monkeypatch.setattr(monitor_module, 'capture_failure', AsyncMock(return_value=None))
+    monkeypatch.setattr(run_daily.random, 'uniform', lambda *args: 0.3)
+    real_wait = wait_currys_automatic_check
+    observed = []
+    async def short_wait(page, **kwargs):
+        observed.append(currys_navigation_state(page))
+        return await real_wait(page, **{**kwargs, 'timeout_seconds': 0.1, 'normal_ready_timeout_seconds': 1.2})
+    monkeypatch.setattr(run_daily, 'wait_currys_automatic_check', short_wait)
+    adapter = CurrysAdapter()
+    adapter.wait_selectors, adapter.cookie_accept_selectors = (), ()
+    monkeypatch.setattr(run_daily, 'get_adapter', lambda _: adapter)
+    async def exercise():
+        async with async_playwright() as playwright:
+            browser, context, page, url, traffic = await make_fixture(playwright, 'in_flight_retry')
+            try:
+                await page.close()
+                monkeypatch.setattr(run_daily, '_new_context', AsyncMock(return_value=context))
+                hist = FrozenPriceHistory({}, {})
+                hist.currys_pdp_guard = CurrysPdpGuard()
+                sku = {'brand': 'LG', 'product_name': '55TEST', 'country': 'GB', 'platform': 'Currys', 'url': url}
+                result = await run_daily.process_sku(asyncio.Semaphore(1), browser, sku, hist)
+                assert result['Status'] == 'Success' and result['Price'] == 100
+                assert traffic['documents'] == 2 and traffic['external_allowed'] == 0
+                assert hist.currys_pdp_guard.report()['requests_started']['price_lookup'] == 1
+                assert any(state['in_flight'] and state['navigation_count'] == 2 and state['committed_documents'] == 1 for state in observed)
+                (tmp_path / 'synthetic-evidence.json').write_text(json.dumps({
+                    'synthetic': True, 'mode': 'in_flight_retry', 'traffic': traffic, 'states_before_wait': observed,
+                    'result': result, 'guard': hist.currys_pdp_guard.report()}, ensure_ascii=False, indent=2), encoding='utf-8')
+            finally:
+                await browser.close()
+    asyncio.run(exercise())
+
+
+def test_real_normalized_catalog_keeps_prices_and_safe_pagination_evidence(tmp_path, monkeypatch):
+    from playwright.async_api import async_playwright
+    monkeypatch.setenv('FAILURE_EVIDENCE_DIR', str(tmp_path / 'failures'))
+    adapter = catalog_module.CurrysCatalogAdapter()
+    async def exercise():
+        async with async_playwright() as playwright:
+            browser, context, page, _, traffic = await make_fixture(playwright, 'normalized_catalog', kind='catalog')
+            try:
+                await page.close()
+                adapter._catalog_context = context
+                status, cards = await adapter._scrape_page(browser, 150)
+                assert status == 200 and cards[0]['price'] == '£100.00'
+                info = adapter._last_page_info
+                assert info['connection_recovery']['target_verified'] and not info['blocked']
+                pagination = info['pagination']
+                assert pagination['requested'] == {'start': 150, 'sz': 50, 'page': None}
+                assert pagination['actual'] == {'start': None, 'sz': 48, 'page': 4}
+                assert pagination['title_page'] == 4 and not pagination['position_verified']
+                assert 'do-not-save-this-value' not in json.dumps(info)
+                assert traffic['documents'] == 1 and traffic['external_allowed'] == 0
+                (tmp_path / 'synthetic-evidence.json').write_text(json.dumps({
+                    'synthetic': True, 'mode': 'normalized_catalog', 'traffic': traffic,
+                    'page_info': info, 'observed_cards': cards}, ensure_ascii=False, indent=2), encoding='utf-8')
+            finally:
+                await browser.close()
+    asyncio.run(exercise())
+
+
+@pytest.mark.parametrize('priced_items,requested_items,accepted', [(300, 383, True), (299, 383, False), (300, 600, False)])
+def test_unverified_weekly_position_keeps_daily_batch_under_original_gates(monkeypatch, priced_items, requested_items, accepted):
+    urls = [f'https://www.currys.co.uk/products/tcl-tv-{10280000 + index}.html' for index in range(requested_items)]
+    catalog = SimpleNamespace(catalog_report={'complete': False, 'blocked': False, 'rate_limited': False,
+                                              'missing_pages': [], 'pagination_unverified_pages': [150, 200]})
+    catalog.fetch_catalog_from_browser = AsyncMock(return_value=[
+        SimpleNamespace(url=url, price_hint_eur=500.0) for url in urls[:priced_items]])
+    monkeypatch.setattr(catalog_module, 'CurrysCatalogAdapter', lambda: catalog)
+    monkeypatch.setenv('CURRYS_BATCH_MIN_ITEMS', '300')
+    monkeypatch.setenv('CURRYS_BATCH_MIN_COVERAGE', '0.55')
+    adapter = CurrysAdapter()
+    prices = asyncio.run(adapter.prepare_batch_prices(object(), [{'url': url} for url in urls]))
+    assert bool(prices) is accepted
+    assert len(prices) == (priced_items if accepted else 0)
+    assert adapter.catalog_report['complete'] is False
+    assert adapter.catalog_report['pagination_unverified_pages'] == [150, 200]

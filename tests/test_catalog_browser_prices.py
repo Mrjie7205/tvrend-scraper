@@ -348,6 +348,23 @@ class CurrysPaginationLedgerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, self.adapter.catalog_report['observed_items'])
         self.assertFalse(self.adapter.catalog_report['complete'])
 
+    async def test_unverified_page_position_keeps_prices_and_later_pages_but_not_complete_weekly(self):
+        async def page_result(browser, start, **kwargs):
+            self.adapter._last_page_info = {'http_status': 200, 'navigation_count': 1,
+                                           'pagination': {'position_verified': start != 50}}
+            return 200, [self.card(start + 1)] if start < 150 else []
+        self.adapter._scrape_page = AsyncMock(side_effect=page_result)
+        items = await self.adapter.fetch_catalog_from_browser(AsyncMock())
+        self.assertEqual(3, len(items))
+        self.assertEqual([0, 50, 100, 150], [call.args[1] for call in self.adapter._scrape_page.await_args_list])
+        self.assertEqual([], self.adapter.catalog_report['missing_pages'])
+        self.assertEqual([50], self.adapter.catalog_report['pagination_unverified_pages'])
+        self.assertTrue(self.adapter.catalog_report['end_observed'])
+        self.assertFalse(self.adapter.catalog_report['complete'])
+        self.assertFalse(self.adapter.catalog_report['blocked'])
+        with self.assertRaises(CurrysCatalogIncomplete):
+            await self.adapter.fetch_catalog(AsyncMock())
+
     async def test_old_successful_sequence_keeps_later_pages_after_isolated_403(self):
         serial = 0
         def cards(count):

@@ -389,6 +389,8 @@ async def process_sku(
 
             stage = "create_page"
             page = await ctx.new_page()
+            if platform.lower() == 'currys':
+                track_currys_document(page)
 
             # 导航(2 次重试 + 反爬等待)
             MAX_RETRIES = 2
@@ -402,7 +404,7 @@ async def process_sku(
                     timeout_ms = 40000 if attempt == 0 else 60000
                     wait_until = getattr(adapter, "navigation_wait_until", "domcontentloaded")
                     document_state = currys_navigation_state(page) if platform.lower() == "currys" else {}
-                    adopted_document = bool(document_state.get('navigation_count', 0) >= MAX_RETRIES)
+                    adopted_document = bool(document_state.get('in_flight') or document_state.get('navigation_count', 0) >= MAX_RETRIES)
                     if adopted_document:
                         # 等候/退避期间可能已自然恢复，预算耗尽后只检查当前真实文档，不能再goto。
                         status = document_state.get('http_status') or 0
@@ -425,8 +427,16 @@ async def process_sku(
                             break
                         if platform.lower() == 'currys':
                             currys_explicit_navigations += 1
-                        response = await page.goto(url, wait_until=wait_until, timeout=timeout_ms)
-                        status = response.status if response else 0
+                        try:
+                            response = await page.goto(url, wait_until=wait_until, timeout=timeout_ms)
+                            status = response.status if response else 0
+                        except Exception as exc:
+                            current = currys_navigation_state(page) if platform.lower() == 'currys' else {}
+                            if 'net::ERR_ABORTED' not in str(exc) or not (current.get('in_flight') or current.get('navigation_count', 0) >= MAX_RETRIES):
+                                raise
+                            # 极窄竞态中goto被正在切换的文档中断；沿用已占预算的导航，不再新开请求。
+                            status = current.get('http_status') or 0
+                            currys_retrying_automatic = True
                         if platform.lower() == 'currys':
                             track_currys_document(page, status)
                     if platform.lower() == 'currys' and (status == 403 or currys_retrying_automatic) and not adopted_document:
@@ -437,11 +447,11 @@ async def process_sku(
                         if guard is not None:
                             guard.record_recovery(sku, recovery)
                         print('[currys/connection_check] ' + json.dumps({'product': name, **recovery}, ensure_ascii=False))
-                        status = recovery['final_status'] or status
+                        status = recovery['final_status'] or 0
                         if recovery['retry_allowed'] and attempt < MAX_RETRIES - 1:
                             currys_retrying_automatic = True
                             continue  # 已在原页有界等待；下一轮仍受同URL/同context和总文档预算约束。
-                        if status == 200 and not recovery['target_verified']:
+                        if status in {0, 200} and not recovery['target_verified']:
                             failure_reason = currys_recovery_failure_reason(recovery)
                             result['Status'] = f'Failed: {failure_reason}'
                             if guard is not None:

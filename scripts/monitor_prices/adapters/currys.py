@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from .base import BaseAdapter
 from ..core import clean_price, close_playwright_resource, get_price_from_schema
-from failure_evidence import capture_failure, sanitize_url
+from failure_evidence import capture_failure, redact_text, sanitize_url
 
 
 RE_PRODUCT_ID = re.compile(r"(\d{7,9})(?:\.html)?(?:[?#]|$)", re.IGNORECASE)
@@ -37,7 +37,8 @@ _JS_AUTOMATIC_CONNECTION_CHECK = r"""() => {
   const contextualCheckbox = (shell || explicitHuman) && [...document.querySelectorAll('input[type=checkbox]')].some(visible);
   const controls = captchaControls || contextualCheckbox;
   return {automatic_check: shell && connection && !hard && !explicitHuman && !controls,
-          human_controls: controls || explicitHuman, hard_block: hard, connection_shell: shell};
+          human_controls: controls || explicitHuman, hard_block: hard, connection_shell: shell,
+          dom_available: !!document.body && !!text.trim(), page_title: title};
 }"""
 
 
@@ -51,16 +52,33 @@ def _currys_target_matches(requested_url: str, final_url: str, expected_kind: st
         left, right = RE_PRODUCT_ID.search(requested.path), RE_PRODUCT_ID.search(final.path)
         return bool('/products/' in final.path and left and right and left.group(1) == right.group(1))
     if expected_kind == 'catalog':
-        if requested.path.rstrip('/') != final.path.rstrip('/'):
-            return False
-        wanted, actual = parse_qs(requested.query), parse_qs(final.query)
-        return all(wanted.get(k, [default]) == actual.get(k, [default]) for k, default in (('start', '0'), ('sz', '50')))
+        # 目录端点身份与分页完整性分开；站点规范化分页query不能否决明确商品报价。
+        return requested.path.rstrip('/') == final.path.rstrip('/')
     raise ValueError('expected_kind 必须为 product 或 catalog')
 
 
 def currys_navigation_state(page) -> dict:
     tracker = vars(page).get('_currys_document_tracker') or {}
-    return {'navigation_count': tracker.get('count', 0), 'http_status': tracker.get('status')}
+    return {'navigation_count': tracker.get('count', 0), 'http_status': tracker.get('status'),
+            'committed_documents': tracker.get('committed', 0), 'in_flight': tracker.get('in_flight', False)}
+
+
+def currys_pagination_state(requested_url: str, final_url: str, title: str | None) -> dict:
+    """只留下白名单数字分页值和脱敏标题，不保存原始query或令牌。"""
+    def numbers(url):
+        query = parse_qs(urlparse(url).query)
+        result = {}
+        for key in ('start', 'sz', 'page'):
+            values = query.get(key, [])
+            result[key] = int(values[0]) if len(values) == 1 and re.fullmatch(r'[0-9]{1,7}', values[0]) else None
+        return result
+    wanted, actual = numbers(requested_url), numbers(final_url)
+    safe_title = redact_text(title, 200) if isinstance(title, str) else None
+    title_page = re.search(r'\bPage\s+([0-9]{1,5})\b', safe_title or '', re.IGNORECASE)
+    return {'requested': wanted, 'actual': actual, 'page_title': safe_title,
+            'title_page': int(title_page.group(1)) if title_page else None,
+            'position_verified': wanted['start'] is not None and wanted['sz'] is not None
+                                 and wanted['start'] == actual['start'] and wanted['sz'] == actual['sz']}
 
 
 def _currys_document_tracker(page, initial_status):
@@ -69,7 +87,24 @@ def _currys_document_tracker(page, initial_status):
         return tracker
     if not callable(getattr(page, 'on', None)) or asyncio.iscoroutinefunction(page.on):
         raise TypeError('页面没有同步导航事件观察接口')
-    tracker = {'count': 1, 'status': initial_status, 'url': page.url, 'response': None, 'change': asyncio.Event()}
+    seeded = initial_status is not None
+    tracker = {'count': int(seeded), 'committed': int(seeded), 'status': initial_status,
+               'url': page.url, 'response': None, 'change': asyncio.Event(),
+               'in_flight': False, 'active_request': None, 'request_started_at': None}
+    def request_started(request):
+        try:
+            if not request.is_navigation_request() or request.frame != page.main_frame:
+                return
+            # 301/302链是同一次导航；子资源不占主文档预算。
+            if request.redirected_from is None:
+                tracker['count'] += 1
+                tracker['request_started_at'] = asyncio.get_running_loop().time()
+            elif tracker['request_started_at'] is None:
+                tracker['request_started_at'] = asyncio.get_running_loop().time()
+            tracker.update(in_flight=True, active_request=request)
+            tracker['change'].set()
+        except Exception:
+            pass
     def response_seen(response):
         try:
             if (response.request.is_navigation_request() and response.frame == page.main_frame
@@ -84,15 +119,25 @@ def _currys_document_tracker(page, initial_status):
         try:
             if response.url.split('#', 1)[0] != frame.url.split('#', 1)[0]:
                 return
-            tracker.update(response=None, count=tracker['count'] + 1, status=response.status, url=frame.url)
+            tracker['committed'] += 1
+            tracker.update(response=None, count=max(tracker['count'], tracker['committed']),
+                           status=response.status, url=frame.url, in_flight=False, active_request=None)
             tracker['change'].set()
         except Exception:
             pass
+    def request_failed(request):
+        if request == tracker.get('active_request'):
+            tracker.update(in_flight=False, active_request=None, response=None)
+            tracker['change'].set()
     def closed(*args):
+        page.remove_listener('request', request_started)
+        page.remove_listener('requestfailed', request_failed)
         page.remove_listener('response', response_seen)
         page.remove_listener('framenavigated', committed)
         page.remove_listener('close', closed)
-    # 监听保留至page关闭，退避期间的自然导航也必须占用预算。
+    # 请求一开始即占预算；不能等提交事件再决定是否发第二次goto。
+    page.on('request', request_started)
+    page.on('requestfailed', request_failed)
     page.on('response', response_seen)
     page.on('framenavigated', committed)
     page.on('close', closed)
@@ -100,10 +145,12 @@ def _currys_document_tracker(page, initial_status):
     return tracker
 
 
-def track_currys_document(page, initial_status):
-    """首次PDP提交后立即启用预算观察，普通200也不能漏掉后续自然导航。"""
+def track_currys_document(page, initial_status=None):
+    """首次goto前安装观察器；提交后的补充状态只用于不发事件的测试/兼容页面。"""
     try:
-        _currys_document_tracker(page, initial_status)
+        tracker = _currys_document_tracker(page, initial_status)
+        if initial_status is not None and tracker['committed'] == 0 and not tracker['in_flight']:
+            tracker.update(count=max(1, tracker['count']), committed=1, status=initial_status, url=page.url)
     except (AttributeError, TypeError):
         pass
 
@@ -117,6 +164,8 @@ def currys_recovery_failure_reason(report: dict) -> str:
         return 'dom_read_error'
     if phase == 'response_observer_unavailable':
         return 'navigation_observer_error'
+    if phase == 'navigation_in_progress_timeout':
+        return 'navigation_timeout'
     if report.get('human_controls') or report.get('hard_block') or report.get('automatic_check'):
         return 'challenge_unresolved'
     return 'navigation_unverified'
@@ -124,7 +173,7 @@ def currys_recovery_failure_reason(report: dict) -> str:
 
 async def wait_currys_automatic_check(page, *, requested_url: str, initial_status: int | None,
                                      expected_kind: str = 'product', timeout_seconds: float = 8.0,
-                                     remaining_navigations: int = 1) -> dict:
+                                     remaining_navigations: int = 1, normal_ready_timeout_seconds: float = 15.0) -> dict:
     """只等已知自动连接检查完成，不点击、不主动导航；成功须真实新主文档200及原目标身份。"""
     report = {'initial_status': initial_status, 'final_status': initial_status,
               'automatic_check': False, 'human_controls': False, 'hard_block': False,
@@ -142,29 +191,62 @@ async def wait_currys_automatic_check(page, *, requested_url: str, initial_statu
     maximum_count = min(2, start_count + remaining_navigations)
     change = tracker['change']
     loop = asyncio.get_running_loop()
-    deadline = loop.time() + max(0.05, float(timeout_seconds))
+    check_deadline = loop.time() + max(0.05, float(timeout_seconds))
+    ready_deadline = None
+    ready_document = None
+    ready_budget = max(0.05, float(normal_ready_timeout_seconds))
+
+    def refresh():
+        report.update(navigation_count=tracker['count'], committed_documents=tracker['committed'],
+                      navigation_in_flight=tracker['in_flight'], final_status=tracker['status'],
+                      followup_navigation_count=max(0, tracker['count'] - start_count), final_url=sanitize_url(tracker['url']))
+
+    async def changed_or_tick(deadline):
+        try:
+            await asyncio.wait_for(change.wait(), timeout=max(0.01, min(0.1, deadline - loop.time())))
+        except asyncio.TimeoutError:
+            pass
 
     try:
         while True:
-            report.update(navigation_count=tracker['count'], final_status=tracker['status'],
-                          followup_navigation_count=max(0, tracker['count'] - start_count), final_url=sanitize_url(tracker['url']))
+            refresh()
+            if tracker['count'] > maximum_count:
+                report['phase'] = 'navigation_budget_exhausted'
+                break
+            # 已开始的主文档请求先等提交，不能读取旧403或发goto争抢同一页面。
+            if tracker['in_flight']:
+                deadline = (tracker['request_started_at'] or loop.time()) + ready_budget
+                if loop.time() >= deadline:
+                    report.update(phase='navigation_in_progress_timeout', error_type='TimeoutError')
+                    break
+                change.clear()
+                await changed_or_tick(deadline)
+                continue
+            # 自动检查前段8秒与真实200后的正常DOM就绪观察各自有界。
+            if tracker['status'] == 200 and ready_document != tracker['committed']:
+                ready_document = tracker['committed']
+                ready_deadline = loop.time() + ready_budget
+            deadline = ready_deadline if tracker['status'] == 200 and ready_deadline is not None else check_deadline
             left = deadline - loop.time()
             if left <= 0:
-                report['phase'] = 'automatic_check_timeout' if report['automatic_check'] else 'dom_unavailable'
+                report['phase'] = 'automatic_check_timeout' if tracker['status'] != 200 and report['automatic_check'] else 'dom_unavailable'
                 if report['phase'] == 'dom_unavailable':
                     report['error_type'] = 'TimeoutError'
                 break
             change.clear()
             try:
-                await page.wait_for_load_state('domcontentloaded', timeout=max(1, int(left * 1000)))
-                flags = await asyncio.wait_for(page.evaluate(_JS_AUTOMATIC_CONNECTION_CHECK), timeout=max(0.01, deadline - loop.time()))
+                try:
+                    await page.wait_for_load_state('domcontentloaded', timeout=max(1, min(200, int(left * 1000))))
+                except Exception as exc:
+                    if 'Timeout' not in type(exc).__name__:
+                        raise
+                # 正常页可在DOMContentLoaded事件前已有商品；观察可读DOM，不以全页事件为硬门禁。
+                flags = await asyncio.wait_for(page.evaluate(_JS_AUTOMATIC_CONNECTION_CHECK), timeout=max(0.01, min(1.0, deadline - loop.time())))
             except Exception as exc:
-                if (report['automatic_check'] or tracker['count'] > start_count or tracker.get('response') is not None) and loop.time() < deadline:
-                    # 初始截图期间可能恰好换文档；继续观察同一导航，不误判超时再主动goto。
-                    try:
-                        await asyncio.wait_for(change.wait(), timeout=max(0.01, min(0.1, deadline - loop.time())))
-                    except asyncio.TimeoutError:
-                        pass
+                if tracker['in_flight'] or (tracker['status'] == 200 and ready_document != tracker['committed']):
+                    continue
+                if (report['automatic_check'] or tracker['count'] > start_count or 'Timeout' in type(exc).__name__) and loop.time() < deadline:
+                    await changed_or_tick(deadline)
                     continue
                 report.update(phase='dom_unavailable', error_type=type(exc).__name__)
                 break
@@ -184,10 +266,11 @@ async def wait_currys_automatic_check(page, *, requested_url: str, initial_statu
                 except (Exception, asyncio.CancelledError) as exc:
                     tracker['initial_evidence_error'] = type(exc).__name__
                 # 留证是独立有界旁路，不消耗原有恢复等待预算，也不据旧DOM flags决定新文档结果。
-                deadline += loop.time() - capture_started
+                check_deadline += loop.time() - capture_started
                 continue
-            report.update(navigation_count=tracker['count'], final_status=tracker['status'],
-                          followup_navigation_count=max(0, tracker['count'] - start_count), final_url=sanitize_url(tracker['url']))
+            refresh()
+            if tracker['in_flight']:
+                continue
             report['rate_limited'] = report['final_status'] == 429
             if report['rate_limited'] or report['human_controls'] or report['hard_block']:
                 report['phase'] = 'rate_limited' if report['rate_limited'] else 'human_challenge' if report['human_controls'] else 'hard_block'
@@ -197,7 +280,12 @@ async def wait_currys_automatic_check(page, *, requested_url: str, initial_statu
                 break
             target = _currys_target_matches(requested_url, page.url, expected_kind)
             fresh_200 = (report['final_status'] == 200 and
-                         (initial_status == 200 and not report['automatic_check'] or tracker['count'] > 1))
+                         (initial_status == 200 and not report['automatic_check'] or tracker['committed'] > 1))
+            if expected_kind == 'catalog':
+                report['pagination'] = currys_pagination_state(requested_url, page.url, flags.get('page_title'))
+            if fresh_200 and flags.get('dom_available') is False:
+                await changed_or_tick(deadline)
+                continue
             if fresh_200 and not flags.get('automatic_check') and not flags.get('connection_shell'):
                 report['target_verified'] = target
                 report['phase'] = 'normal_page_restored' if target else 'target_mismatch'
@@ -208,13 +296,11 @@ async def wait_currys_automatic_check(page, *, requested_url: str, initial_statu
             if tracker['count'] >= maximum_count:
                 report['phase'] = 'navigation_budget_exhausted'
                 break
-            try:
-                await asyncio.wait_for(change.wait(), timeout=max(0.01, min(0.2, deadline - loop.time())))
-            except asyncio.TimeoutError:
-                pass
+            await changed_or_tick(deadline)
         report['retry_allowed'] = bool(report['automatic_check'] and report['final_status'] == 403
                                        and not report['human_controls'] and not report['hard_block']
                                        and not report['rate_limited']
+                                       and not tracker['in_flight']
                                        and tracker['count'] < maximum_count
                                        and report['phase'] in {'automatic_check_timeout', 'dom_unavailable'})
         if report['phase'] == 'navigation_budget_exhausted' and report['automatic_check']:
@@ -224,8 +310,10 @@ async def wait_currys_automatic_check(page, *, requested_url: str, initial_statu
         report['outcome'] = 'recovered' if report['target_verified'] and (tracker.get('automatic_recorded') or initial_status == 403) else 'normal' if report['target_verified'] else 'unresolved'
         return report
     finally:
-        report.update(navigation_count=tracker['count'], final_status=tracker['status'],
-                      followup_navigation_count=max(0, tracker['count'] - start_count), final_url=sanitize_url(tracker['url']))
+        refresh()
+        if report['phase'] == 'navigation_in_progress_timeout':
+            report['last_committed_status'] = report['final_status']
+            report['final_status'] = None
         report['initial_evidence_path'] = tracker.get('initial_evidence_path')
         if tracker.get('initial_evidence_error'):
             report['initial_evidence_error'] = tracker['initial_evidence_error']
