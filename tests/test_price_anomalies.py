@@ -232,22 +232,30 @@ def test_currys_classification_stops_before_price_or_repeated_block_wait(monkeyp
     adapter.extract_price.assert_not_awaited()
 
 
-def test_blocked_catalog_cannot_trigger_uncovered_pdp_or_anomaly_verification(monkeypatch):
+def test_blocked_currys_catalog_does_not_disable_pdp_or_anomaly_verification(monkeypatch):
     adapter = CurrysAdapter()
     adapter.catalog_report = {"blocked": True, "complete": False}
-    context = AsyncMock()
-    monkeypatch.setattr(run_daily, "_new_context", context)
+    page = Page()
+    context = SimpleNamespace(new_page=AsyncMock(return_value=page), close=AsyncMock())
+    create_context = AsyncMock(return_value=context)
+    monkeypatch.setattr(run_daily, "_new_context", create_context)
     monkeypatch.setattr(run_daily, "get_adapter", lambda _: adapter)
     monkeypatch.setattr(run_daily, "record_failure", lambda **kw: None)
+    monkeypatch.setattr(run_daily, "handle_antibot_page", AsyncMock(return_value=True))
+    monkeypatch.setattr(run_daily.asyncio, "sleep", AsyncMock())
+    adapter.extract_price = AsyncMock(return_value=(200, "GBP"))
+    adapter.wait_selectors = ()
+    adapter.cookie_accept_selectors = ()
     sku = {"brand": "LG", "product_name": "55TV", "country": "GB", "platform": "Currys", "url": OBSERVATION["url"]}
     hist = prices_io.FrozenPriceHistory({}, {("55TV", "GB", "Currys", "GBP"): BASELINE})
     result = asyncio.run(run_daily.process_sku(asyncio.Semaphore(1), object(), sku, hist))
-    assert result["Status"] == "Failed: channel_access_blocked"
+    assert result["Status"] == "Success" and result["Price"] == 200
     result = asyncio.run(run_daily.process_sku(asyncio.Semaphore(1), object(), sku, hist, batch_prices={adapter.batch_price_key(sku['url']): (200, "GBP")}))
     assert result["Status"] == "Success" and result["Price"] == 200
-    context.assert_not_awaited()
-    document = json.loads(next(anomalies.default_output_dir().glob("price_change_*.json")).read_text())
-    assert document["verification"]["status"] == "not_attempted_channel_blocked"
+    assert create_context.await_count == 2 and page.goto.await_count == 2
+    events = [json.loads(path.read_text()) for path in anomalies.default_output_dir().glob("price_change_*.json")]
+    batch_event = next(event for event in events if event["observation_source"] == "batch_catalog")
+    assert batch_event["verification"]["status"] == "price_observed"
 
 
 def test_direct_api_verification_timeout_keeps_original_success(monkeypatch):

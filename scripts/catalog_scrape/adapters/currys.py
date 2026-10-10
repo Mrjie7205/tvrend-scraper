@@ -4,7 +4,8 @@
 - 入口 = /tv-and-audio/televisions/tvs?start=N&sz=50(总 ~500 台, 每页 50, 约 11 页)
 - Currys 是客户端渲染,plain requests 拿不到商品 → 必须用 Playwright
 - current 保留基线每页 context，native 才整轮共用；配置在运行开始时冻结。
-- 两种配置遇到 403/访问校验均停止，暂错缺页只有限补抓一次，不在失败后切换配置。
+- 单页最多尝试两次；孤立失败隔离后继续，连续两页最终失败才停止。
+- 429 立即停止批量；始终不在失败后切换配置或操作 CAPTCHA。
 - 翻页 URL 由 Currys 自己生成:?start=0/50/100/...&sz=50。循环到某页无新增或够 total 为止。
 
 DOM 关键点:
@@ -29,6 +30,7 @@ from typing import Sequence
 from .base import BaseCatalogAdapter, CatalogItem
 from catalog_scrape.diagnostics import capture_catalog_failure
 from monitor_prices.core import close_playwright_resource, get_browser_profile, new_scraper_context
+from monitor_prices.adapters.currys import currys_navigation_state, currys_recovery_failure_reason, track_currys_document, wait_currys_automatic_check
 
 LISTING_URL = "https://www.currys.co.uk/tv-and-audio/televisions/tvs"
 PAGE_SIZE = 50
@@ -148,25 +150,63 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
         """配置在运行开始时冻结；current 延续每页 context，native 才整轮共用。"""
         return await new_scraper_context(browser, country=self.country, locale_override=self.locale_override)
 
-    async def _scrape_page(self, browser, start: int) -> tuple[int, list[dict]]:
+    async def _scrape_page(self, browser, start: int, *, navigation_budget: int = 2) -> tuple[int, list[dict]]:
         """返回 HTTP/逻辑状态及卡片；留证发生在真正分页页面关闭之前。"""
         url = f"{LISTING_URL}?start={start}&sz={PAGE_SIZE}"
         ctx = getattr(self, '_catalog_context', None)
         owns_context = ctx is None
         page = None
-        self._last_page_info = {'http_status': None, 'blocked': False, 'retryable': False}
+        self._last_page_info = {'http_status': None, 'blocked': False, 'retryable': False, 'navigation_count': 0}
         try:
             if owns_context:
                 ctx = await self._new_context(browser)
             page = await ctx.new_page()
-            resp = await page.goto(url, wait_until="domcontentloaded", timeout=50000)
+            track_currys_document(page)
+            resp = await page.goto(url, wait_until="commit", timeout=50000)
             status = resp.status if resp else 0
+            self._last_page_info['initial_http_status'] = status
+            self._last_page_info['http_status'] = status
+            track_currys_document(page, status)
+            recovery = None
+            if status in {200, 403}:
+                recovery = await wait_currys_automatic_check(page, requested_url=url, initial_status=status,
+                                                            expected_kind='catalog', remaining_navigations=max(0, navigation_budget - 1))
+                if recovery['retry_allowed']:
+                    await asyncio.sleep(2.5)
+                    current = currys_navigation_state(page)
+                    if not current.get('in_flight') and current['navigation_count'] < navigation_budget:
+                        try:
+                            resp = await page.goto(url, wait_until='commit', timeout=50000)
+                            status = resp.status if resp else 0
+                        except Exception as exc:
+                            current = currys_navigation_state(page)
+                            if 'net::ERR_ABORTED' not in str(exc) or not (current.get('in_flight') or current['navigation_count'] >= navigation_budget):
+                                raise
+                            status = current['http_status'] or 0
+                    else:
+                        status = current['http_status'] or 0
+                    recovery = await wait_currys_automatic_check(page, requested_url=url, initial_status=status,
+                                                                expected_kind='catalog', remaining_navigations=0)
+                status = recovery['final_status'] or 0
+                self._last_page_info['connection_recovery'] = recovery
+                self._last_page_info['pagination'] = recovery.get('pagination')
+                self._last_page_info['navigation_count'] = max(1, recovery['navigation_count'])
+                if status in {0, 200} and not recovery['target_verified']:
+                    reason = currys_recovery_failure_reason(recovery)
+                    reason = {'redirect_unverified': 'navigation_target_mismatch', 'challenge_unresolved': 'access_challenge'}.get(reason, reason)
+                    self._last_page_info.update(http_status=status, blocked=reason == 'access_challenge', reason=reason, retryable=False)
+                    if recovery.get('error_type'):
+                        self._last_page_info['error_type'] = recovery['error_type']
+                    await capture_catalog_failure(page, platform=self.platform_name, country=self.country,
+                                                  stage='catalog_page', reason=reason, url=url, http_status=status, adapter=self)
+                    return (403 if reason == 'access_challenge' else 0), []
+            self._last_page_info['navigation_count'] = max(1, currys_navigation_state(page)['navigation_count'])
             self._last_page_info['http_status'] = status
             if status != 200:
                 blocked = status in {401, 403, 429}
                 reason = 'rate_limited' if status == 429 else 'access_challenge' if blocked else 'http_error'
                 self._last_page_info.update(blocked=blocked, reason=reason,
-                                            retryable=(status == 0 or status == 408 or status >= 500))
+                                            retryable=(status in {0, 408} or status >= 500) and self._last_page_info['navigation_count'] < navigation_budget)
                 await capture_catalog_failure(
                     page, platform=self.platform_name, country=self.country,
                     stage='catalog_page', reason=reason, url=url,
@@ -177,7 +217,7 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
             state = await page.evaluate(_JS_PAGE_STATUS)
             blocked = status in {401, 403, 429} or (isinstance(state, dict) and state.get('challenge') is True)
             if blocked:
-                self._last_page_info.update(blocked=True, reason='access_challenge' if status != 429 else 'rate_limited')
+                self._last_page_info.update(blocked=True, retryable=False, reason='access_challenge')
                 await capture_catalog_failure(
                     page, platform=self.platform_name, country=self.country,
                     stage='catalog_page', reason=self._last_page_info['reason'],
@@ -205,11 +245,13 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
             await capture_catalog_failure(
                 page, platform=self.platform_name, country=self.country,
                 stage='catalog_page', reason='navigation_or_extraction_error',
-                url=url, error=error, adapter=self,
+                url=url, http_status=self._last_page_info['http_status'], error=error, adapter=self,
             )
             print(f"    [Currys] start={start} 异常: {type(error).__name__}")
             return 0, []
         finally:
+            if page is not None:
+                self._last_page_info['navigation_count'] = max(1, currys_navigation_state(page)['navigation_count'])
             if owns_context:
                 await close_playwright_resource(ctx, f"Currys catalog page {start} context")
             else:
@@ -236,76 +278,104 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
         self.catalog_report = {
             'schema_version': 1, 'platform': self.platform_name, 'country': self.country,
             'started_at': now.isoformat(), 'complete': False, 'blocked': False,
+            'had_access_denials': False, 'rate_limited': False, 'max_attempts_per_page': 2,
             'pages': {}, 'missing_pages': [], 'end_observed': False,
+            'pagination_unverified_pages': [],
             'notice': '明确商品观测不等于完整目录；失败/缺页数据不得冒充完整周目录。',
         }
         self._save_catalog_report()
 
-        async def attempt(start, recovery=False):
-            self._last_page_info = {}
-            status, cards = await self._scrape_page(browser, start)
-            info = dict(self._last_page_info)
-            blocked = bool(info.get('blocked')) or status in {401, 403, 429}
-            retryable = bool(info.get('retryable')) if info else (status in {0, 408} or status >= 500)
-            event = {'attempt': 2 if recovery else 1, 'status': status,
-                     'http_status': info.get('http_status', status), 'card_count': len(cards),
-                     'blocked': blocked, 'retryable': retryable, 'reason': info.get('reason'),
-                     'error_type': info.get('error_type'), 'observed_at': datetime.now(UTC).isoformat()}
+        seen_page_signatures = set()
+
+        async def attempt(start):
             row = self.catalog_report['pages'].setdefault(str(start), {'start': start, 'attempts': []})
+            if len(row['attempts']) >= 2 or row.get('navigation_count', 0) >= 2:
+                raise RuntimeError(f'Currys start={start} 已达到本轮两次尝试上限')
+            self._last_page_info = {}
+            status, cards = await self._scrape_page(browser, start, navigation_budget=max(0, 2 - row.get('navigation_count', 0)))
+            info = dict(self._last_page_info)
+            rate_limited = status == 429 or info.get('reason') == 'rate_limited'
+            denied = not rate_limited and (bool(info.get('blocked')) or status in {401, 403})
+            retryable = not rate_limited and info.get('retryable', status in {0, 403, 408} or status >= 500)
+            navigation_count = max(1, int(info.get('navigation_count', 1)))
+            event = {'attempt': len(row['attempts']) + 1, 'status': status,
+                     'http_status': info.get('http_status', status), 'card_count': len(cards),
+                     'blocked': denied, 'rate_limited': rate_limited,
+                     'navigation_count': navigation_count, 'initial_http_status': info.get('initial_http_status', status),
+                     'connection_recovery': info.get('connection_recovery'),
+                     'pagination': info.get('pagination'),
+                     'retryable': retryable, 'reason': info.get('reason'),
+                     'error_type': info.get('error_type'), 'observed_at': datetime.now(UTC).isoformat()}
             row['attempts'].append(event)
-            row.update(status=status, missing=status != 200, retryable=retryable)
-            for card in cards:
+            row['navigation_count'] = sum(item['navigation_count'] for item in row['attempts'])
+            row.update(status=status, missing=status != 200, access_denied=denied,
+                       retryable=retryable and len(row['attempts']) < 2 and row['navigation_count'] < 2)
+            # 明确商品观测仍交给日价原门禁；未知页位只限制完整周目录，不计连续抓取失败。
+            row['pagination_verified'] = (info.get('pagination') or {}).get('position_verified', True)
+            for card in cards if status == 200 else []:
                 slug = card.get('slug')
                 if slug and len((card.get('title') or '').strip()) >= 8 and slug not in by_slug:
                     by_slug[slug] = card
-            if blocked:
-                self.catalog_report['blocked'] = True
+            self.catalog_report['had_access_denials'] |= denied or info.get('initial_http_status') in {401, 403}
+            self.catalog_report['rate_limited'] |= rate_limited
             self._save_catalog_report()
-            return status, cards, blocked
+            return status, cards, row
 
         self._catalog_context = None
         try:
             if get_browser_profile(browser) == 'native':
                 self._catalog_context = await self._new_context(browser)
-            consecutive_transient = 0
+            consecutive_failed = consecutive_denied = 0
             for index in range(MAX_PAGES):
                 start = index * PAGE_SIZE
-                status, cards, blocked = await attempt(start)
-                if blocked:
-                    self.catalog_report['termination'] = 'blocked'
+                status, cards, row = await attempt(start)
+                # 恢复旧的有界页内重试：每页总共至多两次，不再追加第三次补抓。
+                if row['retryable'] and not self.catalog_report['rate_limited']:
+                    await asyncio.sleep(2.5)
+                    status, cards, row = await attempt(start)
+                if self.catalog_report['rate_limited']:
+                    self.catalog_report['termination'] = 'rate_limited'
                     break
                 if status == 200:
-                    consecutive_transient = 0
+                    consecutive_failed = consecutive_denied = 0
                     if not cards:
                         self.catalog_report['end_observed'] = start > 0
                         self.catalog_report['termination'] = 'empty_page_after_bounded_wait'
                         break
+                    signature = tuple(sorted({card.get('slug') for card in cards if card.get('slug')}))
+                    if signature and signature in seen_page_signatures:
+                        # 重复返回旧页不能证明已经遍历完整目录。
+                        row.update(missing=True, retryable=False, reason='repeated_page')
+                        self.catalog_report['termination'] = 'repeated_page'
+                        break
+                    seen_page_signatures.add(signature)
                 else:
-                    consecutive_transient += 1
-                    if consecutive_transient >= 2:
-                        self.catalog_report['termination'] = 'consecutive_failed_pages'
+                    consecutive_failed += 1
+                    consecutive_denied = consecutive_denied + 1 if row['access_denied'] else 0
+                    if consecutive_failed >= 2:
+                        self.catalog_report['blocked'] = consecutive_denied >= 2
+                        self.catalog_report['termination'] = (
+                            'consecutive_access_denials' if self.catalog_report['blocked']
+                            else 'consecutive_failed_pages'
+                        )
                         break
                 await asyncio.sleep(1.5)
-
-            # 先完成首次扫描，再按账本逐一补抓暂错缺页；访问拒绝后不再请求。
-            if not self.catalog_report['blocked']:
-                missing = [row['start'] for row in self.catalog_report['pages'].values()
-                           if row['missing'] and row['retryable']]
-                for start in missing:
-                    await asyncio.sleep(3.0)
-                    _, _, blocked = await attempt(start, recovery=True)
-                    if blocked:
-                        self.catalog_report['termination'] = 'blocked'
-                        break
+            else:
+                self.catalog_report['termination'] = 'page_limit'
         finally:
             await close_playwright_resource(self._catalog_context, 'Currys catalog shared context')
             self._catalog_context = None
             self.catalog_report['missing_pages'] = sorted(
                 row['start'] for row in self.catalog_report['pages'].values() if row['missing']
             )
+            self.catalog_report['pagination_unverified_pages'] = sorted(
+                row['start'] for row in self.catalog_report['pages'].values()
+                if row['status'] == 200 and not row.get('pagination_verified', True)
+            )
             self.catalog_report['complete'] = bool(
                 self.catalog_report['end_observed'] and not self.catalog_report['missing_pages']
-                and not self.catalog_report['blocked']
+                and not self.catalog_report['pagination_unverified_pages']
+                and not self.catalog_report['blocked'] and not self.catalog_report['rate_limited']
             )
             self.catalog_report['finished_at'] = datetime.now(UTC).isoformat()
             self.catalog_report['observed_items'] = len(by_slug)
@@ -317,6 +387,7 @@ class CurrysCatalogAdapter(BaseCatalogAdapter):
         if not self.catalog_report['complete']:
             error = CurrysCatalogIncomplete(
                 f"Currys 目录不完整: missing_pages={self.catalog_report['missing_pages']}, "
+                f"pagination_unverified_pages={self.catalog_report['pagination_unverified_pages']}, "
                 f"blocked={self.catalog_report['blocked']}, end_observed={self.catalog_report['end_observed']}"
             )
             previous = getattr(self, '_failure_evidence_path', None)

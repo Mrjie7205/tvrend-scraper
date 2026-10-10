@@ -139,7 +139,8 @@ def test_rejected_batch_candidate_survives_full_monitor_chain(tmp_path, monkeypa
         assert [float(row["Price"]) for row in published] == [final_price]
 
     # 无价时只保留基线已有的两次PDP尝试；其它场景一次，不能由留证额外打开页面。
-    assert len(calls) == count * (2 if outcome == "missing" else 1)
+    expected_pdp = min(count, 6) if channel == "Currys" and outcome == "403" else count
+    assert len(calls) == expected_pdp * (2 if outcome == "missing" else 1)
     events = [json.loads(path.read_text(encoding="utf-8")) for path in (tmp_path / "price-evidence").glob("price_change_*.json")]
     if outcome == "below_threshold":
         assert events == []
@@ -148,13 +149,15 @@ def test_rejected_batch_candidate_survives_full_monitor_chain(tmp_path, monkeypa
     assert len(candidates) == count
     for event in candidates:
         assert event["old_price"] == 100 and event["new_price"] == 200
-        assert event["screenshot_page_source"] == "existing_pdp_verification"
-        assert event["screenshot"]["status"] == "saved"
+        suspended = event["verification"]["status"] == "pdp_access_suspended"
+        assert event["screenshot_page_source"] == ("existing_pdp_unavailable" if suspended else "existing_pdp_verification")
+        assert event["screenshot"]["status"] == ("page_unavailable" if suspended else "saved")
         assert event["ingestion_status"] == ("accepted" if outcome == "same" else "rejected")
         assert event["validation_state"] == ("validated" if outcome == "same" else "rejected")
         assert event["verification"]["guard"] == ("batch_history_guard" if guard == "history" else "batch_completeness_guard" if guard.startswith("completeness") else "batch_single_guard")
         if outcome == "403":
-            assert event["verification"]["http_status"] == 403
+            if not suspended:
+                assert event["verification"]["http_status"] == 403
         elif outcome == "missing":
             assert event["verification"]["status"] == "price_not_found"
         else:

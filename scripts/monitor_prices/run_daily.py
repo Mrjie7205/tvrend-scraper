@@ -45,6 +45,7 @@ from monitor_prices.prices_io import (  # noqa: E402
     trim_prices_window,
 )
 from monitor_prices.adapters import get_adapter, supported_platforms  # noqa: E402
+from monitor_prices.adapters.currys import CurrysPdpGuard, currys_navigation_state, currys_recovery_failure_reason, track_currys_document, wait_currys_automatic_check  # noqa: E402
 from failure_evidence import capture_failure, record_failure  # noqa: E402
 from failure_evidence import _atomic_json, _bounded  # noqa: E402
 from price_anomalies import classify_change, record_price_change, attach_price_verification, update_price_change_status, summarize  # noqa: E402
@@ -129,6 +130,16 @@ async def _new_context(browser, adapter, country: str):
 
 def _candidate_key(sku):
     return tuple(sku[key] for key in ("product_name", "country", "platform", "url"))
+
+
+def _currys_pdp_guard(hist, sku):
+    return getattr(hist, "currys_pdp_guard", None) if sku["platform"].lower() == "currys" else None
+
+
+def _catalog_blocks_pdp(adapter, sku):
+    # Currys目录失败只说明目录阶段；其PDP由独立的真实访问结果保护。
+    report = getattr(adapter, "catalog_report", {})
+    return bool(report.get("rate_limited")) if sku["platform"].lower() == "currys" else bool(report.get("blocked"))
 
 
 def _same_candidate_price(candidate, result):
@@ -216,9 +227,12 @@ async def _observe_success(result, sku, hist, adapter, browser, *, page=None, co
             return
         if json.loads(event_path.read_text(encoding="utf-8")).get("verification") is not None:
             return  # 同一观测已复核，不重复打开页面。
-        if getattr(adapter, "catalog_report", {}).get("blocked"):
-            await attach_price_verification(event_path, verification={"status": "not_attempted_channel_blocked"},
-                                            evidence_source="pdp_not_opened_channel_blocked")
+        guard = _currys_pdp_guard(hist, sku)
+        if _catalog_blocks_pdp(adapter, sku) or (guard is not None and guard.stopped):
+            skip_reason = (guard.record_skip("price_verification") if guard is not None and guard.stopped
+                           else "not_attempted_catalog_rate_limited" if sku["platform"].lower() == "currys" else "not_attempted_channel_blocked")
+            await attach_price_verification(event_path, verification={"status": skip_reason},
+                                            evidence_source="pdp_verification_not_started")
             return
         verification = {"status": "not_attempted", "url": sku["url"]}
 
@@ -229,18 +243,33 @@ async def _observe_success(result, sku, hist, adapter, browser, *, page=None, co
                 verification_context = await _new_context(browser, adapter, sku["country"])
                 ctx = verification_context
             verification_page = await ctx.new_page()
+            if guard is not None and not guard.start_request("price_verification"):
+                verification = {"status": guard.record_skip("price_verification"), "url": sku["url"]}
+                return
             response = await verification_page.goto(sku["url"], wait_until="domcontentloaded", timeout=10000)
             status = response.status if response else 0
+            if sku["platform"].lower() == "currys" and status >= 400:
+                reason = adapter.classify_response(status, sku["url"], verification_page.url) or "http_error"
+                if guard is not None:
+                    guard.observe(sku, http_status=status, reason=reason)
+                verification = {"status": reason, "http_status": status, "url": verification_page.url}
+                return
             title = await verification_page.title()
             reason = adapter.classify_response(status, sku["url"], verification_page.url, title) if hasattr(adapter, "classify_response") else None
             if not reason and any(marker in title.lower() for marker in ANTIBOT_TITLE_MARKERS):
                 reason = "challenge_unresolved"
             if status in {403, 429} or reason:
+                if guard is not None:
+                    guard.observe(sku, http_status=status, reason=reason or "access_blocked")
                 verification = {"status": reason or "access_blocked", "http_status": status, "url": verification_page.url}
                 return
             if status != 200 or adapter.is_unavailable_response(status, sku["url"], verification_page.url):
+                if guard is not None:
+                    guard.observe(sku, http_status=status, reason="page_unavailable")
                 verification = {"status": "page_unavailable", "http_status": status, "url": verification_page.url}
                 return
+            if guard is not None:
+                guard.observe(sku, http_status=status)
             price = await adapter.extract_price(verification_page)
             verification = {"status": "price_observed" if price else "price_not_found", "http_status": status,
                             "url": verification_page.url, "observed_at": datetime.now(timezone.utc).isoformat()}
@@ -249,6 +278,8 @@ async def _observe_success(result, sku, hist, adapter, browser, *, page=None, co
         try:
             await _bounded(verify_once(), 12.0)
         except (Exception, asyncio.CancelledError) as exc:
+            if guard is not None:
+                guard.observe(sku, reason="verification_unavailable")
             verification = {"status": "verification_timeout" if isinstance(exc, (asyncio.TimeoutError, asyncio.CancelledError)) else "verification_failed",
                             "error_type": type(exc).__name__, "url": sku["url"]}
         await attach_price_verification(event_path, page=verification_page, verification=verification)
@@ -314,11 +345,14 @@ async def process_sku(
             await _observe_success(result, sku, hist, adapter, browser, source="batch_catalog")
             return result
 
-        if getattr(adapter, "catalog_report", {}).get("blocked"):
-            result["Status"] = "Failed: channel_access_blocked"
+        guard = _currys_pdp_guard(hist, sku)
+        if _catalog_blocks_pdp(adapter, sku) or (guard is not None and guard.stopped):
+            skip_reason = (guard.record_skip() if guard is not None and guard.stopped
+                           else "pdp_rate_limited" if platform.lower() == "currys" else "channel_access_blocked")
+            result["Status"] = f"Failed: {skip_reason}"
             record_failure(platform=platform, country=country, stage="blocked_before_pdp",
-                           reason="channel_access_blocked", url=url, product=name)
-            await _finalize_batch_candidate(sku, hist, result, reason="channel_access_blocked")
+                           reason=skip_reason, url=url, product=name)
+            await _finalize_batch_candidate(sku, hist, result, reason=skip_reason)
             return result
 
         ctx = shared_context
@@ -355,24 +389,84 @@ async def process_sku(
 
             stage = "create_page"
             page = await ctx.new_page()
+            if platform.lower() == 'currys':
+                track_currys_document(page)
 
             # 导航(2 次重试 + 反爬等待)
             MAX_RETRIES = 2
             price_data = None
+            currys_explicit_navigations = 0
+            currys_retrying_automatic = False
             for attempt in range(MAX_RETRIES):
                 try:
                     stage = "navigate"
                     await asyncio.sleep(random.uniform(1.0, 3.0))
                     timeout_ms = 40000 if attempt == 0 else 60000
                     wait_until = getattr(adapter, "navigation_wait_until", "domcontentloaded")
-                    response = await page.goto(url, wait_until=wait_until, timeout=timeout_ms)
-                    status = response.status if response else 0
+                    document_state = currys_navigation_state(page) if platform.lower() == "currys" else {}
+                    adopted_document = bool(document_state.get('in_flight') or document_state.get('navigation_count', 0) >= MAX_RETRIES)
+                    if adopted_document:
+                        # 等候/退避期间可能已自然恢复，预算耗尽后只检查当前真实文档，不能再goto。
+                        status = document_state.get('http_status') or 0
+                        recovery = await wait_currys_automatic_check(page, requested_url=url, initial_status=status,
+                                                                    remaining_navigations=0)
+                        if guard is not None:
+                            guard.record_recovery(sku, recovery)
+                        status = recovery['final_status'] or 0
+                        if not recovery['target_verified']:
+                            failure_reason = ({401: 'access_blocked', 403: 'access_blocked', 404: 'dead_link', 410: 'dead_link', 429: 'rate_limited'}.get(status, 'http_error')
+                                              if status >= 400 else currys_recovery_failure_reason(recovery))
+                            result['Status'] = f'Failed: {failure_reason}'
+                            if guard is not None:
+                                guard.observe(sku, http_status=status, reason=failure_reason)
+                            break
+                    else:
+                        if guard is not None and not guard.start_request():
+                            failure_reason = guard.record_skip()
+                            result["Status"] = f"Failed: {failure_reason}"
+                            break
+                        if platform.lower() == 'currys':
+                            currys_explicit_navigations += 1
+                        try:
+                            response = await page.goto(url, wait_until=wait_until, timeout=timeout_ms)
+                            status = response.status if response else 0
+                        except Exception as exc:
+                            current = currys_navigation_state(page) if platform.lower() == 'currys' else {}
+                            if 'net::ERR_ABORTED' not in str(exc) or not (current.get('in_flight') or current.get('navigation_count', 0) >= MAX_RETRIES):
+                                raise
+                            # 极窄竞态中goto被正在切换的文档中断；沿用已占预算的导航，不再新开请求。
+                            status = current.get('http_status') or 0
+                            currys_retrying_automatic = True
+                        if platform.lower() == 'currys':
+                            track_currys_document(page, status)
+                    if platform.lower() == 'currys' and (status == 403 or currys_retrying_automatic) and not adopted_document:
+                        used = max(currys_explicit_navigations, currys_navigation_state(page)['navigation_count'])
+                        recovery = await wait_currys_automatic_check(page, requested_url=url, initial_status=status,
+                                                                    remaining_navigations=max(0, MAX_RETRIES - used))
+                        recovery['explicit_retry'] = currys_retrying_automatic
+                        if guard is not None:
+                            guard.record_recovery(sku, recovery)
+                        print('[currys/connection_check] ' + json.dumps({'product': name, **recovery}, ensure_ascii=False))
+                        status = recovery['final_status'] or 0
+                        if recovery['retry_allowed'] and attempt < MAX_RETRIES - 1:
+                            currys_retrying_automatic = True
+                            continue  # 已在原页有界等待；下一轮仍受同URL/同context和总文档预算约束。
+                        if status in {0, 200} and not recovery['target_verified']:
+                            failure_reason = currys_recovery_failure_reason(recovery)
+                            result['Status'] = f'Failed: {failure_reason}'
+                            if guard is not None:
+                                guard.observe(sku, http_status=status, reason=failure_reason)
+                            break
                     if status >= 400:
                         # 所有渠道的错误HTTP先归类；错误页面不能继续进入价格选择器。
                         failure_reason = ({403: "access_blocked", 429: "rate_limited", 404: "dead_link", 410: "dead_link"}
                                           .get(status, "http_error"))
+                        if platform.lower() == "currys" and status == 401:
+                            failure_reason = "access_blocked"
                         result["Status"] = f"Failed: {failure_reason}"
                         result["Page Title"] = f"HTTP {status} → {page.url}"
+                        if guard is not None:
+                            guard.observe(sku, http_status=status, reason=failure_reason)
                         break
                     if platform.lower() != "currys" and adapter.is_unavailable_response(status, url, page.url):
                         result["Status"] = "Failed: Dead Link"
@@ -394,6 +488,8 @@ async def process_sku(
                         if reason:
                             result["Status"] = f"Failed: {reason}"
                             failure_reason = reason
+                            if guard is not None:
+                                guard.observe(sku, http_status=status, reason=reason)
                             break
                     passed = await handle_antibot_page(
                         page,
@@ -405,9 +501,15 @@ async def process_sku(
                         if platform.lower() == "currys":
                             result["Status"] = "Failed: challenge_unresolved"
                             failure_reason = "challenge_unresolved"
+                            if guard is not None:
+                                guard.observe(sku, http_status=status, reason=failure_reason)
                             break
                         raise RuntimeError("反爬验证等待超时")
+                    if guard is not None:
+                        guard.observe(sku, http_status=status)
                 except Exception as e:
+                    if guard is not None:
+                        guard.observe(sku, reason="navigation_unavailable")
                     print(f"  [{name}] 导航异常 ({attempt + 1}/{MAX_RETRIES}): {str(e)[:80]}")
                     if attempt < MAX_RETRIES - 1:
                         continue
@@ -636,6 +738,8 @@ async def run() -> int:
 
     print(f"[monitor] 抓取 {len(runnable)} SKU · headless={HEADLESS} · concurrency={CONCURRENCY}")
     hist = FrozenPriceHistory(load_latest_historical_prices(), load_latest_historical_observations())
+    if any(s["platform"].lower() == "currys" for s in runnable):
+        hist.currys_pdp_guard = CurrysPdpGuard()
 
     from playwright.async_api import async_playwright
 
@@ -657,6 +761,8 @@ async def run() -> int:
             adapter.batch_candidate_prices = {}
             try:
                 prepared = await adapter.prepare_batch_prices(browser, group)
+                if platform.lower() == "currys" and getattr(adapter, "catalog_report", {}).get("rate_limited"):
+                    hist.currys_pdp_guard.catalog_rate_limited()
                 if not prepared:
                     await _retain_batch_candidates(adapter, group, getattr(adapter, "batch_candidate_prices", {}), hist, guard="batch_completeness_guard")
                     for country in sorted({s["country"] for s in group}):
@@ -692,6 +798,8 @@ async def run() -> int:
                 await close_playwright_resource(browser, "cancelled batch browser")
                 raise
             except Exception as exc:
+                if platform.lower() == "currys" and getattr(adapter, "catalog_report", {}).get("rate_limited"):
+                    hist.currys_pdp_guard.catalog_rate_limited()
                 print(f"[monitor/{adapter.platform_name}] 批量价格准备失败，回退 PDP: {str(exc)[:120]}")
                 for country in sorted({s["country"] for s in group}):
                     record_failure(platform=adapter.platform_name, country=country, stage="prepare_batch",
@@ -776,6 +884,7 @@ async def run() -> int:
                                   "screenshot_statuses": evidence["screenshot_statuses"],
                                   "evidence_complete": evidence.get("evidence_complete")},
                "catalog_reports": {platform: getattr(get_adapter(platform), "catalog_report", {}) for platform in sorted({s["platform"] for s in runnable})},
+               "currys_pdp_guard": hist.currys_pdp_guard.report() if hasattr(hist, "currys_pdp_guard") else None,
                "collection_status": "empty" if not n_ok else "partial" if n_fail else "full",
                "artifact_status": "preparing", "publication_status": "not_started"}
 
