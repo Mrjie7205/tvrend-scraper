@@ -361,6 +361,7 @@ class ExistingHomePopupTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.enterContext(patch('catalog_scrape.diagnostics.capture_failure', new=AsyncMock(return_value=None)))
         self.enterContext(patch('catalog_scrape.adapters.amazon._accept_cookie', new=AsyncMock()))
+        self.enterContext(patch('catalog_scrape.adapters.amazon._complete_amazon_location_popup', new=AsyncMock(return_value=True)))
 
     def popup_page(self, market):
         page = AsyncMock()

@@ -117,6 +117,7 @@ class AmazonLocationFallbackTest(unittest.IsolatedAsyncioTestCase):
         # 本组只验证业务门禁；真实采集及顺序由失败现场专门测试覆盖。
         self.enterContext(patch('catalog_scrape.diagnostics.capture_failure',
                                 new=AsyncMock(return_value=None)))
+        self.enterContext(patch('catalog_scrape.adapters.amazon._complete_amazon_location_popup', new=AsyncMock(return_value=True)))
 
     def test_delivery_postcode_requires_real_header_match(self) -> None:
         self.assertTrue(_delivery_postcode_matches('Madrid 28013\u200c', AMAZON_ES))

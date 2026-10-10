@@ -559,13 +559,34 @@ async def _accept_cookie(page) -> None:
             pass
 
 
+def _normalized_delivery_text(text: str) -> str:
+    # 仅移除零宽/Bidi 格式控制，不变换数字、字母或放宽邮编边界。
+    visible_text = re.sub(r'[\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]', '', str(text or ''))
+    return re.sub(r'\s+', ' ', visible_text).strip().upper()
+
+
 def _delivery_postcode_matches(text: str, market: AmazonMarket) -> bool:
     """只认配送栏，不从页面其他位置或刚输入的表单推断配送地。"""
-    visible_text = re.sub(r'[\u200b-\u200f\ufeff]', '', str(text or ''))
-    normalized = re.sub(r'\s+', ' ', visible_text).strip().upper()
+    normalized = _normalized_delivery_text(text)
     parts = market.postcode.upper().split()
     expected = r'\s*'.join(re.escape(part) for part in parts)
     return bool(expected and re.search(r'(?<![A-Z0-9])' + expected + r'(?![A-Z0-9])', normalized))
+
+
+def _delivery_postcode_classification(text: str, market: AmazonMarket) -> dict:
+    """泛化文案不等于错误地址；只输出枚举，不保存地址或匹配到的邮编。"""
+    normalized = _normalized_delivery_text(text)
+    pattern = (r'(?<![A-Z0-9])[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2}(?![A-Z0-9])'
+               if market.code == 'GB' else r'(?<![A-Z0-9])[0-9]{5}(?![A-Z0-9])')
+    format_found = bool(re.search(pattern, normalized))
+    if _delivery_postcode_matches(normalized, market):
+        result = 'match'
+    elif format_found:
+        result = 'explicit_mismatch'
+    else:
+        result = 'unparseable' if normalized else 'missing'
+    return {'postcode_state': result, 'postcode_format_found': format_found,
+            'visible_text_class': 'postal_format' if format_found else 'generic_text' if normalized else 'empty'}
 
 
 class AmazonCatalogIncomplete(RuntimeError):
@@ -602,6 +623,7 @@ async def _capture_amazon_failure(page, market, *, stage, reason, adapter=None, 
         diagnostics = getattr(adapter, 'diagnostics', None) if adapter is not None else None
         if diagnostics is not None:
             for key, report_key in (('_amazon_popup_delivery_summary', 'popupDeliveryVerification'),
+                                    ('_amazon_popup_confirmation_summary', 'popupConfirmation'),
                                     ('_amazon_target_readiness_summary', 'targetReadiness')):
                 summary = vars(page).get(key)
                 if isinstance(summary, dict):
@@ -1045,11 +1067,12 @@ def _delivery_observation(state: dict, market: AmazonMarket, phase: str, check: 
         'source': source if source in {'glow_line2', 'glow_block', 'location_link'} else 'none',
         'normal_market_page': _normal_market_page(state, market),
         'postcode_matches': _delivery_postcode_matches(state.get('deliveryText', ''), market),
+        **_delivery_postcode_classification(state.get('deliveryText', ''), market),
     }
 
 
 async def _verify_post_popup_delivery(page, market: AmazonMarket) -> bool:
-    """提交后先观察原页面；配送文本仍为空才允许一次刷新，绝不重复填写地址。"""
+    """提交后先观察原页面；未取得可辨邮编才允许一次刷新，绝不重复填写地址。"""
     summary = {'scope': 'after_location_popup', 'result': 'pending', 'refresh_count': 0, 'observations': []}
     vars(page)['_amazon_popup_delivery_summary'] = summary
     status = None
@@ -1107,8 +1130,8 @@ async def _verify_post_popup_delivery(page, market: AmazonMarket) -> bool:
         if not observation['normal_market_page']:
             summary['result'] = 'normal_page_unconfirmed'
             break
-        if observation['text_present']:
-            # 非空但邮编不符不能靠刷新掩盖；保留原页面供现场核验。
+        if observation['postcode_state'] == 'explicit_mismatch':
+            # 只有明确异码才拒绝；“选择配送位置”等非空文案仍是未确认状态。
             summary['result'] = 'postcode_mismatch'
             break
         if phase == 'after_refresh':
@@ -1158,6 +1181,92 @@ async def verify_amazon_delivery_location(
         )
     print(f'  [set-loc/{market.code}] 配送栏复核 {"OK" if ok else "FAIL"} (text_present={bool(text.strip())})')
     return ok
+
+
+_LOCATION_DIALOG_SELECTOR = '[role="dialog"], [aria-modal="true"], .a-popover'
+_LOCATION_DONE_SELECTOR = '#GLUXConfirmClose, input[name="glowDoneButton"], .a-popover-footer .a-button-input, button, input[type="button"], input[type="submit"], [role="button"]'
+_JS_LOCATION_CONFIRMATION = r"""({dialogSelector, controlSelector}) => {
+  const visible = el => {
+    if (!el || !el.getClientRects().length) return false;
+    const box = el.getBoundingClientRect(), style = getComputedStyle(el);
+    return box.width > 0 && box.height > 0 && style.display !== 'none' &&
+      !['hidden', 'collapse'].includes(style.visibility) && Number(style.opacity) > 0 &&
+      (!el.checkVisibility || el.checkVisibility({checkOpacity: true, checkVisibilityCSS: true}));
+  };
+  const clean = value => (value || '').trim().replace(/\s+/g, ' ');
+  const name = el => {
+    const refs = clean(el.getAttribute('aria-labelledby')).split(/\s+/).filter(Boolean);
+    return clean(refs.map(id => document.getElementById(id)?.textContent || '').join(' ')) ||
+      clean(el.getAttribute('aria-label')) || clean(el.innerText || el.value || '');
+  };
+  const all = Array.from(document.querySelectorAll(dialogSelector));
+  const shown = all.filter(visible);
+  const dialogs = shown.filter(el => !shown.some(other => other !== el && other.contains(el)));
+  const matching = dialogs.filter(el =>
+    !!el.querySelector('#GLUXZipUpdateInput, #GLUXZipUpdate, #GLUXConfirmClose, input[name="glowDoneButton"]') ||
+    Array.from(el.querySelectorAll('h1,h2,h3,h4,h5,h6,[role=heading],.a-popover-header,.a-popover-header-content')).some(heading =>
+      visible(heading) && /^(Seleziona la tua posizione|Choose your location)$/i.test(clean(heading.innerText)))
+  );
+  const dialog = matching.length === 1 ? matching[0] : null;
+  const controls = dialog ? Array.from(dialog.querySelectorAll(controlSelector)) : [];
+  const legacy = el => el.id === 'GLUXConfirmClose' || el.getAttribute('name') === 'glowDoneButton' || el.matches('.a-popover-footer .a-button-input');
+  const eligible = controls.filter(el => visible(el) && !el.disabled && el.getAttribute('aria-disabled') !== 'true' && (
+    legacy(el) || /^(Fatto|Done)$/i.test(name(el))
+  ));
+  const control = eligible[0];
+  return {
+    visible_dialog_count: dialogs.length, matching_dialog_count: matching.length,
+    dialog_index: dialog ? all.indexOf(dialog) : -1,
+    control_index: control ? controls.indexOf(control) : -1,
+    control_count: eligible.length,
+    control_source: control ? (legacy(control) ? 'legacy_control' : 'known_done_label') : 'none',
+    known_label: control && /^(Fatto|Done)$/i.test(name(control)) ? name(control).toLowerCase() : 'none',
+  };
+}"""
+
+
+async def _complete_amazon_location_popup(page, market: AmazonMarket) -> bool:
+    """确认按钮只在已识别配送对话框内点击一次，未关闭就不能核验背景配送栏。"""
+    summary = {'attempts': 0, 'result': 'pending', 'observations': []}
+    vars(page)['_amazon_popup_confirmation_summary'] = summary
+    args = {'dialogSelector': _LOCATION_DIALOG_SELECTOR, 'controlSelector': _LOCATION_DONE_SELECTOR}
+    try:
+        state = await asyncio.wait_for(page.evaluate(_JS_SEARCH_STATE), timeout=3.0)
+        if _page_rejection_reason(None, state) or not _normal_market_page(state, market):
+            raise AmazonCatalogIncomplete(f'Amazon {market.code} 配送确认页面异常，停止采集')
+        for check in range(5):
+            info = await asyncio.wait_for(page.evaluate(_JS_LOCATION_CONFIRMATION, args), timeout=3.0)
+            safe = {key: info.get(key) for key in (
+                'visible_dialog_count', 'matching_dialog_count', 'control_count', 'control_source', 'known_label',
+            )}
+            summary['observations'].append(safe)
+            if info.get('visible_dialog_count') == 0:
+                summary['result'] = 'closed_after_confirmation' if summary['attempts'] else 'already_closed'
+                print(f'  [set-loc/{market.code}] 配送弹窗确认 {summary["result"]} (attempts={summary["attempts"]})')
+                return True
+            if summary['attempts'] == 0:
+                if (info.get('matching_dialog_count') != 1 or info.get('dialog_index', -1) < 0
+                        or info.get('control_index', -1) < 0):
+                    summary['result'] = 'completion_control_unconfirmed'
+                    break
+                # 只用这次只读检查选中的弹窗/控件；不全页点击同名按钮，不重复填写地址。
+                summary['attempts'] = 1
+                dialog = page.locator(_LOCATION_DIALOG_SELECTOR).nth(info['dialog_index'])
+                await dialog.locator(_LOCATION_DONE_SELECTOR).nth(info['control_index']).click(timeout=3000)
+            if check < 4:
+                await page.wait_for_timeout(500)
+        if summary['result'] == 'pending':
+            summary['result'] = 'dialog_still_visible'
+    except AmazonCatalogIncomplete:
+        summary['result'] = 'page_rejected'
+        raise
+    except Exception as error:
+        summary.update(result='confirmation_error', error_type=type(error).__name__)
+    await _capture_amazon_failure(
+        page, market, stage='location_popup_confirmation', reason='popup_confirmation_unfinished',
+    )
+    print(f'  [set-loc/{market.code}] 配送弹窗未完成 ({summary["result"]}, attempts={summary["attempts"]})')
+    return False
 
 
 async def set_amazon_location_via_popup(page, market: AmazonMarket, *, reuse_current_page: bool = False) -> bool:
@@ -1235,12 +1344,8 @@ async def set_amazon_location_via_popup(page, market: AmazonMarket, *, reuse_cur
                 name=re.compile(r"apply|aplicar|usa questo indirizzo|utiliser", re.I),
             ).first.click(timeout=5000)
         await page.wait_for_timeout(2500)
-        for sel in ("#GLUXConfirmClose", "input[name='glowDoneButton']", ".a-popover-footer .a-button-input"):
-            try:
-                await page.click(sel, timeout=1500)
-                break
-            except Exception:
-                pass
+        if not await _complete_amazon_location_popup(page, market):
+            return False
         return await verify_amazon_delivery_location(page, market, after_popup=True)
     except AmazonCatalogIncomplete:
         raise
@@ -1463,6 +1568,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         self._price_change_paths = []
         self.continue_navigation_summary = {'attempts': 0, 'result': 'not_attempted'}
         self.popup_delivery_summary = {'result': 'not_attempted'}
+        self.popup_confirmation_summary = {'result': 'not_attempted'}
 
     def _load_price_baseline(self, started_at: datetime, catalog_dir: Path | None = None) -> dict:
         """只从开始前最新合格正式目录取同市场 ASIN 原币价，不回退到诊断候选。"""
@@ -1568,9 +1674,11 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             # 只写内部产生的次数/结果/布尔标志；不把 URL、表单或隐藏值带入摘要。
             _sync_continue_diagnostics(self, page)
             self.popup_delivery_summary = dict(vars(page).get('_amazon_popup_delivery_summary') or {'result': 'not_attempted'})
+            self.popup_confirmation_summary = dict(vars(page).get('_amazon_popup_confirmation_summary') or {'result': 'not_attempted'})
             if self.diagnostics is not None:
                 self.diagnostics.report['continueNavigation'] = dict(self.continue_navigation_summary)
                 self.diagnostics.report['popupDeliveryVerification'] = dict(self.popup_delivery_summary)
+                self.diagnostics.report['popupConfirmation'] = dict(self.popup_confirmation_summary)
                 try:
                     self.diagnostics._save_report()
                 except Exception:

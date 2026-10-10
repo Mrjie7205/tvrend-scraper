@@ -39,6 +39,93 @@ class AmazonDeliveryReadinessTests(unittest.IsolatedAsyncioTestCase):
         page.goto.return_value = SimpleNamespace(status=200)
         return page
 
+    def test_delivery_text_classification_keeps_unknown_text_separate_from_wrong_code(self):
+        cases = ((amazon.AMAZON_IT, '', 'missing'),
+                 (amazon.AMAZON_IT, 'Seleziona la tua posizione', 'unparseable'),
+                 (amazon.AMAZON_IT, 'Hong Kong', 'unparseable'),
+                 (amazon.AMAZON_IT, 'Milano 20122', 'explicit_mismatch'),
+                 (amazon.AMAZON_IT, 'Milano 20121', 'match'),
+                 (amazon.AMAZON_IT, 'Milano \u206620\u202c121\u2069', 'match'),
+                 (amazon.AMAZON_IT, 'Milano ２０１２１', 'unparseable'),
+                 (amazon.AMAZON_IT, '120121', 'unparseable'),
+                 (amazon.AMAZON_GB, 'Coventry CV4 1AA', 'explicit_mismatch'),
+                 (amazon.AMAZON_GB, 'Coventry CV4\u20667ES\u2069', 'match'),
+                 (amazon.AMAZON_GB, 'Coventry CV4', 'unparseable'))
+        for market, text, expected in cases:
+            with self.subTest(country=market.code, text=text):
+                classified = amazon._delivery_postcode_classification(text, market)
+                self.assertEqual(expected, classified['postcode_state'])
+                self.assertEqual(expected in ('match', 'explicit_mismatch'), classified['postcode_format_found'])
+                self.assertNotIn('Milano', json.dumps(classified))
+
+    async def test_nonempty_generic_delivery_text_can_use_single_refresh_then_verify(self):
+        page = self.page()
+        count = len(amazon._DELIVERY_OBSERVATION_DELAYS_MS)
+        page.evaluate.side_effect = [state(text='Seleziona la tua posizione')] * count + [state(text='Milano 20121')]
+        self.assertTrue(await amazon.verify_amazon_delivery_location(page, amazon.AMAZON_IT, after_popup=True))
+        page.goto.assert_awaited_once()
+        summary = vars(page)['_amazon_popup_delivery_summary']
+        self.assertEqual('unparseable', summary['observations'][0]['postcode_state'])
+        self.assertEqual('match', summary['observations'][-1]['postcode_state'])
+        self.assertEqual('verified_after_refresh', summary['result'])
+
+    async def test_nonempty_unparseable_after_refresh_is_not_accepted(self):
+        page = self.page()
+        page.evaluate.return_value = state(text='Seleziona la tua posizione')
+        self.assertFalse(await amazon.verify_amazon_delivery_location(page, amazon.AMAZON_IT, after_popup=True))
+        page.goto.assert_awaited_once()
+        self.assertEqual('header_unconfirmed', vars(page)['_amazon_popup_delivery_summary']['result'])
+
+    def confirmation_page(self, *, closes=True, control=True):
+        page = self.page()
+        opened = {'visible_dialog_count': 1, 'matching_dialog_count': 1, 'dialog_index': 0,
+                  'control_index': 0 if control else -1, 'control_count': int(control),
+                  'control_source': 'known_done_label', 'known_label': 'fatto'}
+        page.evaluate.side_effect = [state(), opened] + ([{'visible_dialog_count': 0}] if closes else [opened] * 4)
+        dialog, button = Mock(), Mock()
+        button.click = AsyncMock()
+        dialog.locator.return_value.nth.return_value = button
+        page.locator = Mock()
+        page.locator.return_value.nth.return_value = dialog
+        return page, dialog, button
+
+    async def test_confirmation_clicks_only_inspected_dialog_control_and_waits_for_close(self):
+        page, dialog, button = self.confirmation_page()
+        self.assertTrue(await amazon._complete_amazon_location_popup(page, amazon.AMAZON_IT))
+        page.locator.assert_called_once_with(amazon._LOCATION_DIALOG_SELECTOR)
+        dialog.locator.assert_called_once_with(amazon._LOCATION_DONE_SELECTOR)
+        button.click.assert_awaited_once()
+        self.assertEqual('closed_after_confirmation', vars(page)['_amazon_popup_confirmation_summary']['result'])
+
+    async def test_confirmation_does_not_click_again_when_dialog_stays_open(self):
+        page, _, button = self.confirmation_page(closes=False)
+        self.assertFalse(await amazon._complete_amazon_location_popup(page, amazon.AMAZON_IT))
+        button.click.assert_awaited_once()
+        self.assertEqual('popup_confirmation_unfinished', vars(page)['_amazon_failure_reason'])
+        self.assertEqual('dialog_still_visible', vars(page)['_amazon_popup_confirmation_summary']['result'])
+
+    async def test_unconfirmed_dialog_button_is_not_clicked(self):
+        page, _, button = self.confirmation_page(control=False)
+        self.assertFalse(await amazon._complete_amazon_location_popup(page, amazon.AMAZON_IT))
+        button.click.assert_not_awaited()
+        self.assertEqual('completion_control_unconfirmed', vars(page)['_amazon_popup_confirmation_summary']['result'])
+
+    async def test_unfinished_confirmation_stops_before_background_header_check(self):
+        page = self.page()
+        page.evaluate.return_value = state()
+        element = Mock()
+        element.first = element
+        element.count = AsyncMock(return_value=1)
+        element.fill, element.click = AsyncMock(), AsyncMock()
+        page.locator = Mock(return_value=element)
+        with patch.object(amazon, '_accept_cookie', new=AsyncMock()), \
+             patch.object(amazon, '_complete_amazon_location_popup', new=AsyncMock(return_value=False)) as complete, \
+             patch.object(amazon, 'verify_amazon_delivery_location', new=AsyncMock()) as verify:
+            self.assertFalse(await amazon.set_amazon_location_via_popup(page, amazon.AMAZON_IT, reuse_current_page=True))
+        complete.assert_awaited_once()
+        verify.assert_not_awaited()
+        element.fill.assert_awaited_once_with('20121', timeout=5000)
+
     async def test_delayed_current_header_needs_no_refresh(self):
         page = self.page()
         page.evaluate.side_effect = [state(), state(deliveryHeader={
