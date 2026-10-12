@@ -16,6 +16,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import failure_evidence as evidence
 
 
+TEST_HANG_TIMEOUT_SECONDS = 5.0
+
+
 class FakePage:
     url = "https://www.currys.co.uk/products/test-tv.html?token=PRIVATE#account"
 
@@ -27,6 +30,21 @@ class FakePage:
         self.screenshot_hang = screenshot_hang
         self.screenshot_options = []
         self.locator_calls = []
+        self.hanging_tasks = {}
+        self.cancelled_operations = []
+        self.cleaned_up_operations = []
+
+    async def hang_until_cancelled(self, operation):
+        self.hanging_tasks[operation] = asyncio.current_task()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            self.cancelled_operations.append(operation)
+            raise
+        finally:
+            # 模拟浏览器收到取消后还需一次调度清理，防止测试遗留后台任务。
+            await asyncio.sleep(0)
+            self.cleaned_up_operations.append(operation)
 
     def is_closed(self):
         return False
@@ -40,7 +58,7 @@ class FakePage:
         reports = [p for p in Path(os.environ["FAILURE_EVIDENCE_DIR"]).glob("*.json") if p.name != "summary.json"]
         assert reports
         if self.hang:
-            await asyncio.Event().wait()
+            await self.hang_until_cancelled("evaluate")
         return {"redaction_ready": self.redaction, "title": "Shop", "masked_elements": 3,
                 "headings": [{"tag": "h1", "text": "Continue shopping"}],
                 "buttons": [{"label": "Continue", "url": "https://www.currys.co.uk/continue?token=PRIVATE"},
@@ -52,7 +70,7 @@ class FakePage:
         self.screenshot_options.append(kwargs)
         assert kwargs["full_page"] is False
         if self.screenshot_hang:
-            await asyncio.Event().wait()
+            await self.hang_until_cancelled("screenshot")
         if self.screenshot_error:
             raise RuntimeError("token=PRIVATE")
         return b"\x89PNG\r\n\x1a\nsynthetic-test"
@@ -72,6 +90,62 @@ class FailureEvidenceTests(unittest.IsolatedAsyncioTestCase):
     async def capture(self, page, **kwargs):
         return await evidence.capture_failure(page, platform="Currys", country="GB", stage="test",
                                              reason="dead_link", **kwargs)
+
+    async def assert_capture_times_out(self, page, *, operation, reason):
+        bounded = evidence._bounded
+        budgets = []
+
+        async def record_budget(awaitable, seconds):
+            # 只记录预算，继续运行真实等待、超时和取消逻辑。
+            budgets.append(seconds)
+            return await bounded(awaitable, seconds)
+
+        started = time.monotonic()
+        try:
+            with patch.object(evidence, "_bounded", new=record_budget):
+                path = await asyncio.wait_for(
+                    evidence.capture_failure(page, platform="Currys", country="GB", stage="timeout",
+                                             reason=reason, timeout_seconds=0.025),
+                    timeout=TEST_HANG_TIMEOUT_SECONDS,
+                )
+            # 仅作 CI 防挂死护栏；异步采集预算不包含同步 JSON 写盘耗时。
+            # wait_for 不能抢占同步 I/O，因此返回后仍检查这个宽松上限。
+            self.assertLess(time.monotonic() - started, TEST_HANG_TIMEOUT_SECONDS)
+            self.assertEqual(1 if operation == "evaluate" else 2, len(budgets))
+            for seconds in budgets:
+                self.assertGreater(seconds, 0)
+                # deadline 加减存在浮点舍入，仅容忍 1ns 的数值误差。
+                self.assertLessEqual(seconds, 0.025 + 1e-9)
+            if operation == "screenshot":
+                self.assertEqual(1, len(page.screenshot_options))
+                native_timeout = page.screenshot_options[0]["timeout"]
+                self.assertIsInstance(native_timeout, int)
+                self.assertGreaterEqual(native_timeout, 1)
+                self.assertLessEqual(native_timeout, 25)
+            self.assertEqual([operation], list(page.hanging_tasks))
+            task = page.hanging_tasks[operation]
+            results = await asyncio.wait_for(
+                asyncio.gather(task, return_exceptions=True), timeout=TEST_HANG_TIMEOUT_SECONDS,
+            )
+            self.assertIsInstance(results[0], asyncio.CancelledError)
+            self.assertTrue(task.cancelled())
+            self.assertEqual([operation], page.cancelled_operations)
+            self.assertEqual([operation], page.cleaned_up_operations)
+            self.assertIsNotNone(path)
+            report = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual("capture_timeout", report["screenshot"]["status"])
+            self.assertEqual("TimeoutError", report["capture_error_type"])
+            self.assertIsNone(report["screenshot"]["file"])
+            self.assertFalse(path.with_suffix(".png").exists())
+            self.assertFalse(list(self.root.glob("*.tmp")))
+            return path
+        finally:
+            # 断言失败也回收替身任务，不依赖测试框架在事件循环关闭时兜底。
+            tasks = list(page.hanging_tasks.values())
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     async def test_minimal_summary_preserves_github_ids_and_redacts_secrets(self):
         with patch.dict(os.environ, {"GITHUB_RUN_ID": "37768037106", "GITHUB_RUN_ATTEMPT": "2", "GITHUB_SHA": "a" * 40}):
@@ -117,10 +191,7 @@ class FailureEvidenceTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("brand-two", path.read_text())
 
     async def test_timeout_and_screenshot_error_keep_initial_json(self):
-        started = time.monotonic()
-        path = await self.capture(FakePage(hang=True), timeout_seconds=0.025)
-        self.assertLess(time.monotonic() - started, 0.3)
-        self.assertEqual("capture_timeout", json.loads(path.read_text())["screenshot"]["status"])
+        await self.assert_capture_times_out(FakePage(hang=True), operation="evaluate", reason="dead_link")
         path = await self.capture(FakePage(screenshot_error=True))
         report = json.loads(path.read_text())
         self.assertEqual("capture_failed", report["screenshot"]["status"])
@@ -172,11 +243,26 @@ class FailureEvidenceTests(unittest.IsolatedAsyncioTestCase):
                     reason=f"limited_{value}") for _ in range(3)]
                 self.assertEqual(["saved", "saved", "omitted_limit"],
                                  [json.loads(path.read_text())["screenshot"]["status"] for path in paths])
-                started = time.monotonic()
-                path = await evidence.capture_failure(FakePage(screenshot_hang=True), platform="Currys", country="GB",
-                    stage="timeout", reason=f"timeout_{value}", timeout_seconds=0.025)
-                self.assertLess(time.monotonic() - started, 0.3)
-                self.assertEqual("capture_timeout", json.loads(path.read_text())["screenshot"]["status"])
+                await self.assert_capture_times_out(FakePage(screenshot_hang=True), operation="screenshot",
+                                                   reason=f"timeout_{value}")
+
+    async def test_slow_initial_json_write_still_cancels_screenshot_in_both_png_modes(self):
+        atomic_json = evidence._atomic_json
+        for value in ("0", "1"):
+            delayed_paths = []
+
+            def slow_initial_json(path, payload):
+                if path.name != "summary.json" and not delayed_paths:
+                    delayed_paths.append(path)
+                    # 超过旧的 300ms 总耗时断言，真实写盘与异步超时逻辑仍执行。
+                    time.sleep(0.35)
+                atomic_json(path, payload)
+
+            with self.subTest(value=value), patch.dict(os.environ, {"SCRAPER_SCREENSHOT_REDACT": value}), \
+                    patch.object(evidence, "_atomic_json", side_effect=slow_initial_json):
+                path = await self.assert_capture_times_out(FakePage(screenshot_hang=True), operation="screenshot",
+                                                          reason=f"slow_write_{value}")
+                self.assertEqual([path], delayed_paths)
 
     async def test_forty_dead_links_leave_two_images_and_omission_counts(self):
         for _ in range(40):

@@ -37,13 +37,16 @@ class AmazonDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
             async def navigate(*args, **kwargs):
                 nonlocal request
                 request += 1
+                page.url = args[0]
                 if request == 2 and failure == 'navigation':
                     raise TimeoutError('bounded navigation timeout')
-                return SimpleNamespace(status=status if request == 2 else 200)
+                return SimpleNamespace(status=status if request >= 2 else 200)
 
             async def evaluate(script, *args):
                 if script == _JS_SEARCH_STATE:
-                    return {'deliveryText': 'Madrid 28013', 'captcha': captcha and request == 2,
+                    return {'currentUrl': page.url,
+                            'bodyTextPresent': True,
+                            'deliveryText': 'Madrid 28013', 'captcha': captcha and request == 2,
                             'robotCheck': robot and request == 2, 'nextDisabled': request == 2}
                 if script == _JS_EXTRACT:
                     if request == 2 and failure == 'extraction':

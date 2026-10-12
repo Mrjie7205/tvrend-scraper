@@ -213,7 +213,11 @@ class AmazonArtifactGateTest(unittest.TestCase):
     def test_skipped_scrape_never_uploads_checkout_csv(self) -> None:
         result = self.stage("it", "skipped")
         self.assertEqual("failed", result["status"])
+        self.assertEqual("scrape_not_started", result["reasonCode"])
+        self.assertEqual("skipped", result["scrapeOutcome"])
+        self.assertTrue((self.artifacts / "amazon-result-it" / "manifest.json").is_file())
         self.assertEqual([], list((self.artifacts / "amazon-result-it").glob("*.csv")))
+        self.assertEqual([], self.collect("failure")["publishFiles"])
 
     def test_second_precision_accepts_new_output_during_start_second(self) -> None:
         self.start = "2026-09-29T09:00:00.500000+00:00"
@@ -244,6 +248,11 @@ class AmazonArtifactGateTest(unittest.TestCase):
 
     def test_workflow_keeps_failure_visible_and_uses_isolated_artifacts(self) -> None:
         text = (SCRIPTS.parent / ".github/workflows/daily-amazon.yml").read_text(encoding="utf-8")
+        # 前置阶段异常仍须上传本轮失败清单，避免 missing context 引发连锁报错。
+        self.assertLess(text.index("name: Record current scrape identity"),
+                        text.index("name: Install dependencies"))
+        self.assertLess(text.index("name: Record current scrape identity"),
+                        text.index("name: Run scraper safety tests"))
         self.assertNotIn("continue-on-error:", text)
         self.assertIn("fail-fast: false", text)
         self.assertIn("path: _amazon_download", text)

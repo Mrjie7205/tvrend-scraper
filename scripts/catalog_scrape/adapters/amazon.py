@@ -24,6 +24,7 @@ import hashlib
 import os
 import random
 import re
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -68,6 +69,10 @@ SESSION_PREP_ATTEMPTS = int(os.environ.get("AMAZON_SESSION_PREP_ATTEMPTS", "3"))
 PREVIOUS_CATALOG_LOOKBACK = int(os.environ.get("AMAZON_PREVIOUS_CATALOG_LOOKBACK", "7"))
 MAX_PREVIOUS_RECOVERY_ITEMS = int(os.environ.get("AMAZON_MAX_PREVIOUS_RECOVERY_ITEMS", "40"))
 COOKIE_ACCEPT_SELECTOR = "#sp-cc-accept"
+# 只重试明确的临时网关/服务错误；总预算包含导航、页面检查、留证与退避。
+_SEARCH_RETRY_STATUSES = frozenset({502, 503, 504})
+_SEARCH_RETRY_DELAYS_SECONDS = (2.0, 5.0)
+_SEARCH_NAVIGATION_BUDGET_SECONDS = 90.0
 
 _KNOWN_BRANDS = {
     "SAMSUNG": "Samsung",
@@ -263,6 +268,7 @@ _JS_SEARCH_STATE = r"""() => {
     },
     captcha: /captcha|enter the characters you see below|api-services-support@amazon.com/i.test(text),
     robotCheck: /robot check|not a robot|automated access|unusual traffic|access denied|accesso negato|verify you are human|security check/i.test(text),
+    visibleChallengeControls: Array.from(document.querySelectorAll('input[name*=captcha i], input[id*=captcha i], iframe[src*=captcha i], [class*=g-recaptcha], [class*=h-captcha]')).some(visible),
     normalPage: Array.from(document.querySelectorAll('#nav-main, #glow-ingress-block, #productTitle, [data-component-type=s-search-result]')).some(visible),
     continueShopping: /Fai clic sul pulsante qui sotto per continuare a fare acquisti|Click the button below to continue shopping|Klicke auf die Schaltfläche unten, um mit dem Einkauf(?:en)? fortzufahren|Haz clic en el botón de abajo para seguir comprando/i.test(text)
     ,accessChallengeTarget: Array.from(document.querySelectorAll('form, button, input[type=submit]')).some(el => {
@@ -640,7 +646,8 @@ async def _capture_amazon_failure(page, market, *, stage, reason, adapter=None, 
 
 
 def _page_rejection_reason(http_status: int | None, state: dict) -> str | None:
-    if state.get('captcha') or state.get('robotCheck') or state.get('accessChallengeTarget'):
+    if (state.get('captcha') or state.get('robotCheck') or state.get('accessChallengeTarget')
+            or state.get('visibleChallengeControls')):
         return 'access_challenge'
     if state.get('continueShopping'):
         return 'continue_shopping_interstitial'
@@ -2155,6 +2162,119 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             await asyncio.sleep(random.uniform(0.6, 1.2))
         return added
 
+    async def _goto_search_page(self, page, url: str, page_info: dict, timeout_ms: int):
+        """同一页面、同一 URL 有界重试；错误页先检查挑战和身份，再决定是否重试。"""
+        market = self.market
+        started = time.monotonic()
+        deadline = started + _SEARCH_NAVIGATION_BUDGET_SECONDS
+        max_attempts = len(_SEARCH_RETRY_DELAYS_SECONDS) + 1
+        missing = object()
+        previous_evidence = [
+            (owner, {key: vars(owner).get(key, missing) for key in keys})
+            for owner, keys in (
+                (self, ('_failure_evidence_captured', '_failure_evidence_path')),
+                (page, ('_catalog_failure_evidence_path', '_amazon_failure_reason')),
+            )
+        ]
+        summary = {
+            'query': redact_text(page_info['query'], 500), 'page': page_info['page'],
+            'queryKind': page_info['queryKind'], 'maxAttempts': max_attempts,
+            'budgetSeconds': _SEARCH_NAVIGATION_BUDGET_SECONDS, 'attempts': [],
+        }
+        if self.diagnostics is not None:
+            self.diagnostics.report.setdefault('searchNavigation', []).append(summary)
+
+        def save_attempt():
+            summary['elapsedMs'] = round((time.monotonic() - started) * 1000)
+            if self.diagnostics is not None:
+                self.diagnostics._save_report()
+
+        for attempt in range(1, max_attempts + 1):
+            attempt_info = {'attempt': attempt, 'result': 'pending'}
+            summary['attempts'].append(attempt_info)
+            page_info['navigationAttempt'] = attempt
+            try:
+                remaining_ms = max(1, int((deadline - time.monotonic()) * 1000))
+                response = await page.goto(
+                    url, wait_until='domcontentloaded', timeout=min(timeout_ms, remaining_ms),
+                )
+            except Exception as error:
+                attempt_info.update(result='navigation_failed', errorType=type(error).__name__)
+                save_attempt()
+                # 导航异常仍由原调用方区分主品牌与可选查询，不扩大自动重试范围。
+                raise
+            status = response.status if response else None
+            page_info['httpStatus'] = status
+            attempt_info['httpStatus'] = status
+            failure = _page_rejection_reason(status, {})
+            if not failure:
+                if attempt > 1 and status == 200:
+                    # 临时错误已恢复；保留已落盘证据，但不能让它替代之后的目录门禁现场。
+                    for owner, saved in previous_evidence:
+                        for key, value in saved.items():
+                            if value is missing:
+                                vars(owner).pop(key, None)
+                            else:
+                                setattr(owner, key, value)
+                attempt_info['result'] = 'response_received'
+                save_attempt()
+                return response
+
+            if status in _SEARCH_RETRY_STATUSES:
+                try:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise asyncio.TimeoutError()
+                    state = await asyncio.wait_for(
+                        page.evaluate(_JS_SEARCH_STATE), timeout=min(3.0, remaining),
+                    )
+                    if not isinstance(state, dict) or state.get('bodyTextPresent') is not True:
+                        failure = 'search_error_state_unverified'
+                    else:
+                        page_info.update(state)
+                        failure = _page_rejection_reason(status, state)
+                        if failure == f'http_{status}' and not _recovery_page_matches(state, url):
+                            failure = 'search_identity_mismatch'
+                        elif (failure == f'http_{status}' and state.get('deliveryText')
+                              and not _delivery_postcode_matches(state['deliveryText'], market)):
+                            failure = 'delivery_location_mismatch'
+                except Exception as error:
+                    failure = 'search_error_state_unreadable'
+                    attempt_info['errorType'] = type(error).__name__
+
+            retryable = status in _SEARCH_RETRY_STATUSES and failure == f'http_{status}'
+            delay = _SEARCH_RETRY_DELAYS_SECONDS[attempt - 1] if attempt < max_attempts else 0
+            disposition = 'retry_pending' if retryable and delay else (
+                'attempts_exhausted' if retryable else 'rejected'
+            )
+            attempt_info.update(result='failed', reason=failure, disposition=disposition)
+            page_info['reason'] = failure
+            if self.diagnostics is not None:
+                self.diagnostics.record_page(page_info)
+            error = AmazonCatalogIncomplete(
+                f'Amazon {market.code} 搜索页请求失败 ({failure}, attempt={attempt}/{max_attempts})'
+            )
+            # 每次失败都先留现场，下一次导航不得覆盖尚未采集的证据。
+            await _capture_amazon_failure(
+                page, market, stage=f'catalog_search_attempt_{attempt}', reason=failure,
+                url=url, http_status=status, error=error, adapter=self,
+                timeout_seconds=max(0.01, min(3.0, deadline - time.monotonic())),
+            )
+            if disposition != 'retry_pending':
+                save_attempt()
+                raise error
+            if deadline - time.monotonic() <= delay:
+                attempt_info['disposition'] = 'budget_exhausted'
+                save_attempt()
+                raise error
+            attempt_info.update(disposition='retry_scheduled', retryDelaySeconds=delay)
+            save_attempt()
+            await asyncio.sleep(delay)
+            if time.monotonic() >= deadline:
+                attempt_info['disposition'] = 'budget_exhausted'
+                save_attempt()
+                raise error
+
     async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
         market = self.market
         self._price_change_paths = []
@@ -2178,8 +2298,9 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 url = f"{market.base_url}/s?k={quote_plus(search_text)}&page={n}"
                 try:
                     timeout_ms = 20_000 if query_kind in {"year", "series"} else 45_000
-                    response = await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-                    page_info['httpStatus'] = response.status if response else None
+                    await self._goto_search_page(page, url, page_info, timeout_ms)
+                except AmazonCatalogIncomplete:
+                    raise
                 except Exception as e:
                     page_info.update(reason='navigation_failed', errorType=type(e).__name__)
                     self.diagnostics.record_page(page_info)
@@ -2191,23 +2312,17 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     if query_kind == 'brand':
                         raise AmazonCatalogIncomplete(f'Amazon {market.code} 主品牌 {q} 第 {n} 页导航失败，本轮目录不完整') from e
                     return False
-                failure = _page_rejection_reason(page_info.get('httpStatus'), {})
-                if failure:
-                    page_info['reason'] = failure
-                    self.diagnostics.record_page(page_info)
-                    error = AmazonCatalogIncomplete(f'Amazon {market.code} 搜索页请求失败 ({failure})')
-                    await _capture_amazon_failure(
-                        page, market, stage='catalog_search', reason=failure,
-                        url=url, http_status=page_info.get('httpStatus'), error=error, adapter=self,
-                    )
-                    raise error
                 if not cookie_done:
                     await _accept_cookie(page)
                     cookie_done = True
                 await page.wait_for_timeout(random.randint(2200, 3200))
+                failure = None
                 try:
                     page_info.update(await page.evaluate(_JS_SEARCH_STATE))
                     failure = _page_rejection_reason(page_info.get('httpStatus'), page_info)
+                    if (not failure and page_info['navigationAttempt'] > 1
+                            and not _recovery_page_matches(page_info, url)):
+                        failure = 'search_identity_mismatch'
                     if failure:
                         page_info['reason'] = failure
                         self.diagnostics.record_page(page_info)

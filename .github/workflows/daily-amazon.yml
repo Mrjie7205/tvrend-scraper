@@ -48,6 +48,10 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: Record current scrape identity
+        # 测试或依赖安装失败也要留下本轮身份，让失败交接明确标记“未开始抓取”。
+        run: python scripts/amazon_artifact_gate.py prepare --country ${{ matrix.country }} --context _amazon_run.json --catalog catalog
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -63,9 +67,6 @@ jobs:
           PRICE_ARTIFACTS_DIR: ${{ runner.temp }}/scraper-tests-${{ matrix.country }}/price-changes
           CURRYS_CATALOG_DIAGNOSTICS_DIR: ${{ runner.temp }}/scraper-tests-${{ matrix.country }}/catalogs
         run: python -m pytest tests -q
-
-      - name: Record current scrape identity
-        run: python scripts/amazon_artifact_gate.py prepare --country ${{ matrix.country }} --context _amazon_run.json --catalog catalog
 
       - name: Scrape Amazon catalog（set address + canary + fail-closed)
         id: scrape

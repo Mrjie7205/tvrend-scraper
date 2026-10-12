@@ -119,7 +119,8 @@ def stage(context_path: Path, catalog_dir: Path, out_dir: Path, outcome: str) ->
     result = {key: value for key, value in context.items() if key != "existingCatalogs"}
     result.update({"finishedAt": now(), "scrapeOutcome": outcome, "status": "failed"})
     if outcome != "success":
-        result["reasonCode"] = "scrape_not_successful"
+        # 前置测试失败时明确交接未启动状态，不能把 checkout 的旧目录当作本轮结果。
+        result["reasonCode"] = "scrape_not_started" if outcome == "skipped" else "scrape_not_successful"
     else:
         country = context["country"]
         accepted = []
