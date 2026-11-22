@@ -1,769 +1,4 @@
 ﻿Date,Time,Brand,Product Name,Country,Platform,Price,Currency,Page Title,Status,Price_Trend
-2026-10-07,11:50:36,Samsung,65M80H,FR,Boulanger,779.0,EUR,"TV Mini LED SAMSUNG TU65M80H (2026) 65"" (163 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:50:38,Samsung,55M70H,FR,Boulanger,499.0,EUR,"TV Mini LED SAMSUNG TU55M72H (2026) 55"" (138 cm) 4K - Smart TV | Boulanger",Success,涨价
-2026-10-07,11:50:38,Samsung,55M80H,FR,Boulanger,599.0,EUR,"TV Mini LED SAMSUNG TU55M80H (2026) 55"" (138 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:50:42,Samsung,75M80H,FR,Boulanger,1099.0,EUR,"TV Mini LED SAMSUNG TU75M80H (2026) 75"" (189 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:50:47,Samsung,65U8005H,FR,Boulanger,578.99,EUR,"TV LED SAMSUNG TU65U8005H (2026) 65"" (163 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:50:49,Samsung,55U8090H,FR,Boulanger,479.0,EUR,"TV LED SAMSUNG TU55U8005H (2026) 55"" (138 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:50:52,Samsung,43M70H,FR,Boulanger,429.0,EUR,"TV Mini LED SAMSUNG TU43M72H (2026) 43"" (108 cm) 4K - Smart TV | Boulanger",Success,持平
-2026-10-07,11:50:56,Samsung,65S90H,FR,Boulanger,2099.0,EUR,"TV OLED SAMSUNG TQ65S92H (2026) 65"" (163 cm) 4K - Expérience Gaming, Smart TV avec IA, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:50:57,Samsung,43LS03FA,FR,Boulanger,649.0,EUR,"TV QLED SAMSUNG The Frame 43LS03FA (2025) 43"" (108 cm) | Boulanger",Success,持平
-2026-10-07,11:51:02,Samsung,55S90H,FR,Boulanger,1599.0,EUR,"TV OLED SAMSUNG TQ55S92H (2026) 55"" (138 cm) 4K - Expérience Gaming, Smart TV avec IA, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:51:06,Samsung,55S95H,FR,Boulanger,2099.0,EUR,"TV OLED SAMSUNG TQ55S95H (2026) 55"" (138 cm) 4K - Smart TV avec IA, anti-reflet, boîtier déporté (câble invisible) | Boulanger",Success,持平
-2026-10-07,11:51:08,Samsung,83S95F,FR,Boulanger,3299.0,EUR,"TV OLED SAMSUNG TQ83S95F (2025) 83"" (209 cm) 4K - Smart TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:51:10,Samsung,50U8090H,FR,Boulanger,429.0,EUR,"TV LED SAMSUNG TU50U8005H (2026) 50"" (125 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:51:16,Samsung,85U8005H,FR,Boulanger,1089.99,EUR,"TV LED SAMSUNG TU85U8005H (2026) 85"" (214 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:51:19,Samsung,43U8090H,FR,Boulanger,369.0,EUR,"TV LED SAMSUNG TU43U8005H (2026) 43"" (108 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:51:19,Samsung,65LS03HA,FR,Boulanger,1489.99,EUR,"TV QLED SAMSUNG The Frame TQ65LS03HA (2026) 65"" (163 cm) 4K - Mode art (effet tableau), boîtier déporté, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:51:22,Samsung,65QN80H,FR,Boulanger,1199.0,EUR,"TV QLED SAMSUNG TQ65QN82H (2026) 65"" (163 cm) 4K - Smart TV, NeoQLED (contrastes intenses et luminosité renforcée) | Boulanger",Success,持平
-2026-10-07,11:51:27,Samsung,32H5005FK,FR,Boulanger,259.0,EUR,"TV LED SAMSUNG TU32H5005FK (2025) 32"" (80 cm) | Boulanger",Success,持平
-2026-10-07,11:51:30,Samsung,98U9005H,FR,Boulanger,1489.0,EUR,"TV LED SAMSUNG 98U9005H (2026) 98"" (247 cm) 4K Ultra HD - Smart TV | Boulanger",Success,持平
-2026-10-07,11:51:31,Samsung,50M70H,FR,Boulanger,529.0,EUR,"TV Mini LED SAMSUNG TU50M72H (2026) 50"" (125 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:51:33,Samsung,55LS03HA,FR,Boulanger,1199.0,EUR,"TV QLED SAMSUNG The Frame TQ55LS03HA (2026) 55"" (138 cm) 4K - Mode art (effet tableau), boîtier déporté, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:51:39,Samsung,55LS03HW,FR,Boulanger,1499.0,EUR,"TV Mini LED SAMSUNG The Frame Pro TQ55LS03HW (2026) 55"" (138 cm) 4K - Mode art (effet tableau), anti-reflet | Boulanger",Success,持平
-2026-10-07,11:51:40,Samsung,65M70H,FR,Boulanger,679.0,EUR,"TV Mini LED SAMSUNG TU65M72H (2026) 65"" (163 cm) 4K - Smart TV | Boulanger",Success,持平
-2026-10-07,11:51:41,Samsung,77S90H,FR,Boulanger,2899.0,EUR,"TV OLED SAMSUNG TQ77S92H (2026) 77"" (195 cm) 4K - Expérience Gaming, Smart TV avec IA, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:51:45,Samsung,32LS03C,FR,Boulanger,399.0,EUR,"TV QLED SAMSUNG The Frame TQ32LS03C 32"" (80 cm) - Mode art (effet tableau), Smart TV | Boulanger",Success,持平
-2026-10-07,11:51:48,Samsung,65LS03HW,FR,Boulanger,1799.0,EUR,"TV Mini LED SAMSUNG The Frame Pro TQ65LS03HW (2026) 65"" (163 cm) 4K - Mode art (effet tableau), anti-reflet | Boulanger",Success,持平
-2026-10-07,11:51:52,Samsung,85M80H,FR,Boulanger,1399.0,EUR,"TV Mini LED SAMSUNG TU85M80H (2026) 85"" (214 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:51:56,Samsung,65QN70H,FR,Boulanger,899.0,EUR,"TV Mini LED SAMSUNG TQ65QN74H (2026) 65"" (163 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
-2026-10-07,11:51:56,Samsung,43QN90F,FR,Boulanger,798.99,EUR,"TV Mini LED SAMSUNG TQ43QN90F (2025) 43"" (109 cm) 4K - 120Hz, Smart TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:51:59,Samsung,50QN80H,FR,Boulanger,669.99,EUR,"TV QLED SAMSUNG TQ50QN80H (2026) 50"" (125 cm) 4K - Smart TV, NeoQLED (contrastes intenses et luminosité renforcée) | Boulanger",Success,持平
-2026-10-07,11:52:03,Samsung,55QN70H,FR,Boulanger,749.0,EUR,"TV Mini LED SAMSUNG TQ55QN74H (2026) 55"" (138 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
-2026-10-07,11:52:05,Samsung,43QN70H,FR,Boulanger,598.0,EUR,"TV Mini LED SAMSUNG TQ43QN74H (2026) 43"" (108 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
-2026-10-07,11:52:06,Samsung,32Q5FA,FR,Boulanger,379.0,EUR,"TV QLED SAMSUNG TQ32Q5FA (2025) 32"" (80 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:52:09,Samsung,75U8090H,FR,Boulanger,829.0,EUR,"TV LED SAMSUNG TU75U8005H (2026) 75"" (189 cm) 4K Ultra HD - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:52:12,Samsung,65R85H,FR,Boulanger,1999.0,EUR,"TV RGB SAMSUNG TMR65R85H (2026) 65"" (163 cm) 4K - Smart TV avec IA, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
-2026-10-07,11:52:13,Samsung,48S95H,FR,Boulanger,1499.0,EUR,"TV OLED SAMSUNG TQ48S95H (2026) 48"" (120 cm) 4K - Smart TV avec IA, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:52:15,Samsung,55LST7D,FR,Boulanger,1999.0,EUR,"TV QLED SAMSUNG THE TERRACE TQ55LST7D (2025) 55"" (140 cm) | Boulanger",Success,持平
-2026-10-07,11:52:17,Samsung,55QN80H,FR,Boulanger,999.0,EUR,"TV Mini LED SAMSUNG TQ55QN82H (2026) 55"" (138 cm) 4K - Smart TV, NeoQLED (contrastes intenses et luminosité renforcée) | Boulanger",Success,持平
-2026-10-07,11:52:20,Samsung,85LS03HW,FR,Boulanger,3699.0,EUR,"TV Mini LED SAMSUNG The Frame Pro TQ85LS03HW (2026) 85"" (214 cm) 4K - Mode art (effet tableau), anti-reflet | Boulanger",Success,持平
-2026-10-07,11:52:21,Samsung,50QN70H,FR,Boulanger,699.0,EUR,"TV Mini LED SAMSUNG TQ50QN74H (2026) 50"" (125 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
-2026-10-07,11:52:25,Samsung,50QN90F,FR,Boulanger,899.0,EUR,"TV Mini LED SAMSUNG TQ50QN90F (2025) 50"" (125 cm) 4K - 120Hz, NeoQLED (contrastes intenses) | Boulanger",Success,持平
-2026-10-07,11:52:26,Samsung,43LS03HE,FR,Boulanger,899.0,EUR,"TV QLED SAMSUNG The Frame 43LS03HE (2026) 43"" (108 cm) 4K Ultra HD - Mode art (effet tableau), Smart TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:52:28,Samsung,48S90H,FR,Boulanger,1399.0,EUR,"TV OLED SAMSUNG TQ48S92H (2026) 48"" (120 cm) 4K - Expérience Gaming, Smart TV avec IA, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:52:35,Samsung,24F6000,FR,Boulanger,219.0,EUR,"TV LED SAMSUNG TU24F6005 (2025) 24"" (60 cm) | Boulanger",Success,持平
-2026-10-07,11:52:35,Samsung,27F6000,FR,Boulanger,239.0,EUR,"TV LED SAMSUNG TU27F6005 (2025) 27"" (68 cm) | Boulanger",Success,持平
-2026-10-07,11:52:37,Samsung,65S95H,FR,Boulanger,2799.0,EUR,"TV OLED SAMSUNG TQ65S95H (2026) 65"" (163 cm) 4K - Smart TV avec IA, anti-reflet, boîtier déporté (câble invisible) | Boulanger",Success,持平
-2026-10-07,11:52:40,Samsung,85QN70H,FR,Boulanger,1599.0,EUR,"TV Mini LED SAMSUNG TQ85QN74H (2026) 85"" (214 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
-2026-10-07,11:52:43,Samsung,42S90H,FR,Boulanger,1199.0,EUR,"TV OLED SAMSUNG TQ42S92H (2026) 42"" (105 cm) 4K - Expérience Gaming, Smart TV avec IA, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:52:43,Samsung,75QN80H,FR,Boulanger,1499.0,EUR,"TV QLED SAMSUNG TQ75QN82H (2026) 75"" (189 cm) 4K - Smart TV, NeoQLED (contrastes intenses et luminosité renforcée) | Boulanger",Success,持平
-2026-10-07,11:52:46,Samsung,75QN70H,FR,Boulanger,1299.0,EUR,"TV Mini LED SAMSUNG TQ75QN74H (2026) 75"" (189 cm) 4K - Smart TV, NeoQLED (contrastes intenses) | Boulanger",Success,持平
-2026-10-07,11:52:49,Samsung,75R95H,FR,Boulanger,3499.0,EUR,"TV RGB SAMSUNG TMR75R95H (2026) 75"" (189 cm) 4K - Smart TV IA, anti-reflet, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
-2026-10-07,11:52:50,Samsung,55R85H,FR,Boulanger,1199.0,EUR,"TV RGB SAMSUNG TMR55R85H (2026) 55"" (138 cm) 4K - Smart TV avec IA, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
-2026-10-07,11:52:53,Samsung,98Q7FA,FR,Boulanger,1999.0,EUR,"TV QLED SAMSUNG TQ98Q7FA (2026) 98"" (249 cm) 4K - Smart TV | Boulanger",Success,持平
-2026-10-07,11:52:55,Samsung,100M90H,FR,Boulanger,2299.0,EUR,TV Mini LED SAMSUNG 100M90H (253cm) | Boulanger,Success,持平
-2026-10-07,11:52:56,Samsung,85QN80H,FR,Boulanger,2299.0,EUR,"TV QLED SAMSUNG TQ85QN82H (2026) 85"" (214 cm) 4K - Smart TV, NeoQLED (contrastes intenses et luminosité renforcée) | Boulanger",Success,持平
-2026-10-07,11:52:59,Samsung,75R85H,FR,Boulanger,2499.0,EUR,"TV RGB SAMSUNG TMR75R85H (2026) 75"" (189 cm) 4K - Smart TV avec IA, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
-2026-10-07,11:53:00,Samsung,75LS03HW,FR,Boulanger,2499.0,EUR,"TV Mini LED SAMSUNG The Frame Pro 75LS03HW (2026) 75"" (189 cm) 4K - NeoQLED (contrastes intenses, luminosité renforcée) | Boulanger",Success,持平
-2026-10-07,11:53:02,Samsung,65LST7D,FR,Boulanger,2499.0,EUR,"TV QLED SAMSUNG The Terrace TQ65LST7D (2025) 65"" (163 cm) 4k - Smart TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:53:05,Samsung,55S99H,FR,Boulanger,2499.0,EUR,"TV OLED SAMSUNG TQ55S99H (2026) 55"" (138 cm) 4K - Smart TV avec IA, anti-reflet, mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:53:06,Samsung,65R95H,FR,Boulanger,2999.0,EUR,"TV RGB SAMSUNG TMR65R95H (2026) 65"" (163 cm) 4K - Smart TV IA, anti-reflet, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
-2026-10-07,11:53:08,Samsung,65S99H,FR,Boulanger,3199.0,EUR,"TV OLED SAMSUNG TQ65S99H (2026) 65"" (163 cm) 4K - Smart TV avec IA, anti-reflet, mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:53:10,Samsung,100QN80H,FR,Boulanger,3699.0,EUR,TV QLED SAMSUNG 100QN80H (253cm) | Boulanger,Success,持平
-2026-10-07,11:53:12,Samsung,77S95H,FR,Boulanger,3899.0,EUR,"TV OLED SAMSUNG TQ77S95H (2026) 77"" (195 cm) 4K - Smart TV avec IA, anti-reflet, boîtier déporté (câble invisible) | Boulanger",Success,持平
-2026-10-07,11:53:15,Samsung,83S90H,FR,Boulanger,4299.0,EUR,"TV OLED SAMSUNG TQ83S92H (2026) 83"" (209 cm) 4K - Expérience Gaming, Smart TV avec IA, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:53:17,Samsung,77S99H,FR,Boulanger,4299.0,EUR,"TV OLED SAMSUNG TQ77S99H (2026) 77"" (195 cm) 4K - Smart TV avec IA, anti-reflet, mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:53:18,Samsung,85R85H,FR,Boulanger,4499.0,EUR,"TV RGB SAMSUNG TMR85R85H (2026) 85"" (214 cm) 4K - Smart TV avec IA, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
-2026-10-07,11:53:21,Samsung,83S99H,FR,Boulanger,4999.0,EUR,"TV OLED SAMSUNG TQ83S99H (2026) 83"" (209 cm) 4K - Smart TV avec IA, anti-reflet, mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:53:23,Samsung,85R95H,FR,Boulanger,4999.0,EUR,"TV RGB SAMSUNG TMR85R95H (2026) 85"" (214 cm) 4K - Smart TV IA, anti-reflet, Micro RGB (couleurs ultra-détaillées) | Boulanger",Success,持平
-2026-10-07,11:53:24,Samsung,85QN900F,FR,Boulanger,5790.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ85QN900F 8K AI 2025 | Boulanger,Success,持平
-2026-10-07,11:53:27,Samsung,75LST7D,FR,Boulanger,5999.0,EUR,"TV QLED SAMSUNG The Terrace TQ75LST7D (2025) 75"" (189 cm) 4K - Smart TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:53:30,Samsung,115MR95F,FR,Boulanger,29999.0,EUR,"TV RGB SAMSUNG MRE115MR95F (2025) 115"" (290 cm) | Boulanger",Success,持平
-2026-10-07,11:53:34,Samsung,115QN90F,FR,Boulanger,9399.0,EUR,"TV Mini LED SAMSUNG TQ115QN90F (2025) 115"" (291 cm) | Boulanger",Success,持平
-2026-10-07,11:53:39,Samsung,50LS03FA,FR,Boulanger,729.0,EUR,"TV QLED SAMSUNG The Frame 50LS03FA (2025) 50"" (125 cm) 4K - Smart TV, anti-reflet | Boulanger",Success,降价
-2026-10-07,11:53:41,Samsung,55S90F,FR,Boulanger,932.94,EUR,"TV OLED SAMSUNG TQ55S90F (2025) 55"" (138 cm) 4K - Smart TV | Boulanger",Success,持平
-2026-10-07,11:53:42,Samsung,85LS03FW,FR,Boulanger,2549.0,EUR,"TV Mini LED SAMSUNG The Frame Pro 85LS03FW (2025) 85"" (216 cm) | Boulanger",Success,持平
-2026-10-07,11:53:49,Samsung,65LS03FW,FR,Boulanger,1488.99,EUR,"TV Mini LED SAMSUNG The Frame Pro 65LS03FW (2025) 65"" (165 cm) 4K - Mode art (effet tableau), Smart TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,11:53:51,Samsung,43U8005F,FR,Boulanger,339.21,EUR,TV LED SAMSUNG TU43U8005F 4K AI Smart TV 2025 | Boulanger,Success,降价
-2026-10-07,11:53:53,Samsung,65Q7F,FR,Boulanger,649.0,EUR,"TV QLED SAMSUNG TQ65Q7F5 (2025) 65"" (165 cm) 4K | Boulanger",Success,涨价
-2026-10-07,11:53:55,Samsung,43U7025F,FR,Boulanger,299.95,EUR,"TV LED SAMSUNG 43U7025F (2025) 43"" (108 cm) 4K Ultra HD | Boulanger",Success,持平
-2026-10-07,11:53:58,Samsung,55Q6F,FR,Boulanger,449.0,EUR,TV QLED SAMSUNG TQ55Q6FA 2025 - 55 pouces ( 138 cm ) | Boulanger,Success,持平
-2026-10-07,11:53:59,Samsung,85QN80F,FR,Boulanger,1699.0,EUR,TV Mini LED SAMSUNG NeoQLED TQ85QN80F 4K AI 2025 | Boulanger,Success,持平
-2026-10-07,11:54:00,Samsung,85Q6F,FR,Boulanger,999.65,EUR,TV QLED SAMSUNG TQ85Q6FAAUXXC - Qled Gamme Q6F | Boulanger,Success,持平
-2026-10-07,11:54:04,Samsung,65Q7F,FR,Boulanger,681.17,EUR,"TV QLED SAMSUNG TQ65Q7FA (2025) 65"" (165cm) 4k - Smart TV | Boulanger",Success,涨价
-2026-10-07,11:54:07,Samsung,65Q7F,FR,Boulanger,599.73,EUR,"TV QLED SAMSUNG 65Q7F4 (2026) 65"" (165 cm) | Boulanger",Success,降价
-2026-10-07,11:54:07,Samsung,55M70H,FR,Boulanger,495.79,EUR,TV Mini LED SAMSUNG TU55M74HAUXXC | Boulanger,Success,持平
-2026-10-07,11:54:12,Samsung,65LS03FA,FR,Boulanger,1049.0,EUR,"TV QLED SAMSUNG The Frame 65LS03FA (2025) 65"" (164 cm) | Boulanger",Success,降价
-2026-10-07,11:54:15,Samsung,55U7000F,FR,Boulanger,548.99,EUR,TV LED SAMSUNG 55U7005F | Boulanger,Success,持平
-2026-10-07,11:54:18,Samsung,50U8005F,FR,Boulanger,449.0,EUR,TV LED SAMSUNG TU50U8005F 4K AI Smart TV 2025 | Boulanger,Success,持平
-2026-10-07,11:54:18,Samsung,50QN80F,FR,Boulanger,646.32,EUR,TV Mini LED SAMSUNG NeoQLED TQ50QN80F 4K AI 2025 | Boulanger,Success,涨价
-2026-10-07,11:54:22,Samsung,65U7000F,FR,Boulanger,645.03,EUR,TV LED SAMSUNG 65U7005F | Boulanger,Success,持平
-2026-10-07,11:54:24,Samsung,43LS01B,FR,Boulanger,933.08,EUR,TV QLED SAMSUNG The Serif TQ43LS01B Blanc | Boulanger,Success,降价
-2026-10-07,11:54:27,Samsung,42S90F,FR,Boulanger,877.02,EUR,"TV OLED SAMSUNG TQ42S90F (2025) 42"" (105 cm) 4K - Smart TV | Boulanger",Success,涨价
-2026-10-07,11:54:29,Samsung,43LS01B,FR,Boulanger,1166.41,EUR,TV QLED SAMSUNG The Serif TQ43LS01B Bleu | Boulanger,Success,持平
-2026-10-07,11:54:32,Samsung,55LS01B,FR,Boulanger,1376.89,EUR,TV QLED SAMSUNG The Serif TQ55LS01B Bleu | Boulanger,Success,持平
-2026-10-07,11:54:34,Samsung,50QN90C,FR,Boulanger,1407.77,EUR,TV QLED SAMSUNG NeoQLED TQ50QN90C | Boulanger,Success,持平
-2026-10-07,11:54:35,Samsung,43LS05B,FR,Boulanger,1590.64,EUR,TV QLED SAMSUNG The Sero TQ43LS05B | Boulanger,Success,持平
-2026-10-07,11:54:37,Samsung,100QN80F,FR,Boulanger,2190.0,EUR,"TV Mini LED SAMSUNG TQ100QN80F (2025) 100"" (252 cm) 4K - 144 Hz | Boulanger",Success,持平
-2026-10-07,11:54:44,Samsung,83S90F,FR,Boulanger,4990.0,EUR,"TV OLED SAMSUNG TQ83S90F 4K AI Smart TV (2025) 83"" (211 cm) | Boulanger",Success,持平
-2026-10-07,11:54:45,Samsung,85QN990F,FR,Boulanger,11684.99,EUR,TV Mini LED SAMSUNG NeoQLED TQ85QN990F 8K AI 2025 | Boulanger,Success,涨价
-2026-10-07,11:54:46,Samsung,83S90D,FR,Boulanger,3010.53,EUR,TV OLED SAMSUNG TQ83S90D-83 pouces (209cm) | Boulanger,Success,持平
-2026-10-07,11:54:51,Samsung,98QN90A,FR,Boulanger,10605.69,EUR,TV QLED SAMSUNG QE98QN90A | Boulanger,Success,持平
-2026-10-07,11:54:56,Samsung,55LS03FA,FR,Boulanger,779.0,EUR,"TV QLED SAMSUNG The Frame TQ55LS03FA (2025) 55"" (138 cm) 4K Ultra HD - Mode art (effet tableau), anti-reflet | Boulanger",Success,降价
-2026-10-07,11:54:56,Samsung,55QN70F,FR,Boulanger,598.75,EUR,"TV Mini LED SAMSUNG TQ55QN77F (2025) 55"" (138 cm) 4K - Smart TV avec IA, NeoQLED (contrastes intenses) | Boulanger",Success,持平
-2026-10-07,11:55:01,Samsung,75Q7F,FR,Boulanger,799.0,EUR,"TV QLED SAMSUNG TQ75Q7F5 (2025) 75"" (189 cm) 4K - Smart TV avec IA | Boulanger",Success,持平
-2026-10-07,11:55:07,Samsung,55Q7F,FR,Boulanger,479.0,EUR,"TV QLED SAMSUNG TQ55Q7F5 (2025) 55"" (138 cm) 4K - Smart TV | Boulanger",Success,持平
-2026-10-07,11:55:07,Samsung,85QN90F,FR,Boulanger,3999.0,EUR,"TV Mini LED SAMSUNG TQ85QN90F 4K AI (2025) 85"" (216 cm) - NeoQLED (contrastes intenses) | Boulanger",Success,持平
-2026-10-07,11:55:12,Samsung,98QN90F,FR,Boulanger,4999.0,EUR,"TV Mini LED SAMSUNG TQ98QN90F (2025) 98"" (247 cm) - NeoQLED (contrastes intenses) | Boulanger",Success,持平
-2026-10-07,11:55:17,TCL,50C6K,FR,Boulanger,549.0,EUR,"TV Mini LED TCL 50C69K (2026) 50"" (126 cm) | Boulanger",Success,持平
-2026-10-07,11:55:18,TCL,65P8L,FR,Boulanger,799.0,EUR,"TV Mini LED TCL 65P89L (2026) 65"" (164 cm) 4K - 144Hz, Google TV | Boulanger",Success,涨价
-2026-10-07,11:55:19,TCL,75C6KPRO,FR,Boulanger,1098.99,EUR,"TV Mini LED TCL 75C69K PRO (2026) 75"" (191 cm) | Boulanger",Success,持平
-2026-10-07,11:55:22,TCL,55C6KPRO,FR,Boulanger,699.0,EUR,"TV Mini LED TCL 55C69K PRO (2026) 55"" (139 cm) - 144Hz, Smart TV, système audio ONKYO | Boulanger",Success,持平
-2026-10-07,11:55:25,TCL,65C7L,FR,Boulanger,1199.0,EUR,"TV Mini LED TCL 65C79L (2026) 65"" (164 cm) - Expérience Gaming, 144Hz, système sonore Bang & Olufsen | Boulanger",Success,持平
-2026-10-07,11:55:26,TCL,65C6KPRO,FR,Boulanger,899.0,EUR,"TV Mini LED TCL 65C69K PRO (2026) 65"" (165 cm) | Boulanger",Success,持平
-2026-10-07,11:55:31,TCL,55C8L,FR,Boulanger,1099.0,EUR,"TV Mini LED TCL 55C89L (2026) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,11:55:32,TCL,65T6C,FR,Boulanger,549.0,EUR,"TV QLED TCL 65T69C (2026) 65"" (165 cm) | Boulanger",Success,降价
-2026-10-07,11:55:36,TCL,65C8L,FR,Boulanger,1499.0,EUR,"TV Mini LED TCL 65C89L (2026) 65"" (164 cm) | Boulanger",Success,持平
-2026-10-07,11:55:39,TCL,55A400PRO,FR,Boulanger,747.99,EUR,"TV Mini LED TCL 55A400 PRO (2026) 55"" (140 cm) | Boulanger",Success,持平
-2026-10-07,11:55:40,TCL,43T6C,FR,Boulanger,299.0,EUR,"TV QLED TCL 43T69C (2026) 43"" (109 cm) | Boulanger",Success,降价
-2026-10-07,11:55:42,TCL,85X11L,FR,Boulanger,4999.0,EUR,"TV Mini LED TCL 85X11L (2026) 85"" (215 cm) 4K | Boulanger",Success,持平
-2026-10-07,11:55:44,TCL,75C7L,FR,Boulanger,1599.0,EUR,"TV Mini LED TCL 75C79L (2026) 75"" (189 cm) 4K - Expérience Gaming, 144Hz, système sonore Bang & Olufsen | Boulanger",Success,持平
-2026-10-07,11:55:45,TCL,98A400PRO,FR,Boulanger,2299.0,EUR,"TV Mini LED TCL 98A400 PRO (2026) 98"" (249 cm) | Boulanger",Success,持平
-2026-10-07,11:55:47,TCL,55T6C,FR,Boulanger,449.0,EUR,"TV QLED TCL 55T69C (2026) 55"" (140 cm) | Boulanger",Success,涨价
-2026-10-07,11:55:51,TCL,55P8L,FR,Boulanger,601.58,EUR,"TV Mini LED TCL 55P89L (2026) 55"" (139 cm) - 144Hz, Google TV | Boulanger",Success,涨价
-2026-10-07,11:55:53,TCL,50S5L,FR,Boulanger,375.99,EUR,"TV QLED TCL 50S5L (2026) 50"" (127 cm) | Boulanger",Success,持平
-2026-10-07,11:55:54,TCL,85C8L,FR,Boulanger,2499.0,EUR,"TV Mini LED TCL 85C89L (2026) 85"" (215 cm) | Boulanger",Success,持平
-2026-10-07,11:55:56,TCL,50T6C,FR,Boulanger,449.0,EUR,"TV QLED TCL 50T69C (2026) 50"" (127 cm) | Boulanger",Success,持平
-2026-10-07,11:55:58,TCL,32S5L,FR,Boulanger,229.99,EUR,"TV QLED TCL 32S5L (2026) 32"" (81 cm) | Boulanger",Success,持平
-2026-10-07,11:56:00,TCL,85C6KPRO,FR,Boulanger,1798.99,EUR,"TV Mini LED TCL 85C69K PRO (2026) 85"" (216 cm) - Expérience Gaming, 144Hz, Google TV | Boulanger",Success,持平
-2026-10-07,11:56:03,TCL,65A400PRO,FR,Boulanger,999.0,EUR,"TV Mini LED TCL 65A400 PRO (2026) 65"" (165 cm) | Boulanger",Success,持平
-2026-10-07,11:56:07,TCL,50C7K,FR,Boulanger,749.0,EUR,"TV Mini LED TCL 50C79K (2025) 50"" (126 cm) 4K Ultra HD - 144Hz, Google TV | Boulanger",Success,持平
-2026-10-07,11:56:07,TCL,43S5L,FR,Boulanger,329.0,EUR,"TV QLED TCL 43S5L (2026) 43"" (109 cm) | Boulanger",Success,持平
-2026-10-07,11:56:09,TCL,65A400U,FR,Boulanger,899.0,EUR,"TV Mini LED TCL 65A400U (2026) 65"" (164 cm) - 144Hz, Smart TV, système audio ONKYO, mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:56:12,TCL,85P8L,FR,Boulanger,1399.0,EUR,"TV Mini LED TCL 85P89L (2026) 85"" (215 cm) 4K - 144Hz, Google TV | Boulanger",Success,涨价
-2026-10-07,11:56:14,TCL,55P6L,FR,Boulanger,419.0,EUR,"TV LED TCL 55P6L (2026) 55"" (140 cm) | Boulanger",Success,持平
-2026-10-07,11:56:15,TCL,43A400PRO,FR,Boulanger,496.99,EUR,"TV LED TCL 43A400 PRO (2026) 43"" (109 cm) | Boulanger",Success,持平
-2026-10-07,11:56:17,TCL,40S5L,FR,Boulanger,299.0,EUR,"TV QLED TCL 40S5L (2026) 40"" (102 cm) | Boulanger",Success,持平
-2026-10-07,11:56:19,TCL,32A400PRO,FR,Boulanger,399.0,EUR,"TV LED TCL 32A400 PRO (2026) 32"" (80 cm) - Mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:56:20,TCL,85A400U,FR,Boulanger,1749.0,EUR,"TV Mini LED TCL 85A400U (2026) 85"" (215 cm) - 144Hz, Smart TV, système audio ONKYO, mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:56:22,TCL,65P7L,FR,Boulanger,799.0,EUR,"TV QLED TCL 65P79L (2026) 65"" (165 cm) | Boulanger",Success,持平
-2026-10-07,11:56:24,TCL,55A400U,FR,Boulanger,848.99,EUR,"TV Mini LED TCL 55A400U (2026) 55"" (139 cm) - 144Hz, Smart TV, système audio ONKYO, mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:56:26,TCL,75A400PRO,FR,Boulanger,1249.0,EUR,"TV Mini LED TCL 75A400 PRO (2026) 75"" (191 cm) - 144Hz, Mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:56:27,TCL,65RM7L,FR,Boulanger,1176.99,EUR,"TV RGB TCL 65RM7L (2026) 65"" (164 cm) - Expérience Gaming, 144Hz, Google TV, système audio ONKYO | Boulanger",Success,持平
-2026-10-07,11:56:29,TCL,55C7L,FR,Boulanger,899.0,EUR,"TV Mini LED TCL 55C79L (2026) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,11:56:32,TCL,65P6L,FR,Boulanger,649.0,EUR,"TV LED TCL 65P6L (2026) 65"" (164 cm) 4K Ultra HD - Google TV, Smart TV | Boulanger",Success,持平
-2026-10-07,11:56:33,TCL,43P7L,FR,Boulanger,449.0,EUR,"TV QLED TCL 43P79L (2026) 43"" (109 cm) | Boulanger",Success,持平
-2026-10-07,11:56:35,TCL,43V6D,FR,Boulanger,369.0,EUR,"TV LED TCL 43V6D (2026) 43"" (109 cm) | Boulanger",Success,持平
-2026-10-07,11:56:38,TCL,50V6D,FR,Boulanger,386.99,EUR,"TV LED TCL 50V6D (2026) 50"" (127 cm) | Boulanger",Success,持平
-2026-10-07,11:56:39,TCL,50P7L,FR,Boulanger,549.0,EUR,"TV QLED TCL 50P79L (2026) 50"" (127 cm) | Boulanger",Success,持平
-2026-10-07,11:56:40,TCL,55P7L,FR,Boulanger,649.0,EUR,"TV QLED TCL 55P79L (2026) 55"" (140 cm) | Boulanger",Success,持平
-2026-10-07,11:56:44,TCL,65T6C,FR,Boulanger,689.0,EUR,"TV QLED TCL 65T6C (2026) 65"" (165 cm) | Boulanger",Success,持平
-2026-10-07,11:56:46,TCL,75P6L,FR,Boulanger,699.99,EUR,"TV LED TCL 75P6L (2026) 75"" (191 cm) 4K - Smart TV | Boulanger",Success,降价
-2026-10-07,11:56:47,TCL,75P7L,FR,Boulanger,999.0,EUR,"TV QLED TCL 75P79L (2026) 75"" (191 cm) | Boulanger",Success,持平
-2026-10-07,11:56:49,TCL,75A400U,FR,Boulanger,1349.0,EUR,"TV Mini LED TCL 75A400U (2026) 75"" (189 cm) - 144Hz, Smart TV, système audio ONKYO, mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:56:52,TCL,75RM7L,FR,Boulanger,1567.99,EUR,"TV RGB TCL 75RM7L (2026) 75"" (189 cm) - Expérience Gaming, 144Hz, Google TV, système audio ONKYO | Boulanger",Success,持平
-2026-10-07,11:56:54,TCL,85P7L,FR,Boulanger,1399.0,EUR,"TV QLED TCL 85P79L (2026) 85"" (216 cm) 4K | Boulanger",Success,持平
-2026-10-07,11:56:55,TCL,85RM7L,FR,Boulanger,1878.99,EUR,"TV RGB TCL 85RM7L (2026) 85"" (215 cm) - Expérience Gaming, 144Hz, Google TV, système audio ONKYO | Boulanger",Success,持平
-2026-10-07,11:56:57,TCL,85C7L,FR,Boulanger,1899.0,EUR,"TV Mini LED TCL 85C79L (2026) 85"" (215 cm) - Expérience Gaming, 144Hz, système sonore Bang & Olufsen | Boulanger",Success,持平
-2026-10-07,11:57:00,TCL,75C8L,FR,Boulanger,1999.0,EUR,"TV Mini LED TCL 75C89L (2026) 75"" (189 cm) - 144Hz, système sonore Bang & Olufsen | Boulanger",Success,持平
-2026-10-07,11:57:01,TCL,98P8L,FR,Boulanger,1999.0,EUR,"TV Mini LED TCL 98P89L (2026) 98"" (248 cm) 4K - 144Hz, Google TV | Boulanger",Success,涨价
-2026-10-07,11:57:03,TCL,98A400U,FR,Boulanger,2348.99,EUR,"TV Mini LED TCL 98A400U (2026) 98"" (248 cm) - 144Hz, Smart TV, système audio ONKYO, mode art (effet tableau) | Boulanger",Success,持平
-2026-10-07,11:57:07,TCL,98RM7L,FR,Boulanger,2990.0,EUR,"TV RGB TCL 98RM7L (2026) 98"" (248 cm) - Expérience Gaming, 144Hz, Google TV, système audio ONKYO | Boulanger",Success,持平
-2026-10-07,11:57:07,TCL,98C7L,FR,Boulanger,2599.0,EUR,"TV Mini LED TCL 98C79L (2026) 98"" (248 cm) | Boulanger",Success,持平
-2026-10-07,11:57:10,TCL,75X11L,FR,Boulanger,3299.0,EUR,"TV Mini LED TCL 75X11L (2026) 75"" (189 cm) | Boulanger",Success,持平
-2026-10-07,11:57:14,TCL,85RM9L,FR,Boulanger,4999.0,EUR,"TV RGB TCL 85RM9L (2026) 85"" (216 cm) 4K - 144 Hz, Google TV, système sonore Bang & Olufsen | Boulanger",Success,持平
-2026-10-07,11:57:16,TCL,98C8L,FR,Boulanger,3499.0,EUR,"TV Mini LED TCL 98C89L (2026) 98"" (248 cm) - 144Hz, Google TV, système sonore Bang & Olufsen | Boulanger",Success,持平
-2026-10-07,11:57:17,TCL,98RM9L,FR,Boulanger,6999.0,EUR,"TV RGB TCL 98RM9L (2026) 98"" (249 cm) | Boulanger",Success,持平
-2026-10-07,11:57:19,TCL,98X11L,FR,Boulanger,7999.0,EUR,"TV Mini LED TCL 98X11L (2026) 98"" (248 cm) | Boulanger",Success,持平
-2026-10-07,11:57:22,TCL,115C7K,FR,Boulanger,8999.0,EUR,"TV Mini LED TCL 115C7K (2025) 115"" (291 cm) | Boulanger",Success,持平
-2026-10-07,11:57:23,TCL,115X955MAX,FR,Boulanger,8999.0,EUR,"TV Mini LED TCL 115X955MAX (2026) 115"" (291 cm) | Boulanger",Success,持平
-2026-10-07,11:57:25,TCL,115RM9L,FR,Boulanger,12999.0,EUR,"TV RGB TCL 115RM9L (2026) 115"" (291 cm) | Boulanger",Success,持平
-2026-10-07,11:57:27,TCL,75P8L,FR,Boulanger,917.26,EUR,TV Mini LED TCL TCL 75P8L | Boulanger,Success,降价
-2026-10-07,11:57:29,TCL,55T6C,FR,Boulanger,425.99,EUR,"TV QLED TCL 55T6C (2026) 55"" (140 cm) | Boulanger",Success,持平
-2026-10-07,11:57:34,TCL,98P8K,FR,Boulanger,1666.98,EUR,"TV QLED TCL 98P89K (2025) 98"" (248 cm) 4K Ultra HD - Expérience Gaming, 144Hz, Google TV | Boulanger",Success,持平
-2026-10-07,11:57:34,TCL,32S4K,FR,Boulanger,206.67,EUR,TV QLED TCL 32S49K 2025-32 pouces (80cm) | Boulanger,Success,持平
-2026-10-07,11:57:36,TCL,75A300,FR,Boulanger,1378.99,EUR,TV QLED TCL NXTVISION 75A300 PRO-75 pouces (189cm) | Boulanger,Success,持平
-2026-10-07,11:57:39,TCL,43P735,FR,Boulanger,370.73,EUR,TV LED TCL 43P735 | Boulanger,Success,持平
-2026-10-07,11:57:41,TCL,50P638,FR,Boulanger,400.43,EUR,TV LED TCL 50P638 | Boulanger,Success,持平
-2026-10-07,11:57:42,TCL,50P6K,FR,Boulanger,449.99,EUR,TV LED TCL 50P69K 2025 - 50 pouces ( 126 cm ) | Boulanger,Success,持平
-2026-10-07,11:57:45,TCL,50P735,FR,Boulanger,455.46,EUR,TV LED TCL 50P735 | Boulanger,Success,持平
-2026-10-07,11:57:48,TCL,55P6K,FR,Boulanger,544.97,EUR,TV LED TCL 55P69K 2025-55 pouces (139cm) | Boulanger,Success,降价
-2026-10-07,11:57:50,TCL,55P8L,FR,Boulanger,581.32,EUR,"TV Mini LED TCL 55P8L (2026) 55"" (139 cm) | Boulanger",Success,涨价
-2026-10-07,11:57:51,TCL,55A300W,FR,Boulanger,711.28,EUR,TV QLED TCL NXTVISION 55A300W-55 pouces (139cm) | Boulanger,Success,涨价
-2026-10-07,11:57:54,TCL,65P8L,FR,Boulanger,730.08,EUR,TV Mini LED TCL TCL 65P8L | Boulanger,Success,持平
-2026-10-07,11:57:56,TCL,75P8L,FR,Boulanger,999.0,EUR,"TV Mini LED TCL 75P89L (2026) 75"" (189 cm) 4K - 144Hz, Google TV | Boulanger",Success,持平
-2026-10-07,11:57:59,TCL,75P8K,FR,Boulanger,925.77,EUR,TV QLED TCL 75P89K 144Hz 2025-75 pouces (189cm) | Boulanger,Success,持平
-2026-10-07,11:58:00,TCL,65A300,FR,Boulanger,1175.26,EUR,TV QLED TCL NXTVISION 65A300 PRO-65 pouces (164cm) | Boulanger,Success,持平
-2026-10-07,11:58:02,TCL,85P8L,FR,Boulanger,1299.0,EUR,TV Mini LED TCL TCL 85P8L | Boulanger,Success,持平
-2026-10-07,11:58:07,TCL,85C6K,FR,Boulanger,1426.61,EUR,TV Mini LED TCL 85C69K 2025-85 pouces (215cm) | Boulanger,Success,降价
-2026-10-07,11:58:10,TCL,75A300W,FR,Boulanger,1307.14,EUR,TV QLED TCL NXTVISION 75A300W-75 pouces (189cm) | Boulanger,Success,持平
-2026-10-07,11:58:11,TCL,98P8L,FR,Boulanger,1735.0,EUR,TV Mini LED TCL TCL 98P8L | Boulanger,Success,持平
-2026-10-07,11:58:15,TCL,98C8K,FR,Boulanger,2817.15,EUR,TV Mini LED TCL 98C89K 2025-98 pouces (248cm) | Boulanger,Success,涨价
-2026-10-07,11:58:17,TCL,98C955,FR,Boulanger,6363.48,EUR,TV QLED TCL Mini LED 98C955 | Boulanger,Success,持平
-2026-10-07,11:58:20,TCL,85X955,FR,Boulanger,4993.93,EUR,TV QLED TCL Mini LED 85X955 | Boulanger,Success,持平
-2026-10-07,11:58:22,TCL,85A400PRO,FR,Boulanger,1665.99,EUR,"TV Mini LED TCL 85A400 PRO (2026) 85"" (216 cm) | Boulanger",Success,持平
-2026-10-07,11:58:23,LG,65C6,FR,Boulanger,1899.0,EUR,"TV OLED LG 65C6 (2026) 65"" (164 cm) 4K Ultra HD - Expérience Cinéma & Gaming, 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:58:25,LG,55C6,FR,Boulanger,1499.0,EUR,"TV OLED LG 55C6 (2026) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,11:58:27,LG,77C6,FR,Boulanger,2599.0,EUR,"TV OLED LG 77C6 (2026) 77"" (195 cm) | Boulanger",Success,持平
-2026-10-07,11:58:29,LG,55G6,FR,Boulanger,1899.0,EUR,"TV OLED LG 55G6 (2026) 55"" (139 cm) 4K Ultra HD - Expérience Cinéma & Gaming, 120Hz, Smart TV, anti-reflet | Boulanger",Success,涨价
-2026-10-07,11:58:32,LG,24LB7000,FR,Boulanger,179.0,EUR,"TV LED LG 24LB70006LA (2026) 24"" (60 cm) | Boulanger",Success,持平
-2026-10-07,11:58:34,LG,65G6,FR,Boulanger,2599.0,EUR,"TV OLED LG 65G6 (2026) 65"" (164 cm) 4K Ultra HD - Expérience Cinéma & Gaming, 120Hz, anti-reflet | Boulanger",Success,涨价
-2026-10-07,11:58:37,LG,43QNED70B,FR,Boulanger,369.0,EUR,"TV Mini LED LG 43QNED71B (2026) 43"" (108 cm) 4K Ultra HD - Smart TV | Boulanger",Success,持平
-2026-10-07,11:58:39,LG,65NU850B6,FR,Boulanger,529.0,EUR,"TV LED LG 65NU850B6 (2026) 65"" (164 cm) 4K Ultra HD - Smart TV | Boulanger",Success,持平
-2026-10-07,11:58:41,LG,65QNED85B,FR,Boulanger,1099.0,EUR,"TV Mini LED LG 65QNED86B (2026) 65"" (164 cm) 4K Ultra HD - 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:58:43,LG,42C6,FR,Boulanger,1099.0,EUR,"TV OLED LG 42C6 (2026) 42"" (106 cm) 4K Ultra HD - Expérience Gaming, 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:58:44,LG,50QNED85B,FR,Boulanger,749.0,EUR,"TV Mini LED LG 50QNED86B (2026) 50"" (127 cm) | Boulanger",Success,持平
-2026-10-07,11:58:46,LG,55NU850B6,FR,Boulanger,429.0,EUR,"TV LED LG 55NU850B6 (2026) 55"" (139 cm) 4K Ultra HD | Boulanger",Success,持平
-2026-10-07,11:58:50,LG,43QNED85B,FR,Boulanger,549.0,EUR,"TV Mini LED LG 43QNED86B (2026) 43"" (108 cm) | Boulanger",Success,持平
-2026-10-07,11:58:51,LG,48C6,FR,Boulanger,1299.0,EUR,"TV OLED LG 48C6 (2026) 48"" (121 cm) 4K Ultra HD - Expérience Gaming, 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:58:52,LG,65QNED70B,FR,Boulanger,899.0,EUR,"TV Mini LED LG 65QNED71B (2026) 65"" (164 cm) 4K Ultra HD - Smart TV | Boulanger",Success,持平
-2026-10-07,11:58:54,LG,55QNED85B,FR,Boulanger,899.0,EUR,"TV Mini LED LG 55QNED86B (2026) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,11:58:57,LG,48G6,FR,Boulanger,1399.0,EUR,"TV OLED LG 48G6 (2026) 48"" (121 cm) 4K Ultra HD - Expérience Cinéma & Gaming, 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:58:59,LG,83C6,FR,Boulanger,3999.0,EUR,"TV OLED LG 83C6 (2026) 83"" (210 cm) | Boulanger",Success,持平
-2026-10-07,11:59:01,LG,27LB7000,FR,Boulanger,199.0,EUR,"TV LED LG 27LB70006LA (2026) 27"" (69 cm) | Boulanger",Success,持平
-2026-10-07,11:59:02,LG,77G6,FR,Boulanger,3499.0,EUR,"TV OLED LG 77G6 (2026) 77"" (195 cm) | Boulanger",Success,持平
-2026-10-07,11:59:04,LG,75QNED85B,FR,Boulanger,1499.0,EUR,"TV Mini LED LG 75QNED86B (2026) 75"" (189 cm) | Boulanger",Success,持平
-2026-10-07,11:59:07,LG,85NU850B6,FR,Boulanger,999.0,EUR,"TV LED LG 85NU850B6 (2026) 85"" (215 cm) | Boulanger",Success,持平
-2026-10-07,11:59:08,LG,55QNED70B,FR,Boulanger,699.0,EUR,"TV Mini LED LG 55QNED71B (2026) 55"" (140 cm) 4K | Boulanger",Success,持平
-2026-10-07,11:59:09,LG,50NU850B6,FR,Boulanger,398.99,EUR,"TV LED LG 50NU850B6 (2026) 50"" (127 cm) | Boulanger",Success,持平
-2026-10-07,11:59:13,LG,55MRGB86B6,FR,Boulanger,849.0,EUR,"TV RGB LG 55MRGB86B6 (2026) 55"" (139 cm) 4K UHD - Expérience Gaming, 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:15,LG,50MRGB86B6,FR,Boulanger,699.0,EUR,"TV RGB LG 50MRGB86B6 (2026) 50"" (127 cm) | Boulanger",Success,持平
-2026-10-07,11:59:15,LG,43NU850B6,FR,Boulanger,349.0,EUR,"TV LED LG 43NU850B6 (2026) 43"" (108 cm) 4K Ultra HD - Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:17,LG,50QNED70B,FR,Boulanger,399.0,EUR,"TV Mini LED LG 50QNED71B (2026) 50"" (127 cm) | Boulanger",Success,持平
-2026-10-07,11:59:22,LG,75NU850B6,FR,Boulanger,749.0,EUR,"TV LED LG 75NU850B6 (2026) 75"" (189 cm) | Boulanger",Success,持平
-2026-10-07,11:59:22,LG,55LX7B,FR,Boulanger,999.0,EUR,"TV Mini LED LG Gallery 55LX7B6LA (2026) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,11:59:24,LG,65MRGB86B6,FR,Boulanger,999.0,EUR,"TV RGB LG 65MRGB86B6 (2026) 65"" (164 cm) | Boulanger",Success,持平
-2026-10-07,11:59:27,LG,65LX7B,FR,Boulanger,1199.0,EUR,"TV Mini LED LG Gallery 65LX7B6LA (2026) 65"" (164 cm) | Boulanger",Success,持平
-2026-10-07,11:59:28,LG,55QNED90B,FR,Boulanger,1199.0,EUR,"TV Mini LED LG Mini LED 55QNED93B (2026) 55""(139cm) 4K - Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:29,LG,75MRGB86B6,FR,Boulanger,1399.0,EUR,"TV RGB LG 75MRGB86B6 75"" (189 cm) 4K UHD - 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:34,LG,65QNED90B,FR,Boulanger,1399.0,EUR,"TV Mini LED LG Mini LED 65QNED93B (2026) 65""(164cm) 4K - Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:35,LG,86QNED85B,FR,Boulanger,2099.0,EUR,"TV Mini LED LG 86QNED86B (2026) 86"" (215 cm) 4K Ultra HD - Expérience Gaming, 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:36,LG,75QNED90B,FR,Boulanger,1799.0,EUR,"TV Mini LED LG Mini LED 75QNED93B (2026) 75"" (189cm) 4K-Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:39,LG,85QNED90B,FR,Boulanger,2499.0,EUR,"TV Mini LED LG Mini LED 85QNED93B (2026) 85"" (217cm) 4K - Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:43,LG,100QNED85B,FR,Boulanger,3499.0,EUR,"TV Mini LED LG 100QNED87B (2026) 100"" (254 cm) | Boulanger",Success,持平
-2026-10-07,11:59:43,LG,83G6,FR,Boulanger,4449.0,EUR,"TV OLED LG 83G6 (2026) 83"" (210 cm) | Boulanger",Success,持平
-2026-10-07,11:59:45,LG,77W6,FR,Boulanger,4949.0,EUR,"TV OLED LG 77W6 (2026) 77"" (195 cm) 4K Ultra HD - Expérience Cinéma & Gaming, boîtier déporté (câble invisible) | Boulanger",Success,持平
-2026-10-07,11:59:47,LG,75MRGB96B6,FR,Boulanger,4999.0,EUR,"TV RGB LG 75MRGB96B6 75"" (189 cm) 4K UHD - Expérience Cinéma & Gaming, 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:49,LG,115QNED90B,FR,Boulanger,4999.0,EUR,"TV Mini LED LG Mini LED 115QNED93B (2026) 115"" (291cm) 4K - Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:50,LG,83W6,FR,Boulanger,5999.0,EUR,"TV OLED LG 83W6 (2026) 83"" (210 cm) 4K Ultra HD - Expérience Cinéma & Gaming, boîtier déporté (câble invisible) | Boulanger",Success,持平
-2026-10-07,11:59:53,LG,86MRGB96B6,FR,Boulanger,6999.0,EUR,"TV RGB LG 86MRGB96B6 (2026) 86"" (217 cm) 4K UHD - Expérience Cinéma & Gaming, 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:55,LG,97G5,FR,Boulanger,19999.0,EUR,TV OLED LG 97G5 2025 (245cm) | Boulanger,Success,持平
-2026-10-07,11:59:55,LG,100MRGB96B6,FR,Boulanger,9999.0,EUR,"TV RGB LG 100MRGB96B6 (2026) 100"" (253 cm) 4K Ultra HD - Expérience Cinéma & Gaming, 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,11:59:58,LG,97M5,FR,Boulanger,23999.0,EUR,TV OLED LG 97M5 2025 (245cm) | Boulanger,Success,持平
-2026-10-07,12:00:03,LG,83C5,FR,Boulanger,3157.62,EUR,"TV OLED LG 83C5 (2025) 83"" (210 cm) | Boulanger",Success,持平
-2026-10-07,12:00:06,LG,42C5,FR,Boulanger,768.47,EUR,"TV OLED LG 42C5 (2025) 42"" (106 cm) 4K Ultra HD - 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,12:00:08,LG,48G5,FR,Boulanger,1069.0,EUR,"TV OLED LG 48G5 (2025) 48"" (121 cm) 4K Ultra HD - 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,12:00:13,LG,65G5,FR,Boulanger,2030.53,EUR,"TV OLED LG OLED65G5 (2025) 65"" (164 cm) 4K Ultra HD - Expérience Gaming, 120Hz, sans pied | Boulanger",Success,持平
-2026-10-07,12:00:13,LG,43UA75,FR,Boulanger,299.0,EUR,TV LED LG 43UA75 2025 (108cm) | Boulanger,Success,持平
-2026-10-07,12:00:17,LG,24TQ510S,FR,Boulanger,212.32,EUR,TV LED LG 24TQ510S-24 pouces (60cm) | Boulanger,Success,持平
-2026-10-07,12:00:19,LG,55G5,FR,Boulanger,1299.0,EUR,TV OLED LG sans pied OLED55G5 | Boulanger,Success,持平
-2026-10-07,12:00:22,LG,48C5,FR,Boulanger,1038.86,EUR,"TV OLED LG 48C5 (2025) 48"" (121 cm) 4K Ultra HD - Expérience Gaming, 120Hz, Smart TV | Boulanger",Success,涨价
-2026-10-07,12:00:24,LG,86UA75,FR,Boulanger,1383.8,EUR,TV LED LG 86UA75 2025 (217cm) | Boulanger,Success,涨价
-2026-10-07,12:00:28,LG,55UA75,FR,Boulanger,409.64,EUR,"TV LED LG 55UA75 (2025) 55"" (139 cm) 4K | Boulanger",Success,降价
-2026-10-07,12:00:34,LG,43UR78,FR,Boulanger,359.07,EUR,TV LED LG 43UR78 | Boulanger,Success,持平
-2026-10-07,12:00:35,LG,27TQ615S,FR,Boulanger,315.92,EUR,TV LED LG 27TQ615S-27 pouces (69cm) | Boulanger,Success,降价
-2026-10-07,12:00:37,LG,43QNED80A,FR,Boulanger,349.64,EUR,TV LED LG 43QNED84A 2025 (108cm) | Boulanger,Success,持平
-2026-10-07,12:00:42,LG,55QNED70A,FR,Boulanger,439.0,EUR,TV LED LG 55QNED70A 2025 (139cm) | Boulanger,Success,持平
-2026-10-07,12:00:45,LG,43QNED70A,FR,Boulanger,394.51,EUR,TV LED LG 43QNED70A 2025 (108cm) | Boulanger,Success,持平
-2026-10-07,12:00:45,LG,55NANO81A6A,FR,Boulanger,445.42,EUR,TV LED LG 55NANO81A6A - NANOCELL Gamme NANO81A | Boulanger,Success,降价
-2026-10-07,12:00:49,LG,43UQ7690,FR,Boulanger,475.37,EUR,TV LED LG 43UQ7690 | Boulanger,Success,持平
-2026-10-07,12:00:52,LG,75UA75,FR,Boulanger,1146.83,EUR,TV LED LG 75UA75 2025 (189cm) | Boulanger,Success,持平
-2026-10-07,12:00:54,LG,55C5,FR,Boulanger,1881.99,EUR,"TV OLED LG 55C5 (2025) 55"" (139 cm) 4K Ultra HD - 120Hz, Smart TV | Boulanger",Success,涨价
-2026-10-07,12:00:57,LG,75QNED90A,FR,Boulanger,1188.87,EUR,TV Mini LED LG 75QNED93A 2025 (189cm) | Boulanger,Success,持平
-2026-10-07,12:01:00,LG,65B5,FR,Boulanger,1698.72,EUR,TV OLED LG 65B5 2025 (164cm) | Boulanger,Success,持平
-2026-10-07,12:01:03,LG,65C5,FR,Boulanger,2076.56,EUR,"TV OLED LG 65C5 (2025) 65"" (164 cm) 4K Ultra HD - 120Hz, Smart TV | Boulanger",Success,涨价
-2026-10-07,12:01:04,LG,55G6,FR,Boulanger,1890.0,EUR,TV OLED LG 55G6 avec support mural | Boulanger,Success,持平
-2026-10-07,12:01:06,LG,65G6,FR,Boulanger,2590.0,EUR,TV OLED LG 65G6 avec support mural | Boulanger,Success,持平
-2026-10-07,12:01:08,LG,77C3,FR,Boulanger,3606.16,EUR,TV OLED Lg OLED77C3 2023 | Boulanger,Success,持平
-2026-10-07,12:01:15,LG,83G3,FR,Boulanger,7424.41,EUR,TV OLED LG OLED83G3 | Boulanger,Success,持平
-2026-10-07,12:01:16,LG,83G5,FR,Boulanger,3749.0,EUR,TV OLED LG 83G5 2025 (210cm) | Boulanger,Success,持平
-2026-10-07,12:01:19,LG,65QNED85A,FR,Boulanger,699.0,EUR,"TV LED LG 65QNED86A (2025) 65"" (164 cm) 4K Ultra HD - 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,12:01:24,LG,55QNED85A,FR,Boulanger,599.0,EUR,"TV LED LG 55QNED86A (2025) 55"" (139 cm) 4K Ultra HD - 120Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,12:01:26,LG,50QNED85A,FR,Boulanger,479.0,EUR,"TV LED LG 50QNED86A (2025) 50"" (126 cm) 4K | Boulanger",Success,持平
-2026-10-07,12:01:29,Hisense,75UR9S,FR,Boulanger,1999.0,EUR,"TV RGB HISENSE 75UR9S (2026) 75"" (189 cm) 4K Ultra HD - Expérience Gaming, 180Hz, anti-reflet | Boulanger",Success,持平
-2026-10-07,12:01:33,Hisense,55U7SPRO,FR,Boulanger,899.0,EUR,"TV Mini LED HISENSE 55U7S PRO (2026) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,12:01:33,Hisense,50U7SE,FR,Boulanger,514.99,EUR,"TV Mini LED HISENSE 50U7SE (2026) 50"" (126 cm) | Boulanger",Success,降价
-2026-10-07,12:01:36,Hisense,85E7SPRO,FR,Boulanger,1299.0,EUR,"TV QLED HISENSE 85E7S PRO (2026) 85"" (215 cm) 4K - 144Hz | Boulanger",Success,持平
-2026-10-07,12:01:40,Hisense,75U7SE,FR,Boulanger,1199.0,EUR,"TV Mini LED HISENSE 75U7SE (2026) 75"" (189 cm) | Boulanger",Success,持平
-2026-10-07,12:01:44,Hisense,65U7SPRO,FR,Boulanger,1298.99,EUR,"TV Mini LED HISENSE 65U7S PRO (2026) 65"" (164 cm) | Boulanger",Success,持平
-2026-10-07,12:01:46,Hisense,32A5S,FR,Boulanger,278.99,EUR,"TV QLED HISENSE 32A5S (2026) 32"" (80 cm) - Smart TV | Boulanger",Success,持平
-2026-10-07,12:01:49,Hisense,85E7S,FR,Boulanger,999.0,EUR,"TV QLED HISENSE 85E7S (2026) 85"" (215 cm) 4K - Smart TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,12:01:53,Hisense,100U7Q,FR,Boulanger,2290.0,EUR,"TV Mini LED HISENSE 100U7Q (2025) 100"" (254 cm) | Boulanger",Success,持平
-2026-10-07,12:01:53,Hisense,75U7SPRO,FR,Boulanger,1499.0,EUR,"TV Mini LED HISENSE 75U7S PRO (2026) 75"" (189 cm) 4K - Expérience Gaming, 165Hz, anti-reflet | Boulanger",Success,持平
-2026-10-07,12:01:59,Hisense,100E7QPRO,FR,Boulanger,1999.0,EUR,"TV QLED HISENSE 100E7Q PRO (2025) 100"" (253 cm) | Boulanger",Success,持平
-2026-10-07,12:02:03,Hisense,55UR8S,FR,Boulanger,1299.0,EUR,"TV RGB HISENSE 55UR8S (2026) 55"" (139 cm) 4K Ultra HD - Expérience Gaming, 180Hz, Smart TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,12:02:03,Hisense,58E7S,FR,Boulanger,479.0,EUR,"TV QLED HISENSE 58E7S (2026) 58"" (146 cm) | Boulanger",Success,持平
-2026-10-07,12:02:05,Hisense,55U7SE,FR,Boulanger,698.99,EUR,"TV Mini LED HISENSE 55U7SE (2026) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,12:02:11,Hisense,43E7S,FR,Boulanger,379.0,EUR,"TV QLED HISENSE 43E7S (2026) 43"" (108 cm) | Boulanger",Success,持平
-2026-10-07,12:02:14,Hisense,65U7SE,FR,Boulanger,899.0,EUR,"TV Mini LED HISENSE 65U7SE (2026) 65"" (164 cm) | Boulanger",Success,持平
-2026-10-07,12:02:14,Hisense,50E7S,FR,Boulanger,399.0,EUR,"TV QLED HISENSE 50E7S (2026) 50"" (126 cm) 4K | Boulanger",Success,持平
-2026-10-07,12:02:17,Hisense,65UR9S,FR,Boulanger,1799.0,EUR,"TV RGB HISENSE 65UR9S (2026) 65"" (164 cm) | Boulanger",Success,持平
-2026-10-07,12:02:20,Hisense,65E7SPRO,FR,Boulanger,649.0,EUR,"TV QLED HISENSE 65E7S PRO (2026) 65"" (164 cm) | Boulanger",Success,持平
-2026-10-07,12:02:23,Hisense,75E7S,FR,Boulanger,898.99,EUR,"TV QLED HISENSE 75E7S (2026) 75"" (189 cm) | Boulanger",Success,降价
-2026-10-07,12:02:27,Hisense,50A7S,FR,Boulanger,548.99,EUR,"TV QLED HISENSE 50A7S (2026) 50"" (126 cm) | Boulanger",Success,持平
-2026-10-07,12:02:27,Hisense,65UR8S,FR,Boulanger,1499.0,EUR,"TV RGB HISENSE 65UR8S (2026) 65"" (164 cm) | Boulanger",Success,持平
-2026-10-07,12:02:29,Hisense,75E7SPRO,FR,Boulanger,799.0,EUR,"TV QLED HISENSE 75E7S PRO (2026) 75"" (189 cm) 4K - 144Hz | Boulanger",Success,降价
-2026-10-07,12:02:32,Hisense,55A7S,FR,Boulanger,498.99,EUR,"TV QLED HISENSE 55A7S (2026) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,12:02:32,Hisense,32S5Q,FR,Boulanger,228.99,EUR,"TV QLED HISENSE 32S5Q (2025) 32"" (81 cm) | Boulanger",Success,持平
-2026-10-07,12:02:38,Hisense,43A7S,FR,Boulanger,368.99,EUR,"TV QLED HISENSE 43A7S (2026) 43"" (108 cm) | Boulanger",Success,持平
-2026-10-07,12:02:40,Hisense,65A7S,FR,Boulanger,699.0,EUR,"TV QLED HISENSE 65A7S (2026) 65"" (164 cm) | Boulanger",Success,持平
-2026-10-07,12:02:41,Hisense,55E7SPRO,FR,Boulanger,599.99,EUR,"TV QLED HISENSE 55E7S PRO (2026) 55"" (139 cm) 4K - 144Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,12:02:43,Hisense,85U7SE,FR,Boulanger,1338.99,EUR,"TV Mini LED HISENSE 85U7SE (2026) 85"" (215 cm) 4K - 144Hz | Boulanger",Success,降价
-2026-10-07,12:02:47,Hisense,32S6S,FR,Boulanger,1499.0,EUR,"TV HISENSE RoamView 32S6S (2026) 32"" (80 cm) 4K Ultra HD - TV portable, Tactile, Smart TV | Boulanger",Success,持平
-2026-10-07,12:02:48,Hisense,85U7SPRO,FR,Boulanger,1998.99,EUR,"TV Mini LED HISENSE 85U7S PRO (2026) 85"" (215 cm) | Boulanger",Success,持平
-2026-10-07,12:02:50,Hisense,75UR8S,FR,Boulanger,1999.0,EUR,"TV RGB HISENSE 75UR8S (2026) 75"" (189 cm) | Boulanger",Success,持平
-2026-10-07,12:02:53,Hisense,85UR9S,FR,Boulanger,2999.0,EUR,"TV RGB HISENSE 85UR9S (2026) 85"" (215 cm) | Boulanger",Success,持平
-2026-10-07,12:02:55,Hisense,85UR8S,FR,Boulanger,2799.0,EUR,"TV RGB HISENSE 85UR8S (2026) 85"" (215 cm) | Boulanger",Success,持平
-2026-10-07,12:02:57,Hisense,100U7S PRO,FR,Boulanger,2999.0,EUR,"TV Mini LED HISENSE 100U7S PRO (2026) 100"" (253 cm) | Boulanger",Success,持平
-2026-10-07,12:02:59,Hisense,100UR8S,FR,Boulanger,4990.0,EUR,"TV RGB HISENSE 100UR8S (2026) 100"" (253 cm) | Boulanger",Success,持平
-2026-10-07,12:03:02,Hisense,100UXQ,FR,Boulanger,7999.0,EUR,"TV RGB HISENSE 100UXQ (2025) 100"" (253 cm) | Boulanger",Success,持平
-2026-10-07,12:03:03,Hisense,116UXQ,FR,Boulanger,12999.0,EUR,"TV RGB HISENSE 116UXQ (2025) 116"" (293 cm) | Boulanger",Success,持平
-2026-10-07,12:03:05,Hisense,55E7S,FR,Boulanger,449.0,EUR,"TV QLED HISENSE 55E7S (2026) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,12:03:08,Hisense,65E7S,FR,Boulanger,681.05,EUR,"TV QLED HISENSE 65E7S (2026) 65"" (164 cm) 4K | Boulanger",Success,涨价
-2026-10-07,12:03:11,Hisense,40A5S,FR,Boulanger,249.0,EUR,"TV QLED HISENSE 40A5S (2026) 40"" (100 cm) - Smart TV | Boulanger",Success,持平
-2026-10-07,12:03:16,Hisense,32A5Q,FR,Boulanger,179.0,EUR,TV LED HISENSE 32A5Q 2025 (80cm) | Boulanger,Success,持平
-2026-10-07,12:03:17,Hisense,85U8Q,FR,Boulanger,1499.0,EUR,TV Mini LED HISENSE 85U8Q 2025-85 pouces (215cm) | Boulanger,Success,持平
-2026-10-07,12:03:21,Hisense,50A6Q,FR,Boulanger,477.32,EUR,TV LED HISENSE 50A6Q 2025 (126cm) | Boulanger,Success,持平
-2026-10-07,12:03:22,Hisense,32A49K,FR,Boulanger,213.41,EUR,TV LED HISENSE 32A49K | Boulanger,Success,持平
-2026-10-07,12:03:27,Hisense,40A5Q,FR,Boulanger,338.65,EUR,TV LED HISENSE 40A5Q 2025 (100cm) | Boulanger,Success,涨价
-2026-10-07,12:03:29,Hisense,58A6S,FR,Boulanger,379.0,EUR,TV LED HISENSE 58A6S | Boulanger,Success,持平
-2026-10-07,12:03:31,Hisense,58A6Q,FR,Boulanger,521.65,EUR,TV LED HISENSE 58A6Q 2025 (146cm) | Boulanger,Success,持平
-2026-10-07,12:03:35,Hisense,65E7KQ,FR,Boulanger,564.62,EUR,TV QLED HISENSE 65E7KQ | Boulanger,Success,持平
-2026-10-07,12:03:36,Hisense,55E7Q,FR,Boulanger,526.99,EUR,TV QLED HISENSE 55E7Q 2025 (139cm) | Boulanger,Success,持平
-2026-10-07,12:03:41,Hisense,75E7KQPRO,FR,Boulanger,1060.58,EUR,TV QLED HISENSE 75E7KQ PRO | Boulanger,Success,持平
-2026-10-07,12:03:45,Hisense,75A6Q,FR,Boulanger,1327.47,EUR,TV LED HISENSE 75A6Q 2025 (189cm) | Boulanger,Success,持平
-2026-10-07,12:03:46,Hisense,65A85Q,FR,Boulanger,1498.65,EUR,TV OLED HISENSE 65A85Q 2025 - 65 pouces ( 164 cm ) | Boulanger,Success,持平
-2026-10-07,12:03:51,Hisense,75U8Q,FR,Boulanger,1897.38,EUR,TV Mini LED HISENSE 75U8Q 2025-75 pouces (189cm) | Boulanger,Success,涨价
-2026-10-07,12:03:53,Hisense,75U9GQ,FR,Boulanger,2121.56,EUR,TV QLED HISENSE Mini Led 75U9GQ | Boulanger,Success,持平
-2026-10-07,12:03:53,Hisense,110UXNQ,FR,Boulanger,11438.78,EUR,TV QLED HISENSE 110UXNQ (280cm) | Boulanger,Success,持平
-2026-10-07,12:04:01,Hisense,75E7QPRO,FR,Boulanger,849.0,EUR,"TV QLED HISENSE 75E79Q PRO (2025) 75"" (189 cm) 4K Ultra HD - 144Hz, Smart TV | Boulanger",Success,持平
-2026-10-07,12:04:02,Sony,55A90J,FR,Boulanger,1897.44,EUR,TV OLED SONY Bravia XR-55A90J Google TV | Boulanger,Success,持平
-2026-10-07,12:04:05,Sony,43BRAVIA3,FR,Boulanger,499.0,EUR,"TV LED SONY 43BRAVIA3 (2025) 43"" (108 cm) 4K - Google TV | Boulanger",Success,持平
-2026-10-07,12:04:09,Samsung,65S90F,FR,Boulanger,1599.0,EUR,"TV OLED SAMSUNG TQ65S90F (2025) 65"" (165 cm) 4K - Smart TV | Boulanger",Success,降价
-2026-10-07,12:04:13,Samsung,48S90F,FR,Boulanger,1149.0,EUR,"TV OLED SAMSUNG TQ48S90F (2025) 48"" (120 cm) 4K - Smart TV | Boulanger",Success,降价
-2026-10-07,12:04:15,Samsung,43U7000F,FR,Boulanger,319.0,EUR,TV LED SAMSUNG 43U7005F | Boulanger,Success,持平
-2026-10-07,12:04:32,Hisense,43E7Q,FR,Boulanger,313.4,EUR,TV QLED HISENSE 43E7Q 2025 (108 cm) | Boulanger,Success,涨价
-2026-10-07,12:04:39,Hisense,55U8Q,FR,Boulanger,1137.26,EUR,"TV Mini LED HISENSE 55U8Q (2025) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,12:04:43,Sony,55BRAVIA8,FR,Boulanger,1899.0,EUR,"TV OLED SONY 55 BRAVIA 8 II IMAX Enhanced (2025) 55"" (139 cm) - Google TV | Boulanger",Success,降价
-2026-10-07,12:04:48,Sony,75BRAVIA9II,FR,Boulanger,3499.0,EUR,"TV RGB SONY 75 BRAVIA 9 II (2026) 75"" (189 cm) 4K - True RGB (ultra lumineux), 120Hz, Google TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,12:04:48,Sony,65BRAVIA8,FR,Boulanger,2399.0,EUR,"TV OLED SONY 65 BRAVIA 8 II IMAX Enhanced (2025) 65"" (164 cm) - Expérience Gaming, Google TV | Boulanger",Success,降价
-2026-10-07,12:04:53,Sony,55BRAVIA7II,FR,Boulanger,1699.0,EUR,"TV RGB SONY 55 BRAVIA 7 II (2026) 55"" (139 cm) - True RGB (ultra lumineux), 120Hz, Google TV | Boulanger",Success,持平
-2026-10-07,12:04:55,Sony,65BRAVIA9II,FR,Boulanger,2999.0,EUR,"TV RGB SONY 65 BRAVIA 9 II (2026) 65"" (164 cm) 4K - True RGB (ultra lumineux), 120Hz, Google TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,12:04:59,Sony,55BRAVIA3,FR,Boulanger,699.0,EUR,"TV LED SONY 55 BRAVIA 3 (2025) 55"" (139 cm) - PlayStation Remote | Boulanger",Success,持平
-2026-10-07,12:05:01,Sony,43BRAVIA3II,FR,Boulanger,649.0,EUR,"TV LED SONY 43 BRAVIA 3 II (2026) 43"" (108 cm) - 120Hz, Google TV | Boulanger",Success,持平
-2026-10-07,12:05:03,Sony,75BRAVIA3,FR,Boulanger,1958.9,EUR,"TV LED SONY 75 BRAVIA 3 (2025) 75"" (189 cm) - Google TV, PlayStation Remote | Boulanger",Success,涨价
-2026-10-07,12:05:06,Sony,43BRAVIA2II,FR,Boulanger,599.0,EUR,"TV LED SONY 43 BRAVIA 2 II (2026) 43"" (108 cm) 4K - Google TV | Boulanger",Success,持平
-2026-10-07,12:05:07,Sony,50BRAVIA2II,FR,Boulanger,649.0,EUR,"TV LED SONY 50 BRAVIA 2 II (2026) 50"" (126 cm) 4K - Google TV | Boulanger",Success,持平
-2026-10-07,12:05:09,Sony,55BRAVIA2II,FR,Boulanger,699.0,EUR,"TV LED SONY 55 BRAVIA 2 II (2026) 55"" (139 cm) 4K - Google TV | Boulanger",Success,持平
-2026-10-07,12:05:12,Sony,55BRAVIA3II,FR,Boulanger,799.0,EUR,"TV LED SONY 55 BRAVIA 3 II (2026) 55"" (139 cm) 4K - 120Hz, Google TV | Boulanger",Success,持平
-2026-10-07,12:05:12,Sony,50BRAVIA3II,FR,Boulanger,699.0,EUR,"TV LED SONY 50 BRAVIA 3 II (2026) 50"" (126 cm) 4K - 120Hz, Google TV | Boulanger",Success,持平
-2026-10-07,12:05:14,Sony,65BRAVIA3II,FR,Boulanger,1099.0,EUR,"TV LED SONY 65 BRAVIA 3 II (2026) 65"" (164 cm) 4K - 120Hz, Google TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,12:05:17,Sony,75BRAVIA3II,FR,Boulanger,1399.0,EUR,"TV LED SONY 75 BRAVIA 3 II (2026) 75"" (189 cm) 4K - 120Hz, Google TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,12:05:21,Sony,65BRAVIA7II,FR,Boulanger,1799.0,EUR,"TV RGB SONY 65 BRAVIA 7 II (2026) 65"" (164 cm) 4K - True RGB (ultra lumineux), 120Hz, Google TV | Boulanger",Success,持平
-2026-10-07,12:05:22,Sony,85BRAVIA3,FR,Boulanger,2729.06,EUR,"TV LED SONY 85 BRAVIA 3 (2025) 85"" (215 cm) - Google TV, PlayStation Remote | Boulanger",Success,持平
-2026-10-07,12:05:23,Sony,85BRAVIA3II,FR,Boulanger,1999.0,EUR,"TV LED SONY 85 BRAVIA 3 II (2026) 85"" (215 cm) 4K - Google TV | Boulanger",Success,持平
-2026-10-07,12:05:28,Sony,100BRAVIA3II,FR,Boulanger,2799.0,EUR,"TV LED SONY 100 BRAVIA 3 II (2026) 100"" (253 cm) 4K - 120Hz, Google TV | Boulanger",Success,持平
-2026-10-07,12:05:29,Sony,75BRAVIA7II,FR,Boulanger,2299.0,EUR,"TV RGB SONY 75 BRAVIA 7 II (2026) 75"" (189 cm) 4K - True RGB (ultra lumineux), 120Hz, Google TV | Boulanger",Success,持平
-2026-10-07,12:05:31,Sony,85BRAVIA7II,FR,Boulanger,3599.0,EUR,"TV RGB SONY 85 BRAVIA 7 II (2026) 85"" (215 cm) 4K - True RGB (ultra lumineux), 120Hz, Google TV | Boulanger",Success,持平
-2026-10-07,12:05:34,Sony,98BRAVIA7II,FR,Boulanger,5999.0,EUR,"TV RGB SONY 98 BRAVIA 7 II (2026) 98"" (248 cm) 4K - True RGB (ultra lumineux), 120Hz, Google TV | Boulanger",Success,持平
-2026-10-07,12:05:36,Sony,85BRAVIA9II,FR,Boulanger,4999.0,EUR,"TV RGB SONY 85 BRAVIA 9 II (2026) 85"" (215 cm) 4K - True RGB (ultra lumineux), 120Hz, Google TV, anti-reflet | Boulanger",Success,持平
-2026-10-07,12:05:38,Sony,115BRAVIA9II,FR,Boulanger,19999.0,EUR,"TV RGB SONY 115 BRAVIA 9 II (2026) 115"" (291 cm) - True RGB (ultra lumineux), 120Hz, Google TV | Boulanger",Success,持平
-2026-10-07,12:05:44,Sony,55BRAVIA8,FR,Boulanger,2729.04,EUR,"TV OLED SONY 55 BRAVIA 8 (2025) 55"" (139 cm) | Boulanger",Success,持平
-2026-10-07,13:55:52,Samsung,65QN80F,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:52,Samsung,55U8005F,NO,Elkjop,4990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:52,TCL,55P7K,NO,Elkjop,3990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:53,Samsung,98Q7F,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:53,LG,77C5,NO,Elkjop,20990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:55:53,Samsung,65QN70F,NO,Elkjop,8490.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:53,LG,65C5,NO,Elkjop,16990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:55:53,Samsung,55QN80F,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:53,Samsung,55LS03F,NO,Elkjop,8990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:53,Samsung,65U7000F,NO,Elkjop,5990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:53,Samsung,75QN70F,NO,Elkjop,12590.0,NOK,Direct API,Success,降价
-2026-10-07,13:55:53,TCL,55C6K,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:54,Samsung,32F6000,NO,Elkjop,4490.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:54,TCL,65C6K,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:54,LG,55C5,NO,Elkjop,12990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:55:54,Samsung,55QN70F,NO,Elkjop,7490.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:54,Samsung,85QN70F,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:54,LG,65C5,NO,Elkjop,13990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:54,TCL,65MQLED80K,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:54,LG,43UA75,NO,Elkjop,3990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:54,Samsung,65LS03F,NO,Elkjop,11990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:54,Samsung,85Q7F,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:55,LG,48C5,NO,Elkjop,9990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:55:55,Samsung,40F6000,NO,Elkjop,4999.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:55,Hisense,75E8Q,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:55,TCL,75C6K,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:55,Samsung,75Q7F,NO,Elkjop,9490.0,NOK,Direct API,Success,降价
-2026-10-07,13:55:55,Samsung,43QN90F,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:55,TCL,55MQLED80K,NO,Elkjop,8990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:55,LG,55C5,NO,Elkjop,11490.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:55,LG,83C5,NO,Elkjop,26990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:56,Sony,65BRAVIA5,NO,Elkjop,15990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:56,LG,77C5,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:57,Sony,75BRAVIA5,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:57,Sony,55BRAVIA5,NO,Elkjop,13990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:57,Samsung,55QN70F,NO,Elkjop,7490.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:57,TCL,115C7K,NO,Elkjop,99990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:57,Samsung,50Q7F,NO,Elkjop,5490.0,NOK,Direct API,Success,降价
-2026-10-07,13:55:58,Hisense,65E8Q,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:58,Hisense,55E8Q,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:58,LG,65G5,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:58,LG,77G5,NO,Elkjop,29990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:58,LG,65UA75,NO,Elkjop,5790.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:59,LG,50QNED80A,NO,Elkjop,5490.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:59,LG,55QNED80A,NO,Elkjop,5990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:59,LG,42C5,NO,Elkjop,7490.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:59,LG,65QNED80A,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:59,LG,75QNED80A,NO,Elkjop,9490.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:59,LG,55G5,NO,Elkjop,16990.0,NOK,Direct API,Success,持平
-2026-10-07,13:55:59,LG,48C5,NO,Elkjop,9490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:00,LG,50UA75,NO,Elkjop,4490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:00,LG,55UA75,NO,Elkjop,4790.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:00,Samsung,75U7000F,NO,Elkjop,8990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:00,Samsung,85U8005F,NO,Elkjop,11990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:00,Samsung,75QN70F,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:00,Samsung,65QN990F,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:00,Samsung,55U7000F,NO,Elkjop,4490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:01,Samsung,65U8005F,NO,Elkjop,6490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:01,Samsung,75QN990F,NO,Elkjop,34990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:01,Samsung,65QN90F,NO,Elkjop,15990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:01,Samsung,85QN80F,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:02,Samsung,55Q7F,NO,Elkjop,5990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:02,TCL,55C6KS,NO,Elkjop,5490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:02,Samsung,43Q7F,NO,Elkjop,4990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:02,TCL,85X11K,NO,Elkjop,29990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:03,TCL,65C6KS,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:03,TCL,75C6KS,NO,Elkjop,8990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:03,Hisense,75Q70QEVS,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:03,TCL,50C6K,NO,Elkjop,10990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:03,TCL,50P7K,NO,Elkjop,6790.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:03,TCL,55C7K,NO,Elkjop,17817.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:04,TCL,50C7K,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:04,TCL,43P7K,NO,Elkjop,5999.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:04,TCL,65C7K,NO,Elkjop,17477.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:04,TCL,98C7K,NO,Elkjop,69987.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:05,Samsung,24F6000,NO,Elkjop,3990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:05,TCL,65P7K,NO,Elkjop,8987.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:05,TCL,32S45,NO,Elkjop,4490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:05,Hisense,65U70QEVS,NO,Elkjop,23619.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:05,Samsung,115MR95,NO,Elkjop,299990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:05,Hisense,75U70QEVS,NO,Elkjop,29147.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:06,Sony,55BRAVIA8,NO,Elkjop,21047.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:06,Sony,65BRAVIA8,NO,Elkjop,32019.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:06,LG,65NANO82,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:06,Hisense,40A4Q,NO,Elkjop,3387.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:06,LG,75NANO82,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:07,LG,50NANO82,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:07,LG,55NANO82,NO,Elkjop,6467.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:07,Samsung,85Q6F,NO,Elkjop,22990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:07,LG,43NANO82,NO,Elkjop,4767.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:07,Hisense,75E7Q,NO,Elkjop,6467.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:07,Samsung,75Q6F,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:08,Hisense,50E7Q,NO,Elkjop,8989.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:08,Hisense,55E7Q,NO,Elkjop,8559.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:08,Samsung,100QN80F,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:08,LG,77B5,NO,Elkjop,31487.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:08,LG,55QNED85A,NO,Elkjop,6987.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:08,Sony,55BRAVIA3,NO,Elkjop,10119.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:09,Sony,50BRAVIA3,NO,Elkjop,8989.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:09,Sony,65BRAVIA3,NO,Elkjop,13989.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:09,Sony,43BRAVIA3,NO,Elkjop,7989.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:09,Samsung,75QN85F,NO,Elkjop,34990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:09,Samsung,65Q8F,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:10,Samsung,48S90F,NO,Elkjop,24997.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:10,Samsung,65Q7F,NO,Elkjop,18999.0,NOK,Direct API,Success,涨价
-2026-10-07,13:56:10,Samsung,43Q7F,NO,Elkjop,8087.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:10,Samsung,55Q7F,NO,Elkjop,10790.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:11,Samsung,75U8005F,NO,Elkjop,15287.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:11,Samsung,55Q7F,NO,Elkjop,15999.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:11,Samsung,32H5000F,NO,Elkjop,2590.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:12,Samsung,65Q7F,NO,Elkjop,18987.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:12,Samsung,55QN90F,NO,Elkjop,14327.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:12,Samsung,65S90F,NO,Elkjop,27987.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:13,Samsung,43Q8F,NO,Elkjop,4990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:13,Samsung,75LS03FW,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:13,Samsung,55QN85F,NO,Elkjop,13619.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:14,Samsung,65QN85F,NO,Elkjop,26990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:14,Samsung,55Q8F,NO,Elkjop,5990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:14,Samsung,85LS03FW,NO,Elkjop,29990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:15,Samsung,50U8005F,NO,Elkjop,8087.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:15,Samsung,75Q7F,NO,Elkjop,22999.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:15,Samsung,55S90F,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:16,Samsung,50Q7F,NO,Elkjop,14999.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:16,Samsung,65LS03FW,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:16,Samsung,43U8005F,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:17,Samsung,55QN70F,NO,Elkjop,7490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:17,Samsung,83S90F,NO,Elkjop,59990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:17,Samsung,75Q8F,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:18,Samsung,58U8005F,NO,Elkjop,8007.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:18,Samsung,85Q8F,NO,Elkjop,13990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:18,TCL,50U65,NO,Elkjop,3440.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:19,TCL,43U65,NO,Elkjop,2990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:19,TCL,65U65,NO,Elkjop,5990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:19,TCL,55U65,NO,Elkjop,4440.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:20,TCL,32S4K,NO,Elkjop,4490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:20,TCL,65C8K,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:20,TCL,98P8K,NO,Elkjop,49989.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:20,TCL,85P8K,NO,Elkjop,19989.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:21,TCL,50P6K,NO,Elkjop,7487.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:21,TCL,75C8K,NO,Elkjop,14567.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:21,TCL,75P6K,NO,Elkjop,12490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:22,TCL,98C8K,NO,Elkjop,26227.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:22,TCL,85P7K,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:23,TCL,98X11K,NO,Elkjop,73707.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:23,TCL,55P6K,NO,Elkjop,7790.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:23,TCL,75P8K,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:23,TCL,55P8K,NO,Elkjop,9989.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:24,TCL,85C6K,NO,Elkjop,29990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:24,TCL,75P7K,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:24,TCL,85C8K,NO,Elkjop,22477.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:25,TCL,40S5K,NO,Elkjop,5519.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:25,TCL,98C6K,NO,Elkjop,59990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:25,TCL,43P6K,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:25,TCL,65P8K,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:26,TCL,65P6K,NO,Elkjop,9790.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:26,TCL,32S5K,NO,Elkjop,4657.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:26,Samsung,65M80H,NO,Elkjop,6790.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:26,Samsung,43M80H,NO,Elkjop,4290.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:27,Samsung,55M80H,NO,Elkjop,5790.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:27,Hisense,32A5S,NO,Elkjop,2790.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:28,Hisense,40A5S,NO,Elkjop,3490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:28,Samsung,77S95H,NO,Elkjop,45990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:28,Samsung,70U8090H,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:29,Samsung,75M80H,NO,Elkjop,9790.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:29,LG,65C6,NO,Elkjop,19990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:29,LG,55C6,NO,Elkjop,14990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:29,Hisense,55Q70SEVS,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:30,Hisense,65Q70SEVS,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:30,Samsung,65LS03H,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:30,Samsung,55LS03H,NO,Elkjop,12490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:31,LG,65C6,NO,Elkjop,30990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:56:31,LG,55C6,NO,Elkjop,25990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:56:31,Sony,65BRAVIA7II,NO,Elkjop,26989.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:32,Sony,55BRAVIA7II,NO,Elkjop,25999.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:32,Sony,50BRAVIA7II,NO,Elkjop,28989.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:33,Sony,75BRAVIA7II,NO,Elkjop,29989.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:33,LG,83G6,NO,Elkjop,49990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:33,LG,77C6,NO,Elkjop,24990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:34,LG,48C6,NO,Elkjop,11990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:34,LG,42C6,NO,Elkjop,9990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:34,LG,77G6,NO,Elkjop,33990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:34,LG,65G6,NO,Elkjop,25990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:35,LG,55G6,NO,Elkjop,20990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:35,LG,83C6,NO,Elkjop,29990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:35,Hisense,50A5S,NO,Elkjop,3990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:36,Hisense,75E7SPRO,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:36,TCL,43A400,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:36,TCL,85P7L,NO,Elkjop,13990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:36,TCL,32A400,NO,Elkjop,4990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:37,Samsung,43LS03H,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:37,LG,83B6,NO,Elkjop,32990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:37,LG,65B6,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:37,LG,77B6,NO,Elkjop,23990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:38,LG,55B6E,NO,Elkjop,13990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:38,LG,48B6E,NO,Elkjop,11990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:38,LG,77C6,NO,Elkjop,40990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:56:39,LG,42C6,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:39,LG,48C6,NO,Elkjop,20490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:39,LG,65QNED9MB,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:42,LG,55QNED9MB,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:43,LG,75QNED9MB,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:43,LG,83C6,NO,Elkjop,59990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:43,Hisense,65UR8S,NO,Elkjop,16990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:44,Hisense,75UR8S,NO,Elkjop,22220.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:44,Hisense,85UR8S,NO,Elkjop,52990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:44,Hisense,55UR8S,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:45,Hisense,100UR8S,NO,Elkjop,89990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:45,Hisense,85U73SEVS,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:45,TCL,75RM7L,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:46,TCL,85RM7L,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:46,TCL,85RM9L,NO,Elkjop,79990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:46,TCL,65RM7L,NO,Elkjop,15990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:47,TCL,98RM9L,NO,Elkjop,99990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:47,TCL,115RM9L,NO,Elkjop,169990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:47,Samsung,55S90H,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:48,Samsung,48S90H,NO,Elkjop,16990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:48,Samsung,83S90H,NO,Elkjop,44990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:48,Samsung,65S90H,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:49,Samsung,42S90H,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:49,Samsung,55R85H,NO,Elkjop,17990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:56:49,Samsung,48S95H,NO,Elkjop,24990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:56:50,Samsung,65S95H,NO,Elkjop,36990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:50,Samsung,85R85H,NO,Elkjop,44990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:56:50,Samsung,77S90H,NO,Elkjop,34990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:51,Samsung,75R85H,NO,Elkjop,29990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:56:51,Samsung,55S95H,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:51,Samsung,65R85H,NO,Elkjop,16990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:52,LG,75QNED80B,NO,Elkjop,10990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:52,LG,55QNED80B,NO,Elkjop,6990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:52,LG,65QNED80B,NO,Elkjop,8990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:53,LG,85QNED80B,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:53,LG,75MRGB86,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:53,LG,55MRGB86,NO,Elkjop,11990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:54,LG,65MRGB86,NO,Elkjop,13990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:54,Hisense,43Q70QEVS,NO,Elkjop,8990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:54,TCL,32S5L,NO,Elkjop,4990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:55,TCL,43P7L,NO,Elkjop,5990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:55,TCL,40S5L,NO,Elkjop,5990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:55,TCL,65C6KPRO,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:56,TCL,75C6KPRO,NO,Elkjop,15990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:56,TCL,75P8L,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:56,TCL,65P8L,NO,Elkjop,11990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:57,TCL,55P8L,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:57,TCL,65P7L,NO,Elkjop,8990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:57,TCL,50P7L,NO,Elkjop,6490.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:58,TCL,55P7L,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:58,TCL,85MSQLED80L,NO,Elkjop,59990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:58,TCL,55C6KPRO,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:56:59,Samsung,75M80H,NO,Elkjop,13990.0,NOK,Direct API,Success,降价
-2026-10-07,13:56:59,Samsung,55M80H,NO,Elkjop,8990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:56:59,Samsung,65M80H,NO,Elkjop,9990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:56:59,Samsung,100R85H,NO,Elkjop,129990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:00,Sony,77BRAVIA6,NO,Elkjop,51990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:00,Sony,65BRAVIA6,NO,Elkjop,33990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:00,LG,83W6,NO,Elkjop,56159.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:01,LG,77W6,NO,Elkjop,43199.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:01,Sony,50BRAVIA3EII,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:01,Sony,50BRAVIA2II,NO,Elkjop,10990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:02,Sony,43BRAVIA2II,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:02,Sony,75BRAVIA3EII,NO,Elkjop,23990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:03,Sony,50BRAVIA3LII,NO,Elkjop,12989.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:03,Sony,75BRAVIA2II,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:03,Sony,65BRAVIA2II,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:04,Sony,55BRAVIA2II,NO,Elkjop,11990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:04,Sony,75BRAVIA3LII,NO,Elkjop,23989.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:04,Sony,55BRAVIA3LII,NO,Elkjop,14989.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:05,Sony,55BRAVIA3EII,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:05,Sony,65BRAVIA3LII,NO,Elkjop,17989.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:06,Sony,43BRAVIA3LII,NO,Elkjop,11989.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:06,Sony,65BRAVIA3EII,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:06,Sony,43BRAVIA3EII,NO,Elkjop,11990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:06,LG,43NU850,NO,Elkjop,6490.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:07,LG,50NU850,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:07,LG,55QNED70B,NO,Elkjop,8199.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:07,LG,65NU850,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:08,LG,65QNED80B,NO,Elkjop,9889.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:08,LG,50QNED70B,NO,Elkjop,7359.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:08,LG,77C6,NO,Elkjop,39990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:09,LG,75QNED85B,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:09,LG,65QNED85B,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:09,LG,75QNED70B,NO,Elkjop,12989.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:10,LG,55NU850,NO,Elkjop,7490.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:10,LG,50QNED80B,NO,Elkjop,8489.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:56,LG,65C6,NO,Elkjop,29990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:56,LG,43QNED80B,NO,Elkjop,6999.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:56,LG,43QNED70B,NO,Elkjop,6449.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:56,LG,55QNED85B,NO,Elkjop,15990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:57,LG,65QNED70B,NO,Elkjop,9129.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:57,LG,85NU850,NO,Elkjop,16989.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:57,LG,55C6,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:58,LG,55QNED80B,NO,Elkjop,7589.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:58,Samsung,65M70H,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:58,Samsung,75M70H,NO,Elkjop,13990.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:59,Samsung,43M70H,NO,Elkjop,6490.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:59,Samsung,55M70H,NO,Elkjop,7790.0,NOK,Direct API,Success,持平
-2026-10-07,13:57:59,Samsung,50M70H,NO,Elkjop,7490.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:00,Samsung,85M70H,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:00,Hisense,85E7SPRO,NO,Elkjop,29989.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:00,Hisense,85UR9S,NO,Elkjop,69990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:01,Hisense,58A60LEVS,NO,Elkjop,8579.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:01,Hisense,65U73SEVS,NO,Elkjop,17639.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:02,Hisense,55A61SEVS,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:02,Hisense,50U73SEVS,NO,Elkjop,15989.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:02,Hisense,43Q60SEVS,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:03,Hisense,58E70QEVS,NO,Elkjop,9989.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:03,Hisense,50A61SEVS,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:03,Hisense,75Q60SEVS,NO,Elkjop,15989.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:03,Hisense,55U73SEVS,NO,Elkjop,16990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:04,Hisense,50Q70SEVS,NO,Elkjop,9989.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:04,Hisense,55Q60SEVS,NO,Elkjop,8990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:04,Hisense,65UR9S,NO,Elkjop,41990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:05,Hisense,43A61SEVS,NO,Elkjop,5990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:05,Hisense,65Q60SEVS,NO,Elkjop,11990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:05,Hisense,50Q60SEVS,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:06,Hisense,75U73SEVS,NO,Elkjop,20299.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:06,Hisense,65A61SEVS,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:06,Hisense,75UR9S,NO,Elkjop,52990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:07,Hisense,85Q60SEVS,NO,Elkjop,26990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:07,TCL,98A400U,NO,Elkjop,54990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:08,TCL,50U65A,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:11,TCL,65U65A,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:11,TCL,75C7L,NO,Elkjop,44990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:12,TCL,65C7L,NO,Elkjop,34990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:15,TCL,75C8L,NO,Elkjop,54990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:16,TCL,75MSQLED80L,NO,Elkjop,39990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:18,TCL,98MSQLED80L,NO,Elkjop,99990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:21,TCL,75A400U,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:21,TCL,55A400U,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:24,TCL,65A400PRO,NO,Elkjop,22990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:25,TCL,85C7L,NO,Elkjop,64990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:25,TCL,55A400,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:27,TCL,85C8L,NO,Elkjop,74990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:28,TCL,55C7L,NO,Elkjop,27990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:30,TCL,98X11L,NO,Elkjop,199990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:31,TCL,98P8L,NO,Elkjop,69990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:31,TCL,75A400PRO,NO,Elkjop,32990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:32,TCL,55A400PRO,NO,Elkjop,20990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:33,TCL,98C8L,NO,Elkjop,139990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:33,TCL,98A400,NO,Elkjop,59249.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:33,TCL,55C8L,NO,Elkjop,32990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:34,TCL,85A400U,NO,Elkjop,37990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:34,TCL,43U65A,NO,Elkjop,5990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:34,TCL,75A400,NO,Elkjop,22990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:35,TCL,65C8L,NO,Elkjop,39990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:35,TCL,98A400PRO,NO,Elkjop,84990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:36,TCL,55U65A,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:37,TCL,85C6KPRO,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:37,TCL,65A400,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:38,TCL,98C7L,NO,Elkjop,110990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:38,TCL,85A400,NO,Elkjop,29629.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:38,TCL,65A400U,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:39,TCL,55MSQLED80L,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:39,TCL,65MSQLED80L,NO,Elkjop,27990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:39,TCL,85X11L,NO,Elkjop,149990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:39,TCL,75X11L,NO,Elkjop,129990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:40,TCL,85QLED810L,NO,Elkjop,34990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:40,TCL,85A400PRO,NO,Elkjop,52990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:40,Samsung,75LS03HW,NO,Elkjop,34990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:40,Samsung,55R85H,NO,Elkjop,13990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:41,Samsung,55QN70H,NO,Elkjop,10790.0,NOK,Direct API,Success,降价
-2026-10-07,13:58:41,Samsung,75M80H,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:41,Samsung,75QN70H,NO,Elkjop,17990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:58:41,Samsung,65QN70H,NO,Elkjop,12990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:58:42,Samsung,100M90H,NO,Elkjop,29990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:42,Samsung,65R95H,NO,Elkjop,39990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:42,Samsung,48S85H,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:42,Samsung,50QN70H,NO,Elkjop,9990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:42,Samsung,75R85H,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:43,Samsung,85QN80H,NO,Elkjop,29990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:43,Samsung,75R95H,NO,Elkjop,49990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:43,Samsung,75U7025H,NO,Elkjop,11990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:43,Samsung,75QN80H,NO,Elkjop,22990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:43,Samsung,55QN80H,NO,Elkjop,12990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:44,Samsung,75QN70H,NO,Elkjop,17790.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:44,Samsung,58U8095H,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:44,Samsung,50QN80H,NO,Elkjop,11990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:44,Samsung,85U7025H,NO,Elkjop,15990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:45,Samsung,65S85H,NO,Elkjop,19990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:45,Samsung,85LS03HW,NO,Elkjop,49990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:45,Samsung,85QN70H,NO,Elkjop,22790.0,NOK,Direct API,Success,降价
-2026-10-07,13:58:45,Samsung,85M80H,NO,Elkjop,19990.0,NOK,Direct API,Success,涨价
-2026-10-07,13:58:45,Samsung,55S85H,NO,Elkjop,17990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:46,Samsung,83S85H,NO,Elkjop,42990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:46,Samsung,85R85H,NO,Elkjop,29990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:46,Samsung,55QN70H,NO,Elkjop,10990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:46,Samsung,55LS03HW,NO,Elkjop,15990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:47,Samsung,55M80H,NO,Elkjop,6990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:47,Samsung,65M80H,NO,Elkjop,8990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:47,Samsung,50U7025H,NO,Elkjop,5490.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:47,Samsung,85R95H,NO,Elkjop,69990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:47,Samsung,65QN70H,NO,Elkjop,12790.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:47,Samsung,65R85H,NO,Elkjop,16990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:48,Samsung,85M80H,NO,Elkjop,17989.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:48,Samsung,43U7000F,NO,Elkjop,4990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:48,Samsung,77S85H,NO,Elkjop,29990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:48,Samsung,55U7025H,NO,Elkjop,6490.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:48,Samsung,65U7025H,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:49,Samsung,85QN70H,NO,Elkjop,22990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:49,Samsung,65LS03HW,NO,Elkjop,24990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:49,Samsung,65QN80H,NO,Elkjop,14990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:49,Samsung,43QN70H,NO,Elkjop,7990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:49,Samsung,100QN80H,NO,Elkjop,49990.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:49,Hisense,55U70QEVS,NO,Elkjop,6987.0,NOK,Direct API,Success,持平
-2026-10-07,13:58:49,Hisense,100U65QEVS,NO,Elkjop,27990.0,NOK,Direct API,Success,持平
 2026-10-08,12:05:24,Samsung,65M80H,FR,Boulanger,779.0,EUR,Batch category snapshot,Success,持平
 2026-10-08,12:05:24,Samsung,55M80H,FR,Boulanger,599.0,EUR,Batch category snapshot,Success,持平
 2026-10-08,12:05:24,Samsung,55M70H,FR,Boulanger,499.0,EUR,Batch category snapshot,Success,涨价
@@ -49896,3 +49131,407 @@
 2026-11-21,14:57:22,Samsung,43Q7F,NO,Elkjop,7999.0,NOK,Direct API,Success,持平
 2026-11-21,14:57:24,TCL,115RM9L,NO,Elkjop,124990.0,NOK,Direct API,Success,持平
 2026-11-21,14:57:24,Hisense,55U70QEVS,NO,Elkjop,20239.0,NOK,Direct API,Success,持平
+2026-11-22,13:24:28,Samsung,65M80H,FR,Boulanger,899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55M80H,FR,Boulanger,699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55M70H,FR,Boulanger,499.0,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:24:28,Samsung,75M80H,FR,Boulanger,899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,65U8005H,FR,Boulanger,578.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55U8090H,FR,Boulanger,499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,43M70H,FR,Boulanger,399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,43LS03FA,FR,Boulanger,1039.79,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:24:28,Samsung,65S90H,FR,Boulanger,1599.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55S90H,FR,Boulanger,1299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55S95H,FR,Boulanger,1699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,83S95F,FR,Boulanger,2949.0,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:24:28,Samsung,50U8090H,FR,Boulanger,428.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,85U8005H,FR,Boulanger,1098.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,43U8090H,FR,Boulanger,368.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,65LS03HA,FR,Boulanger,1299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,65QN80H,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,32H5005FK,FR,Boulanger,259.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,50M70H,FR,Boulanger,449.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,98U9005H,FR,Boulanger,1399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55LS03HA,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,65M70H,FR,Boulanger,679.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,77S90H,FR,Boulanger,2099.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55LS03HW,FR,Boulanger,1289.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,32LS03C,FR,Boulanger,399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,65LS03HW,FR,Boulanger,1499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,85M80H,FR,Boulanger,1099.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,43QN90F,FR,Boulanger,849.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,65QN70H,FR,Boulanger,699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,50QN80H,FR,Boulanger,699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55QN70H,FR,Boulanger,569.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,32Q5FA,FR,Boulanger,359.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,43QN70H,FR,Boulanger,499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,75U8090H,FR,Boulanger,828.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,65R85H,FR,Boulanger,1399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,48S95H,FR,Boulanger,1199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55LST7D,FR,Boulanger,1999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,85LS03HW,FR,Boulanger,2989.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55QN80H,FR,Boulanger,799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,50QN70H,FR,Boulanger,549.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,50QN90F,FR,Boulanger,899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,43LS03HE,FR,Boulanger,899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,48S90H,FR,Boulanger,1099.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,24F6000,FR,Boulanger,219.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,27F6000,FR,Boulanger,239.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,65S95H,FR,Boulanger,1999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,42S90H,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,85QN70H,FR,Boulanger,1299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,75QN80H,FR,Boulanger,1299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,75QN70H,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,75R95H,FR,Boulanger,2369.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55R85H,FR,Boulanger,699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,98Q7FA,FR,Boulanger,1699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,100M90H,FR,Boulanger,1999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,85QN80H,FR,Boulanger,1899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,75R85H,FR,Boulanger,1799.0,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:24:28,Samsung,75LS03HW,FR,Boulanger,1989.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,55S99H,FR,Boulanger,1699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,65R95H,FR,Boulanger,1939.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,65S99H,FR,Boulanger,2199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,100QN80H,FR,Boulanger,2699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,77S95H,FR,Boulanger,2999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,83S90H,FR,Boulanger,2799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,77S99H,FR,Boulanger,3199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,85R85H,FR,Boulanger,3499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,83S99H,FR,Boulanger,4699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:28,Samsung,85R95H,FR,Boulanger,4499.0,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:24:38,Samsung,85U8005F,FR,Boulanger,549.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,持平
+2026-11-22,13:24:39,Samsung,75LST7D,FR,Boulanger,5999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:39,Samsung,115QN90F,FR,Boulanger,9399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:39,Samsung,65LST7D,FR,Boulanger,549.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,涨价
+2026-11-22,13:24:39,Samsung,85QN900F,FR,Boulanger,549.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,持平
+2026-11-22,13:24:39,Samsung,55S90F,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:43,Samsung,115MR95F,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:24:44,Samsung,85LS03FW,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,持平
+2026-11-22,13:24:44,Samsung,43U8005F,FR,Boulanger,343.72,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:44,Samsung,65Q7F,FR,Boulanger,619.0,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:24:44,Samsung,43U7025F,FR,Boulanger,395.99,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:24:44,Samsung,55Q6F,FR,Boulanger,553.99,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:24:44,Samsung,85QN80F,FR,Boulanger,1799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:44,Samsung,85Q6F,FR,Boulanger,1112.63,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:45,Samsung,50LS03FA,FR,Boulanger,479.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,降价
+2026-11-22,13:24:45,Samsung,65Q7F,FR,Boulanger,637.31,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:24:45,Samsung,65Q7F,FR,Boulanger,637.89,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:45,Samsung,55M70H,FR,Boulanger,539.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:45,Samsung,65LS03FA,FR,Boulanger,1029.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:48,Samsung,65LS03FW,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:24:52,Samsung,65QN70F,FR,Boulanger,549.0,EUR,Télévision - Téléviseur | Boulanger,Success,持平
+2026-11-22,13:24:52,Samsung,50QN80F,FR,Boulanger,958.95,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:53,Samsung,50U8005F,FR,Boulanger,549.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,涨价
+2026-11-22,13:24:53,Samsung,42S90F,FR,Boulanger,829.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:53,Samsung,43LS01B,FR,Boulanger,933.08,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:24:53,Samsung,43LS01B,FR,Boulanger,1166.41,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:58,Samsung,65S85F,FR,Boulanger,1999.0,EUR,TV OLED – Téléviseur OLED : Image ultra contrastée et couleurs intenses | Boulanger,Success,持平
+2026-11-22,13:24:58,Samsung,55LS01B,FR,Boulanger,1376.89,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:58,Samsung,50QN90C,FR,Boulanger,1407.77,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:58,Samsung,43LS05B,FR,Boulanger,1590.64,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:58,Samsung,100QN80F,FR,Boulanger,2190.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:58,Samsung,83S90D,FR,Boulanger,3010.53,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:58,Samsung,83S90F,FR,Boulanger,2390.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:58,Samsung,85QN990F,FR,Boulanger,11745.96,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:24:58,Samsung,98QN90A,FR,Boulanger,10605.69,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:24:59,Samsung,55U7000F,FR,Boulanger,429.0,EUR,Téléviseur | Boulanger,Success,持平
+2026-11-22,13:25:01,Samsung,65U7000F,FR,Boulanger,479.0,EUR,Téléviseur | Boulanger,Success,持平
+2026-11-22,13:25:08,Samsung,55QN70F,FR,Boulanger,549.0,EUR,Télévision - Téléviseur | Boulanger,Success,降价
+2026-11-22,13:25:09,Samsung,55Q7F,FR,Boulanger,469.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,Samsung,85QN90F,FR,Boulanger,3999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,Samsung,98QN90F,FR,Boulanger,5999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65P8L,FR,Boulanger,649.0,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:09,TCL,50C6K,FR,Boulanger,499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,75C6KPRO,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,55C6KPRO,FR,Boulanger,599.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65C7L,FR,Boulanger,899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65C6KPRO,FR,Boulanger,749.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,55C8L,FR,Boulanger,799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65C8L,FR,Boulanger,1199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65T6C,FR,Boulanger,429.04,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:25:09,TCL,55A400PRO,FR,Boulanger,699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,43T6C,FR,Boulanger,329.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,85X11L,FR,Boulanger,2999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,75C7L,FR,Boulanger,1249.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,98A400PRO,FR,Boulanger,1789.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,55T6C,FR,Boulanger,399.0,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:25:09,TCL,85C8L,FR,Boulanger,1849.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,55P8L,FR,Boulanger,499.0,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:09,TCL,50S5L,FR,Boulanger,349.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,50T6C,FR,Boulanger,397.22,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,32S5L,FR,Boulanger,199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,85C6KPRO,FR,Boulanger,1299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,50C7K,FR,Boulanger,549.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65A400PRO,FR,Boulanger,899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,43S5L,FR,Boulanger,299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65A400U,FR,Boulanger,1099.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,85P8L,FR,Boulanger,1199.0,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:09,TCL,55P6L,FR,Boulanger,369.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,43A400PRO,FR,Boulanger,482.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,40S5L,FR,Boulanger,259.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,32A400PRO,FR,Boulanger,349.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,85A400U,FR,Boulanger,1499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65P7L,FR,Boulanger,649.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,55A400U,FR,Boulanger,599.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,75A400PRO,FR,Boulanger,989.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65RM7L,FR,Boulanger,940.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,55C7L,FR,Boulanger,1099.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65P6L,FR,Boulanger,479.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,43P7L,FR,Boulanger,399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,43V6D,FR,Boulanger,369.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,50V6D,FR,Boulanger,386.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,50P7L,FR,Boulanger,449.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,55P7L,FR,Boulanger,499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,65T6C,FR,Boulanger,619.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,75P6L,FR,Boulanger,699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,75P7L,FR,Boulanger,849.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,75A400U,FR,Boulanger,1199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,85P7L,FR,Boulanger,1099.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,75RM7L,FR,Boulanger,1398.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,85RM7L,FR,Boulanger,1599.0,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:09,TCL,85C7L,FR,Boulanger,1499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,75C8L,FR,Boulanger,1399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,98P8L,FR,Boulanger,1799.0,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:09,TCL,98A400U,FR,Boulanger,1999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,98RM7L,FR,Boulanger,2499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,98C7L,FR,Boulanger,2199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,75X11L,FR,Boulanger,2199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,98C8L,FR,Boulanger,2799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,85RM9L,FR,Boulanger,2499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,98RM9L,FR,Boulanger,5999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,98X11L,FR,Boulanger,6499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:09,TCL,115C7K,FR,Boulanger,8999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:10,Samsung,55LS03FA,FR,Boulanger,549.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,持平
+2026-11-22,13:25:10,TCL,115RM9L,FR,Boulanger,9399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:10,TCL,75P8L,FR,Boulanger,992.68,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:10,TCL,55T6C,FR,Boulanger,425.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:10,TCL,32S4K,FR,Boulanger,241.53,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:25:10,Samsung,75Q7F,FR,Boulanger,549.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,降价
+2026-11-22,13:25:15,TCL,115X955MAX,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:25:19,TCL,98P8K,FR,Boulanger,549.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,持平
+2026-11-22,13:25:20,TCL,43P735,FR,Boulanger,370.73,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:20,TCL,50P638,FR,Boulanger,400.43,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:20,TCL,50P6K,FR,Boulanger,433.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:20,TCL,50P735,FR,Boulanger,455.46,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:20,TCL,75A300,FR,Boulanger,549.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,持平
+2026-11-22,13:25:20,TCL,55P8L,FR,Boulanger,479.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:28,TCL,65P7K,FR,Boulanger,549.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,涨价
+2026-11-22,13:25:28,TCL,65P8L,FR,Boulanger,642.86,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:28,TCL,75P8K,FR,Boulanger,927.38,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:28,TCL,75P8L,FR,Boulanger,899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:28,TCL,65A300,FR,Boulanger,1169.15,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:28,TCL,85P8L,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:28,TCL,85C6K,FR,Boulanger,1424.37,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:25:28,TCL,75A300W,FR,Boulanger,1407.37,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:28,TCL,98P8L,FR,Boulanger,1499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:28,TCL,55P6K,FR,Boulanger,549.0,EUR,Télévision - Téléviseur | Boulanger,Success,降价
+2026-11-22,13:25:29,TCL,85X955,FR,Boulanger,4993.93,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,TCL,98C955,FR,Boulanger,6363.48,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,TCL,65C8K,FR,Boulanger,1123.24,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:25:29,TCL,85A400PRO,FR,Boulanger,1489.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,65C6,FR,Boulanger,1599.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,55C6,FR,Boulanger,1199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,77C6,FR,Boulanger,1999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,55G6,FR,Boulanger,1599.0,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:29,LG,24LB7000,FR,Boulanger,209.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,43QNED70B,FR,Boulanger,369.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,65G6,FR,Boulanger,1999.0,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:29,LG,65NU850B6,FR,Boulanger,529.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,65QNED85B,FR,Boulanger,799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,42C6,FR,Boulanger,1099.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,50QNED85B,FR,Boulanger,599.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,55NU850B6,FR,Boulanger,429.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,43QNED85B,FR,Boulanger,449.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,48C6,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,65QNED70B,FR,Boulanger,629.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,55QNED85B,FR,Boulanger,699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,48G6,FR,Boulanger,1199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,83C6,FR,Boulanger,2699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,27LB7000,FR,Boulanger,229.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,77G6,FR,Boulanger,2899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,75QNED85B,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,55QNED70B,FR,Boulanger,499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,85NU850B6,FR,Boulanger,1299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,50NU850B6,FR,Boulanger,448.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,55MRGB86B6,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,50MRGB86B6,FR,Boulanger,749.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,43NU850B6,FR,Boulanger,348.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,50QNED70B,FR,Boulanger,399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,75NU850B6,FR,Boulanger,799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,55LX7B,FR,Boulanger,799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,65MRGB86B6,FR,Boulanger,1199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,55QNED90B,FR,Boulanger,899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,65LX7B,FR,Boulanger,899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,75MRGB86B6,FR,Boulanger,1399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,65QNED90B,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,75QNED90B,FR,Boulanger,1446.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,86QNED85B,FR,Boulanger,1499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,85QNED90B,FR,Boulanger,2299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,100QNED85B,FR,Boulanger,2999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,83G6,FR,Boulanger,3999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,77W6,FR,Boulanger,4999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,75MRGB96B6,FR,Boulanger,3999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,115QNED90B,FR,Boulanger,4999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,83W6,FR,Boulanger,5999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,86MRGB96B6,FR,Boulanger,4999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,100MRGB96B6,FR,Boulanger,7999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,97G5,FR,Boulanger,13999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,97M5,FR,Boulanger,9999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,83C5,FR,Boulanger,2390.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,42C5,FR,Boulanger,1013.61,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,48G5,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,LG,43UA75,FR,Boulanger,299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:29,TCL,55A300W,FR,Boulanger,549.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,降价
+2026-11-22,13:25:37,LG,65G5,FR,Boulanger,1749.0,EUR,"TV OLED LG OLED65G5 (2025) 65"" (164 cm) 4K Ultra HD - Expérience Gaming, 120Hz, sans pied | Boulanger",Success,涨价
+2026-11-22,13:25:39,LG,77G5,FR,Boulanger,549.0,EUR,TV OLED – Téléviseur OLED : Image ultra contrastée et couleurs intenses | Boulanger,Success,持平
+2026-11-22,13:25:40,TCL,98C8K,FR,Boulanger,549.0,EUR,Télévision - Téléviseur | Boulanger,Success,持平
+2026-11-22,13:25:40,LG,48C5,FR,Boulanger,829.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:40,LG,86UA75,FR,Boulanger,1383.8,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:40,LG,55UA75,FR,Boulanger,554.56,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:40,LG,43UR78,FR,Boulanger,416.35,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:40,LG,27TQ615S,FR,Boulanger,336.46,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:40,LG,43QNED80A,FR,Boulanger,369.66,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:40,LG,43QNED70A,FR,Boulanger,845.42,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:40,LG,55QNED70A,FR,Boulanger,399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:40,LG,55NANO81A6A,FR,Boulanger,419.49,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:40,LG,43UQ7690,FR,Boulanger,475.37,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:40,LG,75UA75,FR,Boulanger,1146.83,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:25:40,LG,55C5,FR,Boulanger,1059.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:40,LG,75QNED90A,FR,Boulanger,1119.18,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:40,LG,65C5,FR,Boulanger,1399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:43,LG,55G5,FR,Boulanger,1219.0,EUR,TV OLED LG sans pied OLED55G5 | Boulanger,Success,涨价
+2026-11-22,13:25:44,LG,55G6,FR,Boulanger,1468.35,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:44,LG,65G6,FR,Boulanger,1988.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:44,LG,77C3,FR,Boulanger,3606.16,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:44,LG,83G5,FR,Boulanger,3499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:44,LG,83G3,FR,Boulanger,7424.41,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:44,LG,65QNED85A,FR,Boulanger,628.4,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:44,LG,55QNED85A,FR,Boulanger,529.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:47,LG,24TQ510S,FR,Boulanger,549.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,持平
+2026-11-22,13:25:49,LG,65B5,FR,Boulanger,549.0,EUR,TV OLED – Téléviseur OLED : Image ultra contrastée et couleurs intenses | Boulanger,Success,持平
+2026-11-22,13:25:49,Hisense,75UR9S,FR,Boulanger,1399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:49,Hisense,55U7SPRO,FR,Boulanger,699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,LG,50QNED85A,FR,Boulanger,949.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,涨价
+2026-11-22,13:25:51,Hisense,85E7SPRO,FR,Boulanger,1198.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,65U7SPRO,FR,Boulanger,899.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,75U7SE,FR,Boulanger,938.99,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:25:51,Hisense,32A5S,FR,Boulanger,223.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,85E7S,FR,Boulanger,995.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,100U7Q,FR,Boulanger,1990.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,75U7SPRO,FR,Boulanger,1299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,100E7QPRO,FR,Boulanger,1790.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,55UR8S,FR,Boulanger,1054.96,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:51,Hisense,58E7S,FR,Boulanger,439.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,55U7SE,FR,Boulanger,675.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,50E7S,FR,Boulanger,371.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,43E7S,FR,Boulanger,329.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,65U7SE,FR,Boulanger,865.34,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:51,Hisense,65UR9S,FR,Boulanger,1279.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,65E7SPRO,FR,Boulanger,699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,75E7S,FR,Boulanger,799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,65UR8S,FR,Boulanger,1199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,50A7S,FR,Boulanger,499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,75E7SPRO,FR,Boulanger,868.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,55A7S,FR,Boulanger,549.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,32S5Q,FR,Boulanger,198.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,43A7S,FR,Boulanger,399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,55E7SPRO,FR,Boulanger,499.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,65A7S,FR,Boulanger,599.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,85U7SE,FR,Boulanger,1212.99,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,32S6S,FR,Boulanger,999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,85U7SPRO,FR,Boulanger,1699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,75UR8S,FR,Boulanger,1399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,85UR8S,FR,Boulanger,2299.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:51,Hisense,85UR9S,FR,Boulanger,2489.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:53,LG,55G5,FR,Boulanger,1999.0,EUR,TV OLED – Téléviseur OLED : Image ultra contrastée et couleurs intenses | Boulanger,Success,涨价
+2026-11-22,13:25:53,Hisense,100UR8S,FR,Boulanger,3499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:53,Hisense,100UXQ,FR,Boulanger,5999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:53,Hisense,116UXQ,FR,Boulanger,12999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:53,Hisense,55E7S,FR,Boulanger,399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:53,Hisense,40A5S,FR,Boulanger,291.56,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:53,Hisense,65E7S,FR,Boulanger,499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:53,Hisense,32A5Q,FR,Boulanger,274.9,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:55,Hisense,50U7SE,FR,Boulanger,468.99,EUR,"TV Mini LED HISENSE 50U7SE (2026) 50"" (126 cm) | Boulanger",Success,持平
+2026-11-22,13:25:56,Hisense,100U7S PRO,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:25:56,Hisense,32A49K,FR,Boulanger,213.41,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:56,Hisense,40A5Q,FR,Boulanger,452.99,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:56,Hisense,58A6S,FR,Boulanger,475.68,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:58,Hisense,85U8Q,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:25:58,Hisense,55E7Q,FR,Boulanger,571.9,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:25:58,Hisense,65E7KQ,FR,Boulanger,564.62,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:58,Hisense,65A6Q,FR,Boulanger,904.48,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:58,Hisense,65E7Q,FR,Boulanger,1194.24,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:25:58,Hisense,75E7KQPRO,FR,Boulanger,1060.58,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:25:58,Hisense,75A6Q,FR,Boulanger,1432.94,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:01,Hisense,50A6Q,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:01,Hisense,75U8Q,FR,Boulanger,1887.09,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:26:01,Hisense,75U9GQ,FR,Boulanger,2121.56,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:01,Hisense,110UXNQ,FR,Boulanger,6490.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:01,Hisense,75E7QPRO,FR,Boulanger,1099.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:02,Hisense,58A6Q,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:02,Sony,55A90J,FR,Boulanger,1897.44,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:02,Sony,43BRAVIA3,FR,Boulanger,459.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:04,Hisense,65A85Q,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:05,Samsung,65S90F,FR,Boulanger,1449.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:07,Sony,77BRAVIA8,FR,Boulanger,1999.0,EUR,TV OLED – Téléviseur OLED : Image ultra contrastée et couleurs intenses | Boulanger,Success,涨价
+2026-11-22,13:26:07,Samsung,75LS03FW,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:07,Samsung,48S90F,FR,Boulanger,929.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:14,Samsung,55S95F,FR,Boulanger,549.0,EUR,TV OLED – Téléviseur OLED : Image ultra contrastée et couleurs intenses | Boulanger,Success,持平
+2026-11-22,13:26:14,Samsung,43U7000F,FR,Boulanger,319.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:17,Samsung,55U8005F,FR,Boulanger,549.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,涨价
+2026-11-22,13:26:17,Samsung,43Q7F,FR,Boulanger,549.0,EUR,Télévision - Téléviseur | Boulanger,Success,降价
+2026-11-22,13:26:20,Samsung,65U8005F,FR,Boulanger,949.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,涨价
+2026-11-22,13:26:22,Samsung,75QEF1A,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:23,Samsung,65U7025FKXXC,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:25,Samsung,75U8005F,FR,Boulanger,949.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,涨价
+2026-11-22,13:26:29,TCL,65P8K,FR,Boulanger,479.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,降价
+2026-11-22,13:26:29,TCL,75P7K,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:31,TCL,43P6K,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:31,LG,77C5,FR,Boulanger,1749.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:33,TCL,50P7K,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:35,LG,65UA75,FR,Boulanger,949.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,涨价
+2026-11-22,13:26:35,LG,65QNED80A,FR,Boulanger,1060.6,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:26:36,TCL,65A300W,FR,Boulanger,549.0,EUR,TV QLED - Livraison & Installation Offertes* | Boulanger,Success,持平
+2026-11-22,13:26:39,LG,50UR78,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,持平
+2026-11-22,13:26:41,Hisense,65A7Q,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:41,Hisense,43E7Q,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:42,Hisense,75E7Q,FR,Boulanger,759.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:26:44,Hisense,55A6Q,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:47,Hisense,55U7Q,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,持平
+2026-11-22,13:26:47,Hisense,75U7QPRO,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:50,Hisense,55U7QPRO,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:26:50,Hisense,55U8Q,FR,Boulanger,1387.21,EUR,Batch category snapshot,Success,涨价
+2026-11-22,13:26:52,Hisense,65E7QPRO,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,持平
+2026-11-22,13:26:55,LG,50UA75,FR,Boulanger,949.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,涨价
+2026-11-22,13:26:57,Hisense,100U7QPRO,FR,Boulanger,549.0,EUR,Télévision - Téléviseur | Boulanger,Success,持平
+2026-11-22,13:26:57,Sony,55BRAVIA8,FR,Boulanger,1699.0,EUR,Batch category snapshot,Success,降价
+2026-11-22,13:27:00,Hisense,65U8Q,FR,Boulanger,549.0,EUR,Télévision - Téléviseur | Boulanger,Success,持平
+2026-11-22,13:27:02,LG,65G5,FR,Boulanger,549.0,EUR,TV OLED – Téléviseur OLED : Image ultra contrastée et couleurs intenses | Boulanger,Success,持平
+2026-11-22,13:27:02,Sony,75BRAVIA9II,FR,Boulanger,3499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:03,Sony,65BRAVIA8,FR,Boulanger,1899.0,EUR,"TV OLED SONY 65 BRAVIA 8 II IMAX Enhanced (2025) 65"" (164 cm) - Expérience Gaming, 120Hz, Google TV, Smart TV | Boulanger",Success,涨价
+2026-11-22,13:27:04,Sony,55BRAVIA7II,FR,Boulanger,1399.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:04,Sony,65BRAVIA9II,FR,Boulanger,2999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:05,Sony,55BRAVIA8,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,降价
+2026-11-22,13:27:07,Sony,50BRAVIA3,FR,Boulanger,949.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,涨价
+2026-11-22,13:27:07,Sony,43BRAVIA3II,FR,Boulanger,649.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:10,Sony,55BRAVIA3,FR,Boulanger,1206.3,EUR,"TV LED SONY 55 BRAVIA 3 (2025) 55"" (139 cm) - Smart TV, PlayStation Remote | Boulanger",Success,涨价
+2026-11-22,13:27:10,Sony,43BRAVIA2II,FR,Boulanger,549.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:10,Sony,50BRAVIA2II,FR,Boulanger,599.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:10,Sony,55BRAVIA2II,FR,Boulanger,649.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:10,Sony,50BRAVIA3II,FR,Boulanger,699.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:10,Sony,55BRAVIA3II,FR,Boulanger,799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:10,Sony,65BRAVIA3II,FR,Boulanger,949.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:10,Sony,75BRAVIA3II,FR,Boulanger,1199.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:12,Sony,65BRAVIA8,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,涨价
+2026-11-22,13:27:13,Sony,75BRAVIA3,FR,Boulanger,919.0,EUR,"TV LED SONY 75 BRAVIA 3 (2025) 75"" (189 cm) - Google TV, PlayStation Remote | Boulanger",Success,涨价
+2026-11-22,13:27:14,Sony,65BRAVIA7II,FR,Boulanger,1499.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:14,Sony,85BRAVIA3II,FR,Boulanger,1799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:14,Sony,100BRAVIA3II,FR,Boulanger,2069.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:14,Sony,75BRAVIA7II,FR,Boulanger,1799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:14,Sony,85BRAVIA7II,FR,Boulanger,2799.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:14,Sony,85BRAVIA9II,FR,Boulanger,4999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:14,Sony,98BRAVIA7II,FR,Boulanger,5999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:14,Sony,115BRAVIA9II,FR,Boulanger,19999.0,EUR,Batch category snapshot,Success,持平
+2026-11-22,13:27:18,Sony,85BRAVIA3,FR,Boulanger,549.0,EUR,TV LED / Télévision LED - Livraison Offerte* | Boulanger,Success,持平
+2026-11-22,13:27:18,Sony,77BRAVIA8,FR,Boulanger,1199.0,EUR,Télévision - Téléviseur | Boulanger,Success,持平
+2026-11-22,13:27:20,Sony,65BRAVIA8,FR,Boulanger,1999.0,EUR,TV OLED – Téléviseur OLED : Image ultra contrastée et couleurs intenses | Boulanger,Success,涨价
+2026-11-22,13:27:24,Sony,55BRAVIA8,FR,Boulanger,2520.8,EUR,"TV OLED SONY 55 BRAVIA 8 (2025) 55"" (139 cm) | Boulanger",Success,降价
