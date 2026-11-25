@@ -31,6 +31,8 @@ from pathlib import Path
 from typing import Sequence
 from urllib.parse import parse_qs, quote_plus, urlparse
 
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
 from monitor_prices.core import clean_price
 from monitor_prices.fx import ECB_RATE_DATE, price_to_eur
 
@@ -597,11 +599,15 @@ def _delivery_postcode_classification(text: str, market: AmazonMarket) -> dict:
 
 
 class AmazonCatalogIncomplete(RuntimeError):
-    """本轮存在明确错误或访问挑战，已有候选只能保留在隔离诊断中。"""
+    """本轮未满足采集条件；仅明确的可选商品页异常有独立处理规则。"""
 
 
 class AmazonProductPageUnready(AmazonCatalogIncomplete):
     """HTTP 200 同商品 URL 持续空白；仅可选详情/变体补充可留证后跳过。"""
+
+
+class AmazonOptionalTargetRejected(AmazonCatalogIncomplete):
+    """可选商品页的身份或访问已被拒绝；必须停止后续访问。"""
 
 
 def _sync_continue_diagnostics(adapter, page):
@@ -916,7 +922,11 @@ async def _checked_page_state(page, market: AmazonMarket, http_status: int | Non
         if resumed is not None:
             return resumed
     if reason:
-        error = AmazonCatalogIncomplete(f'Amazon {market.code} 页面不可用于配送恢复 ({reason})')
+        optional_page_denied = stage in {'catalog_detail', 'catalog_variant'} and reason in {
+            'access_challenge', 'continue_shopping_interstitial', 'http_401', 'http_403', 'http_429',
+        }
+        error_type = AmazonOptionalTargetRejected if optional_page_denied else AmazonCatalogIncomplete
+        error = error_type(f'Amazon {market.code} 页面不可用于配送恢复 ({reason})')
         error.retryable = reason.startswith('http_5')
         await _capture_amazon_failure(
             page, market, stage=stage, reason=reason, http_status=http_status, error=error,
@@ -999,7 +1009,8 @@ async def _observe_amazon_target_readiness(page, market, target_url, *, asin, st
         summary['observations'].append(observation)
         if reason or not url_matches:
             summary['result'] = 'page_rejected' if reason else 'target_mismatch'
-            raise AmazonCatalogIncomplete(f'Amazon {market.code} {"恢复后" if phase == "after_location_recovery" else "等待时"}页面身份不符或出现访问挑战，停止采集')
+            error_type = AmazonOptionalTargetRejected if asin and phase == 'current_target' else AmazonCatalogIncomplete
+            raise error_type(f'Amazon {market.code} {"恢复后" if phase == "after_location_recovery" else "等待时"}页面身份不符或出现访问挑战，停止采集')
         if identity_ready and observation['normal_market_page'] and observation['postcode_matches']:
             summary['result'] = 'ready'
             return state
@@ -1192,6 +1203,11 @@ async def verify_amazon_delivery_location(
 
 
 _LOCATION_DIALOG_SELECTOR = '[role="dialog"], [aria-modal="true"], .a-popover'
+_LOCATION_POSTCODE_SELECTOR = (
+    'input#GLUXZipUpdateInput:visible, input[data-action~="GLUXPostalInputAction"]:visible, '
+    '[data-action~="GLUXPostalInputAction"] input:visible, '
+    ':is([role="dialog"], [aria-modal="true"], .a-popover) input[autocomplete~="postal-code" i]:visible'
+)
 _LOCATION_DONE_SELECTOR = '#GLUXConfirmClose, input[name="glowDoneButton"], .a-popover-footer .a-button-input, button, input[type="button"], input[type="submit"], [role="button"]'
 _JS_LOCATION_CONFIRMATION = r"""({dialogSelector, controlSelector}) => {
   const visible = el => {
@@ -1213,13 +1229,14 @@ _JS_LOCATION_CONFIRMATION = r"""({dialogSelector, controlSelector}) => {
   const matching = dialogs.filter(el =>
     !!el.querySelector('#GLUXZipUpdateInput, #GLUXZipUpdate, #GLUXConfirmClose, input[name="glowDoneButton"]') ||
     Array.from(el.querySelectorAll('h1,h2,h3,h4,h5,h6,[role=heading],.a-popover-header,.a-popover-header-content')).some(heading =>
-      visible(heading) && /^(Seleziona la tua posizione|Choose your location)$/i.test(clean(heading.innerText)))
+      visible(heading) && /^(Seleziona la tua posizione|Choose your location|Elige tu ubicación|Selecciona tu ubicación|Wähle deinen Standort)$/i.test(clean(heading.innerText)))
   );
   const dialog = matching.length === 1 ? matching[0] : null;
   const controls = dialog ? Array.from(dialog.querySelectorAll(controlSelector)) : [];
   const legacy = el => el.id === 'GLUXConfirmClose' || el.getAttribute('name') === 'glowDoneButton' || el.matches('.a-popover-footer .a-button-input');
+  const done = el => /^(Fatto|Done|Listo|Hecho|Fertig)$/i.test(name(el));
   const eligible = controls.filter(el => visible(el) && !el.disabled && el.getAttribute('aria-disabled') !== 'true' && (
-    legacy(el) || /^(Fatto|Done)$/i.test(name(el))
+    legacy(el) || done(el)
   ));
   const control = eligible[0];
   return {
@@ -1228,7 +1245,7 @@ _JS_LOCATION_CONFIRMATION = r"""({dialogSelector, controlSelector}) => {
     control_index: control ? controls.indexOf(control) : -1,
     control_count: eligible.length,
     control_source: control ? (legacy(control) ? 'legacy_control' : 'known_done_label') : 'none',
-    known_label: control && /^(Fatto|Done)$/i.test(name(control)) ? name(control).toLowerCase() : 'none',
+    known_label: control && done(control) ? name(control).toLowerCase() : 'none',
   };
 }"""
 
@@ -1341,8 +1358,8 @@ async def set_amazon_location_via_popup(page, market: AmazonMarket, *, reuse_cur
             await _checked_page_state(page, market, response.status if response else None, stage='location_popup')
         await _accept_cookie(page)
         location_entry = page.locator(
-            "#nav-global-location-popover-link, #glow-ingress-block, "
-            "#glow-ingress-line1, #glow-ingress-line2"
+            ":is(#nav-global-location-popover-link, #glow-ingress-block, "
+            "#glow-ingress-line1, #glow-ingress-line2):visible"
         ).first
         try:
             await location_entry.click(timeout=8000)
@@ -1356,35 +1373,36 @@ async def set_amazon_location_via_popup(page, market: AmazonMarket, *, reuse_cur
 
         # Cookie 弹窗有时在首次点击配送地后才延迟出现，会遮住地址弹窗。
         await _accept_cookie(page)
-        inp = page.locator(
-            "#GLUXZipUpdateInput, [data-action='GLUXPostalInputAction'], "
-            "input[autocomplete='postal-code']"
-        ).first
+        inp = page.locator(_LOCATION_POSTCODE_SELECTOR).first
         if await inp.count() == 0:
-            # 新版先显示“当前配送到其他国家”的中间提示，需要再点 Change Address。
+            # 简版弹窗会先显示“更改地址”，完整版直接异步加载输入框。等待先出现的控件。
+            change_name = re.compile(
+                r"\b(?:change (?:your )?(?:address|location|postal code|postcode)|cambiar (?:la )?(?:dirección|ubicación|código postal)"
+                r"|cambia (?:indirizzo|posizione)|(?:adresse|standort|postleitzahl) ändern)\b", re.I,
+            )
+            change_scope = page.locator(
+                ':is([role="dialog"], [aria-modal="true"], .a-popover, #glow-toaster-body, .glow-toaster):visible'
+            )
+            labelled_postcode = change_scope.get_by_role('textbox', name=re.compile(
+                r'\b(?:postcode|post\s*code|postal code|código postal|postleitzahl|PLZ|CAP)\b', re.I,
+            ))
+            inp = inp.or_(labelled_postcode).first
+            change = change_scope.get_by_role("button", name=change_name).or_(
+                change_scope.get_by_role("link", name=change_name)
+            ).or_(page.locator("#GLUXChangePostalCodeLink:visible")).first
             try:
-                await page.get_by_role(
-                    "button",
-                    name=re.compile(r"change address|change location|cambiar dirección", re.I),
-                ).first.click(timeout=2500)
-                await page.wait_for_timeout(800)
-            except Exception:
-                pass
-            inp = page.locator(
-                "#GLUXZipUpdateInput, [data-action='GLUXPostalInputAction'], "
-                "input[autocomplete='postal-code']"
-            ).first
-        if await inp.count() == 0:
-            # Cookie 层关闭后，原始点击可能没有真正打开地址弹窗；再尝试一次。
-            try:
-                await location_entry.click(timeout=3000)
-                await page.wait_for_timeout(800)
-            except Exception:
-                pass
-            inp = page.locator(
-                "#GLUXZipUpdateInput, [data-action='GLUXPostalInputAction'], "
-                "input[autocomplete='postal-code']"
-            ).first
+                await inp.or_(change).first.wait_for(state="visible", timeout=4000)
+            except PlaywrightTimeoutError:
+                # Cookie 延迟遮盖入口时可以重开一次；地址弹窗已经显示时不能再次点击把它关闭。
+                if not await change_scope.count():
+                    await location_entry.click(timeout=3000)
+            if not await inp.count() and await change.count():
+                await change.click(timeout=2500)
+            if not await inp.count():
+                try:
+                    await inp.wait_for(state="visible", timeout=4000)
+                except PlaywrightTimeoutError:
+                    pass
         if await inp.count() == 0:
             print(f"  [set-loc/{market.code}] 弹窗未出现邮编输入框")
             await _capture_amazon_failure(
@@ -1393,15 +1411,15 @@ async def set_amazon_location_via_popup(page, market: AmazonMarket, *, reuse_cur
             return False
         await inp.fill(market.postcode, timeout=5000)
         submit = page.locator(
-            "#GLUXZipUpdate, input[aria-labelledby='GLUXZipUpdate-announce'], "
-            "[data-action='GLUXPostalUpdateAction']"
+            ":is(#GLUXZipUpdate, input[aria-labelledby='GLUXZipUpdate-announce'], "
+            "[data-action='GLUXPostalUpdateAction']):visible"
         ).first
         if await submit.count():
             await submit.click(timeout=5000)
         else:
             await page.get_by_role(
                 "button",
-                name=re.compile(r"apply|aplicar|usa questo indirizzo|utiliser", re.I),
+                name=re.compile(r"\b(?:apply|aplicar|actualizar|aggiorna|usa questo indirizzo|übernehmen|aktualisieren|utiliser)\b", re.I),
             ).first.click(timeout=5000)
         await page.wait_for_timeout(2500)
         if not await _complete_amazon_location_popup(page, market):
@@ -1434,7 +1452,13 @@ async def set_amazon_market_location(page, market: AmazonMarket) -> bool:
 
     try:
         response = await page.goto(f"{market.base_url}/", wait_until="domcontentloaded", timeout=45000)
-        await _checked_page_state(page, market, response.status if response else None, stage='location_home')
+        state = await _checked_page_state(page, market, response.status if response else None, stage='location_home')
+        # 首页配送栏已经明确显示目标邮编时，无需重复申请地址或打开弹窗。后续商品价格仍需独立校验。
+        if (_normal_market_page(state, market)
+                and (state.get('deliveryHeader') or {}).get('visibleNodePresent') is True
+                and _delivery_postcode_matches(state.get('deliveryText', ''), market)):
+            print(f'  [set-loc/{market.code}] 首页配送栏已确认目标邮编')
+            return True
     except AmazonCatalogIncomplete:
         raise
     except Exception as e:
@@ -2022,7 +2046,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         try:
             response = await page.goto(f"{market.base_url}/dp/{asin}", wait_until="domcontentloaded", timeout=30000)
             state = await page.evaluate(_JS_SEARCH_STATE)
-            if _page_rejection_reason(None, state):
+            if _page_rejection_reason(None, state) or (response and response.status in (401, 403, 429)):
                 await _checked_page_state(
                     page, market, response.status if response else None, stage='catalog_detail',
                     target_url=f'{market.base_url}/dp/{asin}', asin=asin, state=state,
@@ -2044,7 +2068,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             )
             detail = await page.evaluate(_JS_DETAIL, list(_AMZ_DETAIL_PRICE_SELECTORS))
         except AmazonProductPageUnready as error:
-            # 只跳过未产生报价的可选详情项；挑战/错误 ASIN/未确认配送仍由下方整轮拒绝。
+            # 空白详情项可以跳过，访问受阻时立即结束补查，配送无法确认仍拒绝本轮。
             if self.diagnostics:
                 self.diagnostics.record_page({'queryKind': 'detail', 'asin': asin, 'reason': 'product_dom_unready'})
             await _capture_amazon_failure(
@@ -2101,7 +2125,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
         try:
             response = await page.goto(seed.url, wait_until="domcontentloaded", timeout=30000)
             state = await page.evaluate(_JS_SEARCH_STATE)
-            if _page_rejection_reason(None, state):
+            if _page_rejection_reason(None, state) or (response and response.status in (401, 403, 429)):
                 await _checked_page_state(
                     page, market, response.status if response else None, stage='catalog_variant',
                     target_url=seed.url, asin=seed_asin, state=state,
@@ -2277,6 +2301,7 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
 
     async def fetch_catalog(self, page) -> Sequence[CatalogItem]:
         market = self.market
+        self.search_count_at_detail_stop = None
         self._price_change_paths = []
         self._price_baseline = self._load_price_baseline(datetime.now(UTC))
         self.diagnostics = AmazonCatalogDiagnostics(market.code)
@@ -2426,12 +2451,15 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             ]
         )
         completed_queries: set[str] = set()
+        empty_brand_queries: set[str] = set()
         for q, max_pages, query_kind in query_plan:
             normalized_query = re.sub(r"\s+", " ", q.strip().lower())
             if not normalized_query or normalized_query in completed_queries:
                 continue
             completed_queries.add(normalized_query)
-            await scrape_query(q, max_pages, query_kind)
+            saw_rows = await scrape_query(q, max_pages, query_kind)
+            if query_kind == 'brand' and not saw_rows:
+                empty_brand_queries.add(q.upper())
 
         # Amazon 有些尺寸是完全独立的 ASIN，详情页没有 twister sibling。
         # 用宽搜中识别出的系列做一页精确搜索，补上这类“页面之间互不相连”的尺寸。
@@ -2457,6 +2485,27 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                     )
                     break
 
+        def stop_detail_enrichment(stage: str, error: AmazonOptionalTargetRejected) -> list[CatalogItem]:
+            # 只有已完成搜索的商品可以证明目录覆盖；旧目录候选和已补回的尺寸都不能凑门槛。
+            search_items = [item for item in by_asin.values() if item.extra.get('search_kind')]
+            self.search_count_at_detail_stop = len(search_items)
+            observed_brands = {item.brand_raw.upper() for item in search_items}
+            missing_brands = empty_brand_queries | ({q.upper() for q in BRAND_QUERIES} - observed_brands)
+            has_price = any(item.currency == market.currency and (item.price_local or 0) > 0 for item in search_items)
+            self.diagnostics.report['detailEnrichmentStopped'] = {
+                'stage': stage, 'reason': redact_text(str(error)), 'searchCount': len(search_items),
+                'missingBrands': sorted(missing_brands), 'hasLocalPrice': has_price,
+            }
+            self.diagnostics.checkpoint(by_asin.values())
+            print(f'[catalog/Amazon/{market.code}] {stage} 遇到异常页面，停止后续访问；'
+                  f'已验证搜索商品 {len(search_items)} 条，等待目录验收')
+            if missing_brands or not has_price:
+                raise AmazonCatalogIncomplete(
+                    f'Amazon {market.code} 搜索目录无法独立验收：缺少品牌 {sorted(missing_brands)}，'
+                    f'本币有效报价={has_price}'
+                ) from error
+            return list(by_asin.values())
+
         historical = self._load_recent_catalog_items()
         recovery_items = self._select_previous_recovery_items(historical, list(by_asin.values()))
         print(
@@ -2468,7 +2517,10 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
             asin = (previous.extra.get("asin") or "").upper()
             if not asin or asin in by_asin:
                 continue
-            item = await self._detail_item(page, asin, previous.brand_raw)
+            try:
+                item = await self._detail_item(page, asin, previous.brand_raw)
+            except AmazonOptionalTargetRejected as error:
+                return stop_detail_enrichment('history_recovery', error)
             if item is None:
                 continue
             item.extra["recovered_from_history"] = previous.extra.get("history_catalog", "")
@@ -2490,7 +2542,10 @@ class AmazonCatalogAdapter(BaseCatalogAdapter):
                 f"(max_per_seed={MAX_VARIANTS_PER_SEED})…"
             )
             for i, seed in enumerate(selected_seeds, 1):
-                added = await self._expand_variants_from_seed(page, seed, by_asin)
+                try:
+                    added = await self._expand_variants_from_seed(page, seed, by_asin)
+                except AmazonOptionalTargetRejected as error:
+                    return stop_detail_enrichment('variant_expansion', error)
                 if added < 0:
                     consecutive_detail_failures += 1
                     if consecutive_detail_failures >= 2:

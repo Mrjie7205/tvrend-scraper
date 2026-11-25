@@ -157,8 +157,10 @@ def _validate_amazon_catalog_size(adapter, items, date_tag: str) -> str | None:
     ]
     lookback = max(1, int(os.environ.get("AMAZON_CATALOG_SIZE_LOOKBACK", "7")))
     previous_counts = [_csv_data_row_count(path) for path in paths[-lookback:]]
+    # 可选补抓中止时，主搜索须独立达标，补回的尺寸不可掩盖当日市场覆盖缺口。
+    search_count = getattr(adapter, 'search_count_at_detail_stop', None)
     return _amazon_catalog_size_failure(
-        len(items),
+        len(items) if search_count is None else min(len(items), search_count),
         previous_counts,
         absolute_minimum=max(1, int(os.environ.get("AMAZON_MIN_CATALOG_ROWS", "100"))),
         minimum_ratio=float(os.environ.get("AMAZON_MIN_PREVIOUS_RATIO", "0.70")),

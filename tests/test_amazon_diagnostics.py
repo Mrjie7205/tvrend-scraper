@@ -106,6 +106,111 @@ class AmazonDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(has_catalog)
         self.assertEqual('validated', report['status'])
 
+    async def _run_detail_stop(self, stage, *, previous_count=0, brands=('tcl',), search_price='399,00 €',
+                               failure='identity'):
+        from catalog_scrape.adapters.amazon import _JS_DETAIL
+
+        adapter = AmazonCatalogAdapter(AMAZON_ES)
+        adapter._prepare_market_session = AsyncMock(return_value=True)
+        history_ids = ['B901000001', 'B901000002', 'B901000003']
+        historical = [adapter._build_item(asin, 'TCL 65 pulgadas TV', 'TCL', 65, '1,00 €')
+                      for asin in history_ids]
+        target = history_ids[1] if stage == 'history_recovery' else 'B000000000'
+        rows = [{'asin': f'B{number:09}', 'brand': 'TCL', 'title': 'TCL 55 pulgadas TV',
+                 'price': search_price, 'variantHint': number < 2} for number in range(100)]
+        page = AsyncMock()
+        urls = []
+
+        async def navigate(url, **kwargs):
+            urls.append(url)
+            status = 429 if failure == 'rate_limit' and url.endswith('/' + target) else 200
+            return SimpleNamespace(status=status)
+
+        async def evaluate(script, *args):
+            url = urls[-1]
+            asin = url.rsplit('/', 1)[-1] if '/dp/' in url else ''
+            if script == _JS_SEARCH_STATE:
+                state = dict(currentUrl=url, normalPage=True, deliveryText='Madrid 28013', productAsin=asin)
+                if asin == target:
+                    if failure == 'identity':
+                        state['productAsin'] = 'B999999999'
+                    elif failure == 'captcha':
+                        state['captcha'] = True
+                    elif failure == 'delivery':
+                        state['deliveryText'] = 'Barcelona 08001'
+                return state
+            if script == _JS_EXTRACT and not asin:
+                return rows
+            if script == _JS_DETAIL and asin and asin != target:
+                return dict(title='TCL 65 pulgadas TV', price='499,00 €', variantRefs=[])
+            raise AssertionError('拒绝的页面不得取价')
+
+        page.goto.side_effect = navigate
+        page.evaluate.side_effect = evaluate
+        browser = AsyncMock()
+        browser.new_context.return_value.new_page.return_value = page
+        with tempfile.TemporaryDirectory() as temporary, ExitStack() as stack:
+            root = Path(temporary)
+            catalog = root / 'catalog'
+            catalog.mkdir()
+            if previous_count:
+                (catalog / 'amazon_es_20000101.csv').write_text('url\n' + 'old\n' * previous_count)
+            stack.enter_context(patch.dict('os.environ', {'AMAZON_DIAGNOSTICS_DIR': str(root / 'artifacts'),
+                                'AMAZON_MIN_CATALOG_ROWS': '100', 'AMAZON_MIN_PREVIOUS_RATIO': '0.70'}))
+            stack.enter_context(patch('catalog_scrape.run_weekly._catalog_dir', return_value=catalog))
+            for name, value in (('BRAND_QUERIES', brands), ('TARGET_YEARS', ()), ('EXTRA_SERIES_QUERIES', ()),
+                                ('MAX_PAGES', 1), ('EXPAND_VARIANTS', True)):
+                stack.enter_context(patch('catalog_scrape.adapters.amazon.' + name, value))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon._accept_cookie', new=AsyncMock()))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon.asyncio.sleep', new=AsyncMock()))
+            stack.enter_context(patch('catalog_scrape.adapters.amazon.set_amazon_market_location',
+                                      new=AsyncMock(return_value=False)))
+            stack.enter_context(patch.object(adapter, '_series_rescue_queries', return_value=[]))
+            stack.enter_context(patch.object(adapter, '_load_price_baseline', return_value={}))
+            stack.enter_context(patch.object(adapter, '_load_recent_catalog_items', return_value=historical))
+            stack.enter_context(patch.object(adapter, '_select_previous_recovery_items',
+                                             return_value=historical if stage == 'history_recovery' else historical[:1]))
+            result = await run_one_adapter(browser, adapter)
+            records = []
+            if result.path:
+                with result.path.open(encoding='utf-8-sig', newline='') as handle:
+                    records = list(csv.DictReader(handle))
+            report = json.loads((adapter.diagnostics.path / 'report.json').read_text(encoding='utf-8'))
+        self.assertEqual(target, urls[-1].rsplit('/', 1)[-1])
+        return records, report
+
+    async def test_interrupted_detail_publishes_only_fresh_verified_rows_and_stops_access(self):
+        for stage, failure in [('history_recovery', 'identity'), ('variant_expansion', 'captcha'),
+                               ('history_recovery', 'rate_limit')]:
+            with self.subTest(stage=stage, failure=failure):
+                rows, report = await self._run_detail_stop(stage, failure=failure)
+                self.assertEqual(101, len(rows))
+                self.assertEqual({'399.0', '499.0'}, {row['price_local'] for row in rows})
+                self.assertNotIn('B901000002', {row['asin'] for row in rows})
+                self.assertEqual('validated', report['status'])
+                stop = report['detailEnrichmentStopped']
+                self.assertEqual((stage, 100, [], True),
+                                 (stop['stage'], stop['searchCount'], stop['missingBrands'], stop['hasLocalPrice']))
+
+    async def test_interrupted_detail_cannot_use_extra_rows_to_meet_historical_coverage(self):
+        rows, report = await self._run_detail_stop('history_recovery', previous_count=145)
+        self.assertEqual([], rows)
+        self.assertEqual('rejected', report['status'])
+        self.assertIn('100 < 101', report['failureReason'])
+
+    async def test_interrupted_detail_requires_all_brands_and_current_local_price(self):
+        for kwargs in [dict(brands=('tcl', 'sony')), dict(search_price='')]:
+            with self.subTest(kwargs=kwargs):
+                rows, report = await self._run_detail_stop('history_recovery', **kwargs)
+                self.assertEqual([], rows)
+                self.assertIn('搜索目录无法独立验收', report['failureReason'])
+
+    async def test_optional_delivery_reset_failure_still_rejects_market(self):
+        rows, report = await self._run_detail_stop('history_recovery', failure='delivery')
+        self.assertEqual([], rows)
+        self.assertIn('配送地址恢复失败', report['failureReason'])
+        self.assertNotIn('detailEnrichmentStopped', report)
+
     async def test_partial_candidates_survive_rejection_without_formal_catalog(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

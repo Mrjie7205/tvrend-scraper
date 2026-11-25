@@ -39,6 +39,77 @@ class AmazonDeliveryReadinessTests(unittest.IsolatedAsyncioTestCase):
         page.goto.return_value = SimpleNamespace(status=200)
         return page
 
+    async def test_existing_visible_uk_and_spanish_destination_needs_no_address_form(self):
+        for market, header in ((amazon.AMAZON_GB, 'Delivering to Coventry CV4 7ES'),
+                               (amazon.AMAZON_ES, 'Enviar a Madrid 28013')):
+            with self.subTest(country=market.code):
+                page = self.page()
+                page.evaluate.return_value = state(market, text=header, currentUrl=market.base_url + '/')
+                with patch.object(amazon, 'set_amazon_location_via_popup', new=AsyncMock()) as popup:
+                    self.assertTrue(await amazon.set_amazon_market_location(page, market))
+                page.evaluate.assert_awaited_once_with(amazon._JS_SEARCH_STATE)
+                popup.assert_not_awaited()
+
+    async def test_missing_token_still_requires_local_postcode_and_visible_normal_market_page(self):
+        market = amazon.AMAZON_GB
+        for change in ({'deliveryText': 'Deliver to Coventry CV4'}, {'deliveryText': 'London SW1A 1AA'},
+                       {'deliveryHeader': {'visibleNodePresent': False}}, {'normalPage': False},
+                       {'currentUrl': amazon.AMAZON_ES.base_url + '/'}):
+            with self.subTest(change=change):
+                page = self.page()
+                page.evaluate.side_effect = [state(market, text='Coventry CV4 7ES') | change, '']
+                with patch.object(amazon, '_accept_cookie', new=AsyncMock()), patch.object(
+                    amazon, 'set_amazon_location_via_popup', new=AsyncMock(return_value=False),
+                ) as popup:
+                    self.assertFalse(await amazon.set_amazon_market_location(page, market))
+                popup.assert_awaited_once_with(page, market, reuse_current_page=True)
+
+    async def test_visible_popup_waits_for_postcode_or_scoped_change_address_link(self):
+        def locator():
+            result = Mock()
+            result.first = result
+            result.click, result.fill = AsyncMock(), AsyncMock()
+            result.count = AsyncMock(return_value=1)
+            return result
+
+        for scenario in ('late_field', 'change_link', 'missing_field'):
+            with self.subTest(scenario=scenario):
+                page = self.page()
+                page.evaluate.return_value = state(amazon.AMAZON_ES)
+                entry, initial, scope, submit = (locator() for _ in range(4))
+                labelled, field, action, either = (locator() for _ in range(4))
+                initial.count.return_value = 0
+                scope.get_by_role.side_effect = lambda role, **kwargs: labelled if role == 'textbox' else action
+                action.or_.return_value = action
+                initial.or_.return_value = field
+                field.or_.return_value = either
+                page.locator = Mock(side_effect=lambda selector: (
+                    initial if selector == amazon._LOCATION_POSTCODE_SELECTOR else
+                    scope if 'glow-toaster-body' in selector else
+                    submit if 'GLUXZipUpdate-announce' in selector else entry
+                ))
+                either.wait_for = AsyncMock()
+                field.wait_for = AsyncMock()
+                if scenario == 'missing_field':
+                    field.count.return_value = action.count.return_value = 0
+                    either.wait_for.side_effect = field.wait_for.side_effect = amazon.PlaywrightTimeoutError('timeout')
+                elif scenario == 'change_link':
+                    field.count.side_effect = [0, 0, 1]
+                with patch.object(amazon, '_accept_cookie', new=AsyncMock()), patch.object(
+                    amazon, '_complete_amazon_location_popup', new=AsyncMock(return_value=True),
+                ), patch.object(amazon, 'verify_amazon_delivery_location', new=AsyncMock(return_value=True)) as verify:
+                    result = await amazon.set_amazon_location_via_popup(page, amazon.AMAZON_ES, reuse_current_page=True)
+                self.assertEqual(scenario != 'missing_field', result)
+                entry.click.assert_awaited_once()
+                self.assertEqual(1 if scenario == 'change_link' else 0, action.click.await_count)
+                either.wait_for.assert_awaited_once()
+                if scenario == 'missing_field':
+                    field.fill.assert_not_awaited()
+                    verify.assert_not_awaited()
+                else:
+                    field.fill.assert_awaited_once_with('28013', timeout=5000)
+                    verify.assert_awaited_once_with(page, amazon.AMAZON_ES, after_popup=True)
+
     def test_delivery_text_classification_keeps_unknown_text_separate_from_wrong_code(self):
         cases = ((amazon.AMAZON_IT, '', 'missing'),
                  (amazon.AMAZON_IT, 'Seleziona la tua posizione', 'unparseable'),
@@ -333,12 +404,14 @@ class AmazonDeliveryReadinessTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(amazon.AmazonCatalogIncomplete) as raised:
                     await adapter._detail_item(page, ASIN, 'Sony')
                 self.assertNotIsInstance(raised.exception, amazon.AmazonProductPageUnready)
-        for status in (403, 429):
+        for status in (401, 403, 429):
             with self.subTest(status=status):
                 page = self.page()
                 page.goto.return_value = SimpleNamespace(status=status)
                 page.evaluate.return_value = state(amazon.AMAZON_GB, normal=False)
-                self.assertIsNone(await amazon.AmazonCatalogAdapter(amazon.AMAZON_GB)._detail_item(page, ASIN, 'Sony'))
+                with self.assertRaises(amazon.AmazonOptionalTargetRejected):
+                    await amazon.AmazonCatalogAdapter(amazon.AMAZON_GB)._detail_item(page, ASIN, 'Sony')
+                page.goto.assert_awaited_once()
                 self.assertNotIn('_amazon_target_readiness_summary', vars(page))
 
     async def test_challenge_during_target_wait_is_not_optional(self):
